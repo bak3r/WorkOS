@@ -61,11 +61,13 @@ export interface EnvDetection {
   bun: ToolInfo;
   git: ToolInfo;
   /**
-   * A prior WorkOS install is present. Keyed on `<configRoot>/WORKOS/VERSION`,
-   * which only DeployCore writes — settings.json exists on any harness that has
-   * ever run, WorkOS or not (public issue #1727, @rpriven).
+   * What is already installed. `workos` is keyed on `<configRoot>/WORKOS/VERSION`, which
+   * only DeployCore writes — settings.json exists on any harness that has ever run, WorkOS
+   * or not (public issue #1727, @rpriven). `lifeos` is true when LifeOS files, a LIFEOS/
+   * tree or LifeOS hook registrations are present (DetectEnv refines it with Inventory) —
+   * Setup then runs Inventory + Adopt BEFORE DeployCore.
    */
-  existingInstall: boolean;
+  existingInstall: { workos: boolean; lifeos: boolean };
   /**
    * This IS the author's live source tree — refuse all mutation. Marker: the
    * private maintenance skill (`skills/_WORKOS`) only exists in the source repo,
@@ -206,7 +208,7 @@ export function detectEnv(): EnvDetection {
     bun: detectTool("bun", "bun --version"),
     git: detectTool("git", "git --version"),
     // public issue #1727, @rpriven — WorkOS-specific marker, not settings.json.
-    existingInstall: existsSync(join(configRoot, "WORKOS", "VERSION")),
+    existingInstall: { workos: existsSync(join(configRoot, "WORKOS", "VERSION")), lifeos: quickLifeosSignal(configRoot) },
     isDevTree: detectDevTree(configRoot),
     settingsExists: existsSync(settingsPath),
     claudeMdExists: existsSync(claudeMdPath),
@@ -215,6 +217,36 @@ export function detectEnv(): EnvDetection {
     sandbox: resolve(configRoot) !== resolve(join(home, ".claude")),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
+}
+
+/**
+ * Cheap LifeOS presence signal (no hashing): a LIFEOS/ tree, the LifeOS skill, or a
+ * settings.json command that runs something under LIFEOS/. DetectEnv/ScanConflicts replace
+ * it with the full Inventory answer; this keeps detectEnv() fast for every other caller.
+ */
+export function quickLifeosSignal(configRoot: string): boolean {
+  if (existsSync(join(configRoot, "LIFEOS")) || existsSync(join(configRoot, "skills", "LifeOS"))) return true;
+  try {
+    return /\/LIFEOS\//.test(readFileSync(join(configRoot, "settings.json"), "utf-8"));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Is the `fable` alias unusable here? On Bedrock / Vertex the model list is the operator's
+ * `availableModels`; when that list exists and names no Fable id, the `max` rung must run
+ * on opus (models.ts resolves it at runtime; DeployComponents installs Max.md with
+ * `model: opus`). Reads the process env and settings.json `env`.
+ */
+export function fableUnavailable(configRoot: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  let settings: Record<string, any> = {};
+  try { settings = JSON.parse(readFileSync(join(configRoot, "settings.json"), "utf-8")); } catch { /* absent/invalid → no list */ }
+  const flag = (k: string) => env[k] === "1" || env[k] === "true" || settings.env?.[k] === "1" || settings.env?.[k] === "true";
+  if (!flag("CLAUDE_CODE_USE_BEDROCK") && !flag("CLAUDE_CODE_USE_VERTEX")) return false;
+  const models = settings.availableModels;
+  if (!Array.isArray(models)) return false;
+  return !models.some((m) => typeof m === "string" && /fable/i.test(m));
 }
 
 // ── Existing-content + API-key scan (from engine detect.ts, inlined types) ──
@@ -328,9 +360,14 @@ export function scanSettingsHooks(settingsPath: string): SettingsHookScan {
   if (typeof hooks !== "object" || hooks === null) return { exists: true, hookEventCount: 0, hookEntryCount: 0 };
   const events = Object.keys(hooks as Record<string, unknown>);
   let entries = 0;
+  // Count hook ENTRIES (each command/url), not matcher groups — one group can hold many.
   for (const ev of events) {
     const bucket = (hooks as Record<string, unknown>)[ev];
-    if (Array.isArray(bucket)) entries += bucket.length;
+    if (!Array.isArray(bucket)) continue;
+    for (const g of bucket) {
+      const hs = (g as { hooks?: unknown })?.hooks;
+      entries += Array.isArray(hs) ? hs.length : 0;
+    }
   }
   return { exists: true, hookEventCount: events.length, hookEntryCount: entries };
 }
@@ -343,6 +380,7 @@ export function scanSettingsHooks(settingsPath: string): SettingsHookScan {
 
 import { cpSync, lstatSync, mkdirSync, readdirSync, readlinkSync, renameSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import type { Ledger } from "./lib/ledger";
 
 // Extended 2026-07-25 (v7.15.0 re-audit). The set stopped at .ts, so .tsx/.js/.css
 // files were invisible to substitution and shipped literal {{PRINCIPAL_NAME}} tokens.
@@ -350,7 +388,8 @@ const TEMPLATE_EXTENSIONS = new Set([
   ".md", ".json", ".txt", ".ts", ".toml", ".yaml", ".yml", ".sh",
   ".tsx", ".jsx", ".js", ".css",
 ]);
-const SKIP_DIRS = new Set(["node_modules", ".git", "MEMORY"]);
+// `.workos-backup` holds pre-install copies — never copied from, scanned or rewritten.
+const SKIP_DIRS = new Set(["node_modules", ".git", "MEMORY", ".workos-backup"]);
 
 /**
  * Test files ship in the payload (so `bun test` runs against the release) but are
@@ -381,9 +420,10 @@ function fileExtension(filePath: string): string {
 /**
  * Recursive, existsSync-GUARDED copy. Copies only files/dirs absent at dst —
  * NEVER overwrites a populated target. Returns count + any failures. (Ported
- * from engine actions.ts copyMissing.)
+ * from engine actions.ts copyMissing.) With a ledger, every new top-most path is
+ * recorded as an `add` before it is created, so Rollback can remove exactly it.
  */
-export function copyMissing(src: string, dst: string): { copied: number; failures: string[] } {
+export function copyMissing(src: string, dst: string, ledger?: Ledger): { copied: number; failures: string[] } {
   const failures: string[] = [];
   let copied = 0;
   const walk = (s: string, d: string): void => {
@@ -392,6 +432,7 @@ export function copyMissing(src: string, dst: string): { copied: number; failure
     if (stat.isFile()) {
       if (!existsSync(d)) {
         try {
+          ledger?.recordAdd(d);
           mkdirSync(dirname(d), { recursive: true });
           cpSync(s, d);
           copied++;
@@ -406,10 +447,11 @@ export function copyMissing(src: string, dst: string): { copied: number; failure
       const sp = join(s, entry.name);
       const dp = join(d, entry.name);
       if (entry.isDirectory()) {
-        if (!existsSync(dp)) mkdirSync(dp, { recursive: true });
+        if (!existsSync(dp)) { ledger?.recordAdd(dp, undefined, "dir"); mkdirSync(dp, { recursive: true }); }
         walk(sp, dp);
       } else if (entry.isFile() && !isTestFile(entry.name) && !existsSync(dp)) {
         try {
+          ledger?.recordAdd(dp);
           cpSync(sp, dp);
           copied++;
         } catch (err) {
@@ -431,13 +473,21 @@ export interface TemplateVars {
  * Atomic per-file (tmp + rename). Skips node_modules/.git/WORKOS_INSTALL/MEMORY.
  * (Simplified from engine actions.ts substituteTemplates.)
  */
-export function substituteTree(rootDir: string, vars: TemplateVars): { scanned: number; modified: number; applied: number } {
+export interface TreeScope {
+  /** Only files this returns true for are read or written (Substitute: WorkOS-owned files). */
+  filter?: (filePath: string) => boolean;
+  /** Back up + record each file before it is rewritten. */
+  ledger?: Ledger;
+}
+
+export function substituteTree(rootDir: string, vars: TemplateVars, scope: TreeScope = {}): { scanned: number; modified: number; applied: number } {
   let scanned = 0;
   let modified = 0;
   let applied = 0;
   const entries = Object.entries(vars);
   const processFile = (filePath: string): void => {
     if (!TEMPLATE_EXTENSIONS.has(fileExtension(filePath))) return;
+    if (scope.filter && !scope.filter(filePath)) return;
     scanned++;
     const before = readFileSync(filePath, "utf-8");
     let after = before;
@@ -458,6 +508,7 @@ export function substituteTree(rootDir: string, vars: TemplateVars): { scanned: 
       // substituted hook lost its exec bit — 10 wired hooks silently dead on a
       // fresh install (public issue #1803, @mark-219).
       const mode = statSync(filePath).mode & 0o7777;
+      scope.ledger?.beforeWrite(filePath, "modify", "identity placeholders substituted");
       const tmp = filePath + ".workos.tmp";
       writeFileSync(tmp, after, { mode });
       renameSync(tmp, filePath);
@@ -511,13 +562,14 @@ const IDENTITY_PLACEHOLDERS = [
  * Verification, not mutation: the caller decides whether to re-run substitution
  * or abort.
  */
-export function checkSurvivingPlaceholders(rootDir: string): {
+export function checkSurvivingPlaceholders(rootDir: string, scope: TreeScope = {}): {
   passed: boolean; files: Array<{ file: string; placeholder: string; count: number }>; total: number;
 } {
   const files: Array<{ file: string; placeholder: string; count: number }> = [];
   let total = 0;
   const processFile = (filePath: string): void => {
     if (!TEMPLATE_EXTENSIONS.has(fileExtension(filePath))) return;
+    if (scope.filter && !scope.filter(filePath)) return;
     let src: string;
     try { src = readFileSync(filePath, "utf-8"); } catch { return; }
     for (const placeholder of IDENTITY_PLACEHOLDERS) {

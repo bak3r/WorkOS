@@ -133,6 +133,43 @@ printf "  ${BOLD}${DARK_BLUE}Work${BLUE}O${LIGHT_BLUE}S${RESET}   ${BOLD}the wor
 printf "  ${LIGHT_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n\n"
 [ "$DRY_RUN" = "1" ] && warn "DRY-RUN mode — no changes will be made."
 
+# ─── Install ledger (same contract as Tools/lib/ledger.ts) ─────────
+# Every change this bootstrap makes to the config root is backed up under
+# <root>/.workos-backup/<run>/ and logged to <root>/WORKOS/install-manifest.jsonl, so
+# `bun Tools/Rollback.ts` can undo the whole install — including this script's part.
+# The run id is WORKOS_INSTALL_RUN, else .workos-backup/current-run, else a new one.
+json_str() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+ledger_init() {
+  LEDGER_ROOT="$(dirname "$WORKOS_SKILLS_DIR")"
+  local cur="$LEDGER_ROOT/.workos-backup/current-run"
+  if [ -n "${WORKOS_INSTALL_RUN:-}" ]; then LEDGER_RUN="$WORKOS_INSTALL_RUN"
+  elif [ -f "$cur" ]; then LEDGER_RUN="$(tr -d '[:space:]' < "$cur")"
+  else
+    LEDGER_RUN="$(date -u +%Y-%m-%dT%H-%M-%S-000Z)"
+    mkdir -p "$LEDGER_ROOT/.workos-backup" && printf '%s\n' "$LEDGER_RUN" > "$cur"
+  fi
+  case "$LEDGER_RUN" in ""|*[!A-Za-z0-9._-]*) error "bad install run id: $LEDGER_RUN"; exit 1 ;; esac
+  LEDGER_BACKUP="$LEDGER_ROOT/.workos-backup/$LEDGER_RUN"
+  LEDGER_MANIFEST="$LEDGER_ROOT/WORKOS/install-manifest.jsonl"
+  if [ ! -d "$LEDGER_ROOT/WORKOS" ]; then
+    mkdir -p "$LEDGER_ROOT/WORKOS"
+    ledger_line add WORKOS "" dir "runtime dir (created to hold the install manifest)"
+  fi
+}
+# ledger_line <action> <root-relative path> [backup rel] [kind] [detail]
+ledger_line() {
+  local b="" k="" d=""
+  [ -n "${3:-}" ] && b=",\"backup\":\"$(json_str "$3")\""
+  [ -n "${4:-}" ] && k=",\"kind\":\"$4\""
+  [ -n "${5:-}" ] && d=",\"detail\":\"$(json_str "$5")\""
+  printf '{"ts":"%s","run":"%s","tool":"install.sh","action":"%s","path":"%s"%s%s%s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$LEDGER_RUN" "$1" "$(json_str "$2")" "$b" "$k" "$d" >> "$LEDGER_MANIFEST"
+}
+# Was <rel> added by THIS run already (a re-run of the bootstrap inside one install)?
+ledger_added_this_run() {
+  [ -f "$LEDGER_MANIFEST" ] && grep -F "\"run\":\"$LEDGER_RUN\"" "$LEDGER_MANIFEST" | grep -qF "\"action\":\"add\",\"path\":\"$1\""
+}
+
 # ─── Step 1: Prereqs ─────────────────────────────────────────────
 step "1/5  Checking prerequisites"
 OS="$(uname -s)"
@@ -328,11 +365,22 @@ if [ -n "${WORKOS_COMMIT:-}" ]; then success "Fetched ${WORKOS_TAG} (commit ${WO
 # in Step 2 meant any Step 3 failure — an unset WORKOS_REPO, a missing local
 # source, a network error — left the user with no active WorkOS skill and a
 # backup directory they had to find themselves.
+[ "$DRY_RUN" = "1" ] || ledger_init
+SKILL_REL="skills/WorkOS"
+case "$TARGET" in "${LEDGER_ROOT:-/nonexistent}"/*) SKILL_REL="${TARGET#"$LEDGER_ROOT"/}" ;; esac
 if [ -e "$TARGET" ]; then
-  TS="$(date +%Y%m%d-%H%M%S)"
-  warn "Existing WorkOS skill — backing up ONLY it to WorkOS.backup-$TS (your other files are untouched)."
-  run mv "$TARGET" "$TARGET.backup-$TS"
-  [ "$DRY_RUN" = "1" ] || PLACEMENT_BACKUP="$TARGET.backup-$TS"
+  if [ "$DRY_RUN" = "1" ]; then
+    run mv "$TARGET" "<config root>/.workos-backup/<run>/$SKILL_REL"
+  elif ledger_added_this_run "$SKILL_REL"; then
+    # Placed by this same install run moments ago — nothing of the user's to keep.
+    rm -rf "$TARGET"
+  else
+    warn "Existing WorkOS skill — moving ONLY it to .workos-backup/$LEDGER_RUN/ (your other files are untouched)."
+    mkdir -p "$(dirname "$LEDGER_BACKUP/$SKILL_REL")"
+    ledger_line move-to-backup "$SKILL_REL" ".workos-backup/$LEDGER_RUN/$SKILL_REL" dir "previous WorkOS skill"
+    mv "$TARGET" "$LEDGER_BACKUP/$SKILL_REL"
+    PLACEMENT_BACKUP="$LEDGER_BACKUP/$SKILL_REL"
+  fi
 fi
 
 # ─── Step 4: Place the skill (additive) ──────────────────────────
@@ -343,16 +391,20 @@ run mkdir -p "$WORKOS_SKILLS_DIR"
 if [ "$DRY_RUN" = "1" ]; then
   run cp -R "$SRC_SKILL" "$TARGET"
 else
+  ledger_added_this_run "$SKILL_REL" || ledger_line add "$SKILL_REL" "" dir "WorkOS skill (bootstrap)"
   if ! cp -R "$SRC_SKILL" "$TARGET"; then
-    if [ -n "${TS:-}" ] && [ -d "$TARGET.backup-$TS" ]; then
+    if [ -n "$PLACEMENT_BACKUP" ] && [ -d "$PLACEMENT_BACKUP" ]; then
       rm -rf "$TARGET" 2>/dev/null || true
-      mv "$TARGET.backup-$TS" "$TARGET"
+      mv "$PLACEMENT_BACKUP" "$TARGET"
       error "Skill copy failed — previous installation RESTORED from backup. Fix the underlying error (disk space? permissions?) and re-run."
     else
       error "Skill copy failed and no backup exists — re-run the installer after fixing the underlying error."
     fi
     exit 1
   fi
+  # Test files are for the source tree; in the config root a `bun test` would pick
+  # them up, and DeployCore never deploys tests either.
+  find "$TARGET" -name '*.test.ts' -type f -delete 2>/dev/null || true
 fi
 PLACEMENT_DONE=1
 success "WorkOS skill placed at ${TARGET/#$HOME/~}"
@@ -368,8 +420,21 @@ GITIGNORE_TARGET="$(dirname "$WORKOS_SKILLS_DIR")/.gitignore"
 # Direct redirection, never a path interpolated into a bash -c string — a
 # single quote in HOME would terminate the quoting and reparse the path as
 # shell syntax (Forge audit P1, 2026-07-30).
+GITIGNORE_LEDGERED=0
 append_gitignore_line() {
-  if [ "$DRY_RUN" = "1" ]; then echo "  [DRY-RUN] append to gitignore: $1"; else printf '%s\n' "$1" >> "$GITIGNORE_TARGET"; fi
+  if [ "$DRY_RUN" = "1" ]; then echo "  [DRY-RUN] append to gitignore: $1"; return; fi
+  if [ "$GITIGNORE_LEDGERED" = "0" ] && [ "$GITIGNORE_TARGET" = "$LEDGER_ROOT/.gitignore" ]; then
+    if [ -f "$GITIGNORE_TARGET" ]; then
+      if [ ! -e "$LEDGER_BACKUP/.gitignore" ] && ! ledger_added_this_run ".gitignore"; then
+        mkdir -p "$LEDGER_BACKUP" && cp -p "$GITIGNORE_TARGET" "$LEDGER_BACKUP/.gitignore"
+        ledger_line modify ".gitignore" ".workos-backup/$LEDGER_RUN/.gitignore" file "Interceptor capture rules appended"
+      fi
+    else
+      ledger_line add ".gitignore" "" file "Interceptor capture rules"
+    fi
+    GITIGNORE_LEDGERED=1
+  fi
+  printf '%s\n' "$1" >> "$GITIGNORE_TARGET"
 }
 CAPTURE_RULES_ADDED=0
 for capture_rule in 'interceptor-screenshot-*' 'interceptor-capture-*' 'interceptor-macos-screenshot-*'; do

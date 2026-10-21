@@ -10,7 +10,15 @@
  *
  * Every copy goes through InstallEngine.copyMissing — recursive, existsSync-
  * guarded, NEVER overwrites a populated target. So it is idempotent: a second
- * `--apply` copies 0. Dry-run by default (`--apply` to mutate); REFUSES the
+ * `--apply` copies 0. Every new path is recorded in the install ledger
+ * (WORKOS/install-manifest.jsonl) so Rollback.ts can remove exactly it.
+ *
+ * Over an existing root (run Inventory + Adopt first when LifeOS is present):
+ *   - a skill dir that already exists and is NOT WorkOS's (the developer's own, or an
+ *     edited LifeOS skill) is never written into — no merging; reported `keptYours`.
+ *   - an existing root package.json that is not WorkOS's is kept, and an existing
+ *     node_modules/ is never touched: `bun install` runs only when the root has no
+ *     node_modules yet (a vendored one that already satisfies the deps is fine). Dry-run by default (`--apply` to mutate); REFUSES the
  * author's live source tree (`--allow-dev` to override; exit 2). A required
  * payload source dir that is ABSENT is a LOUD blocker that fails the run
  * (exit 1) — never a silent ok (matches DeployComponents' failure contract).
@@ -23,10 +31,27 @@
  *   (dry-run by default — reports the plan per target without writing)
  */
 
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { copyMissing, detectDevTree } from "./InstallEngine";
+import { Classifier } from "./lib/inventory";
+import { Ledger } from "./lib/ledger";
+
+/** One ledger per run of this tool, created lazily — dry-runs never write the manifest. */
+let ledgerInstance: Ledger | null = null;
+let classifierInstance: Classifier | null = null;
+function ledgerFor(configRoot: string): Ledger {
+  return (ledgerInstance ??= new Ledger(configRoot, "DeployCore"));
+}
+
+/** Is every file under an existing path WorkOS's (payload match or manifest add)? */
+function workosOwned(configRoot: string, skillRoot: string, rel: string): boolean {
+  const c = (classifierInstance ??= new Classifier(configRoot, skillRoot));
+  if (c.isRecorded(rel)) return true;
+  const files = c.walk(rel).filter((f) => !f.endsWith(".DS_Store") && !f.split("/").includes("node_modules"));
+  return files.length > 0 && files.every((f) => c.file(f).cls === "workos");
+}
 
 // Runtime top-level entries this tool does NOT deploy:
 //  - USER           shipped separately as a scaffold (ScaffoldUser) + symlinked (LinkUser)
@@ -62,6 +87,10 @@ interface DeployResult {
   conflicts?: SkillConflict[];
   /** Exact-name dirs that already existed and were merged file-additively (prior install / re-run). */
   mergedExisting?: string[];
+  /** Existing dirs/files that are NOT WorkOS's — never written into, reported as kept (yours). */
+  keptYours?: string[];
+  /** Skill dirs this run deployed or found WorkOS-owned (nested-deps scope). */
+  owned?: string[];
 }
 
 /**
@@ -83,7 +112,7 @@ interface DeployResult {
 function deploySkills(payloadInstall: string, configRoot: string, apply: boolean): DeployResult {
   const src = join(payloadInstall, "skills");
   const dst = join(configRoot, "skills");
-  const r: DeployResult = { what: "skills", src, dst, present: existsSync(src), copied: 0, actions: [], blockers: [], failures: [], conflicts: [], mergedExisting: [] };
+  const r: DeployResult = { what: "skills", src, dst, present: existsSync(src), copied: 0, actions: [], blockers: [], failures: [], conflicts: [], mergedExisting: [], keptYours: [], owned: [] };
   if (!r.present) {
     r.blockers.push(`skills payload missing: ${src} — the bare-skill payload is unpopulated (run EmitSkill, or point --skill-root at a staged release)`);
     return r;
@@ -105,12 +134,22 @@ function deploySkills(payloadInstall: string, configRoot: string, apply: boolean
       });
       continue;
     }
-    if (match === name && entry.isDirectory()) r.mergedExisting!.push(name);
+    if (match === name) {
+      // Exists already: only a WorkOS-owned dir (a prior install / re-run) is topped up.
+      // Anything else is the developer's — never merged into (that left OUR skill
+      // headless and THEIR folder polluted).
+      if (!workosOwned(configRoot, dirname(payloadInstall), `skills/${name}`)) {
+        r.keptYours!.push(`skills/${name}`);
+        continue;
+      }
+      if (entry.isDirectory()) r.mergedExisting!.push(name);
+    }
+    if (entry.isDirectory()) r.owned!.push(name);
     if (!apply) {
-      r.actions.push(`copyMissing ${es} → ${ed}${match === name ? " (exists — file-additive merge, never overwrites)" : ""}`);
+      r.actions.push(`copyMissing ${es} → ${ed}${match === name ? " (WorkOS-owned — tops up missing files, never overwrites)" : ""}`);
       continue;
     }
-    const { copied, failures } = copyMissing(es, ed);
+    const { copied, failures } = copyMissing(es, ed, ledgerFor(configRoot));
     r.copied += copied;
     r.failures.push(...failures);
   }
@@ -145,7 +184,7 @@ function deployRuntime(payloadInstall: string, configRoot: string, apply: boolea
       r.actions.push(`copyMissing ${es} → ${ed}`);
       continue;
     }
-    const { copied, failures } = copyMissing(es, ed);
+    const { copied, failures } = copyMissing(es, ed, ledgerFor(configRoot));
     r.copied += copied;
     r.failures.push(...failures);
   }
@@ -172,7 +211,7 @@ function deployClaudeMd(payloadInstall: string, configRoot: string, apply: boole
     r.actions.push(`copy ${src} → ${dst}`);
     return r;
   }
-  const { copied, failures } = copyMissing(src, dst);
+  const { copied, failures } = copyMissing(src, dst, ledgerFor(configRoot));
   r.copied = copied;
   r.failures = failures;
   return r;
@@ -199,6 +238,7 @@ function scaffoldMemory(configRoot: string, apply: boolean): DeployResult {
     if (existsSync(d)) continue;
     if (!apply) { r.actions.push(`mkdir -p ${d}`); continue; }
     try {
+      ledgerFor(configRoot).recordAdd(d, undefined, "dir");
       mkdirSync(d, { recursive: true });
       r.copied++;
     } catch (err) {
@@ -217,6 +257,7 @@ function scaffoldMemory(configRoot: string, apply: boolean): DeployResult {
     if (!apply) {
       r.actions.push(`bun ${generator}`);
     } else {
+      ledgerFor(configRoot).recordAdd(schemaDoc);
       const proc = Bun.spawnSync(["bun", generator], { stdout: "pipe", stderr: "pipe", env: { ...process.env, CLAUDE_CONFIG_DIR: configRoot } });
       if (proc.exitCode === 0) r.copied++;
       else r.failures.push(`GenerateKnowledgeSchemaDoc exited ${proc.exitCode}: ${proc.stderr.toString().trim()}`);
@@ -240,14 +281,36 @@ function deployDependencies(payloadInstall: string, configRoot: string, apply: b
     r.blockers.push(`dependency manifest missing: ${src} — point --skill-root at a staged release`);
     return r;
   }
+  const pkgOurs = !existsSync(dst) || workosOwned(configRoot, dirname(payloadInstall), "package.json");
+  const deps = Object.keys((JSON.parse(readFileSync(src, "utf8")) as { dependencies?: Record<string, string> }).dependencies ?? {});
+  const nm = join(configRoot, "node_modules");
+  const missingDeps = deps.filter((d) => !existsSync(join(nm, d, "package.json")));
+  const nmExists = !!lstatSync(nm, { throwIfNoEntry: false });
+  const runInstall = missingDeps.length > 0 && !nmExists;
+  if (!pkgOurs) r.keptYours = ["package.json"];
   if (!apply) {
-    r.actions.push(`copyMissing ${src} → ${dst}`, `bun install --cwd ${configRoot}`);
+    if (pkgOurs) r.actions.push(`copyMissing ${src} → ${dst}`);
+    else r.actions.push(`keep existing ${dst} (not WorkOS's)`);
+    if (runInstall) r.actions.push(`bun install --cwd ${configRoot}`);
+    else if (missingDeps.length === 0) r.actions.push(`dependencies already present in ${nm} — no bun install`);
+    else r.blockers.push(`${nm} exists (yours — never touched) but lacks ${missingDeps.join(", ")}; add them yourself (WorkOS hooks import them)`);
     return r;
   }
-  const { copied, failures } = copyMissing(src, dst);
-  r.copied = copied;
-  r.failures = failures;
-  if (failures.length === 0) {
+  if (pkgOurs) {
+    const { copied, failures } = copyMissing(src, dst, ledgerFor(configRoot));
+    r.copied = copied;
+    r.failures = failures;
+  }
+  if (missingDeps.length === 0) {
+    r.actions.push(`dependencies already present in ${nm} — no bun install`);
+  } else if (nmExists) {
+    r.failures.push(`${nm} exists (yours — never touched) but lacks ${missingDeps.join(", ")}; add them yourself (WorkOS hooks import them)`);
+  } else if (r.failures.length === 0) {
+    const ledger = ledgerFor(configRoot);
+    ledger.recordAdd(nm, "bun install output", "dir");
+    for (const lock of ["bun.lock", "bun.lockb"]) if (!existsSync(join(configRoot, lock))) ledger.recordAdd(join(configRoot, lock), "bun install output");
+    // A lockfile that already exists (not WorkOS's) is rewritten by bun install: back it up.
+    for (const lock of ["bun.lock", "bun.lockb"]) if (existsSync(join(configRoot, lock))) ledger.beforeWrite(join(configRoot, lock), "modify", "bun install may rewrite it");
     const proc = Bun.spawnSync(["bun", "install"], { cwd: configRoot, stdout: "pipe", stderr: "pipe" });
     if (proc.exitCode !== 0) {
       r.failures.push(`bun install --cwd ${configRoot} exited ${proc.exitCode}: ${proc.stderr.toString().trim()}`);
@@ -285,7 +348,7 @@ function findNestedDependencyDirs(runtimeDst: string, skip: Set<string> = new Se
   return found.sort();
 }
 
-function deployNestedDependencies(payloadInstall: string, configRoot: string, apply: boolean): DeployResult {
+function deployNestedDependencies(payloadInstall: string, configRoot: string, apply: boolean, ownedSkills: string[]): DeployResult {
   const runtimeDst = join(configRoot, "WORKOS");
   const skillsDst = join(configRoot, "skills");
   const r: DeployResult = {
@@ -309,9 +372,10 @@ function deployNestedDependencies(payloadInstall: string, configRoot: string, ap
   // under <skill>/install — walking it re-installs every payload skill a second
   // time, into a tree nothing imports from.
   const nestedPayload = join(skillsDst, basename(dirname(payloadInstall)), "install");
+  // Only skill dirs WorkOS deployed or owns — never a kept developer skill of the same name.
   const ownSkillDirs = existsSync(payloadSkills)
     ? readdirSync(payloadSkills, { withFileTypes: true })
-        .filter((e) => e.isDirectory())
+        .filter((e) => e.isDirectory() && ownedSkills.includes(e.name))
         .map((e) => join(skillsDst, e.name))
         .filter(existsSync)
     : [];
@@ -354,13 +418,14 @@ function main(): void {
     process.exit(2);
   }
 
+  const skills = deploySkills(payloadInstall, configRoot, apply);
   const results = [
-    deploySkills(payloadInstall, configRoot, apply),
+    skills,
     deployRuntime(payloadInstall, configRoot, apply),
     deployClaudeMd(payloadInstall, configRoot, apply),
     scaffoldMemory(configRoot, apply),
     deployDependencies(payloadInstall, configRoot, apply),
-    deployNestedDependencies(payloadInstall, configRoot, apply),
+    deployNestedDependencies(payloadInstall, configRoot, apply, skills.owned ?? []),
   ];
 
   // A missing required payload source (blocker) or a copy failure is a hard
@@ -372,10 +437,14 @@ function main(): void {
   const skillsCopied = skillsResult?.copied ?? 0;
   const runtimeCopied = results.find((r) => r.what === "runtime")?.copied ?? 0;
   const skillConflicts = skillsResult?.conflicts ?? [];
+  const keptYours = results.flatMap((r) => r.keptYours ?? []);
 
   const notes: string[] = [];
   if (skillConflicts.length > 0) {
     notes.push(`⚠️ ${skillConflicts.length} skill(s) NOT deployed — case-insensitive name collision with pre-existing skills (see skillConflicts). SURFACE THIS TO THE USER: their dirs were left untouched, and the colliding WorkOS skills are not installed until resolved.`);
+  }
+  if (keptYours.length > 0) {
+    notes.push(`kept (yours): ${keptYours.join(", ")} — existing and not WorkOS's, so WorkOS did not write into them; the WorkOS versions of those are not installed.`);
   }
   if (!apply) notes.push("dry-run — re-run with --apply to deploy (a blocked source fails the run in both modes)");
 
@@ -389,6 +458,7 @@ function main(): void {
     skillsCopied,
     runtimeCopied,
     skillConflicts,
+    keptYours,
     blockers,
     failures,
     results,

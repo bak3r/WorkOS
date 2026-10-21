@@ -22,7 +22,12 @@
  * settings.json (hook registrations — InstallHooks owns that merge), node_modules, .git.
  *
  * Nothing is ever DELETED. A file is written only where the payload ships one at the same
- * relative path, so operator-authored hooks, skills and tools survive untouched.
+ * relative path, so operator-authored hooks, skills and tools survive untouched — and only
+ * when the existing file is WorkOS's (recorded in the install manifest, or matching the
+ * payload). A skill dir that is not WorkOS's is never written into; a LifeOS copy, an edited
+ * LifeOS file or the developer's own file at a WorkOS path is skipped and reported. Every
+ * overwrite is backed up through the ledger (.workos-backup/<run>/), so Rollback undoes it.
+ * A CLAUDE.md that someone else owns is never replaced: its WorkOS block is rebuilt in place.
  *
  * VERSION is written LAST and only on a fully successful --apply, so a partial update can
  * never present as complete (the failure mode where the marker says the new version while
@@ -37,8 +42,27 @@
 
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync, cpSync, type Stats } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { detectDevTree, isTestFile } from "./InstallEngine";
+import { atomicWriteText } from "./lib/atomic-write";
+import { blockState, buildBlock, findBlock, upsertBlock } from "./lib/claude-md";
+import { Classifier } from "./lib/inventory";
+import { Ledger, addedPaths, readManifest } from "./lib/ledger";
+
+interface Owner { configRoot: string; classifier: Classifier; legacy: boolean; ledger: () => Ledger }
+
+/**
+ * May the overlay overwrite this existing file? WorkOS's own (manifest add, payload match,
+ * WORKOS/ runtime) yes; LifeOS copies / edited LifeOS files never; the developer's files
+ * never — except on a pre-manifest WorkOS install (`legacy`), where WorkOS-path files that
+ * no LifeOS release knows are taken to be WorkOS's older version.
+ */
+function mayOverwrite(o: Owner, abs: string): boolean {
+  const rel = relative(o.configRoot, abs);
+  const cls = o.classifier.file(rel).cls;
+  if (cls === "workos") return true;
+  return cls === "user" && o.legacy;
+}
 
 /** Directories inside a system tree that are never overlaid, at any depth. */
 const SKIP_DIRS = new Set(["node_modules", ".git", "MEMORY", "USER", "out", ".next"]);
@@ -100,6 +124,8 @@ interface OverlayResult {
   created: number;
   /** path of the backup written before an operator-owned file was overlaid, if any */
   backupPath?: string;
+  /** existing paths that are not WorkOS's — never written */
+  keptYours: string[];
   failures: string[];
 }
 
@@ -107,8 +133,8 @@ interface OverlayResult {
  * Walk the payload tree and write each file to the matching relative path under dst.
  * Updates and creations are both performed; deletions never are.
  */
-function overlayTree(src: string, dst: string, what: string, apply: boolean): OverlayResult {
-  const r: OverlayResult = { what, src, dst, present: existsSync(src), updated: 0, current: 0, created: 0, failures: [] };
+function overlayTree(src: string, dst: string, what: string, apply: boolean, o: Owner): OverlayResult {
+  const r: OverlayResult = { what, src, dst, present: existsSync(src), updated: 0, current: 0, created: 0, keptYours: [], failures: [] };
   if (!r.present) return r;
 
   const walk = (s: string, d: string): void => {
@@ -131,6 +157,13 @@ function overlayTree(src: string, dst: string, what: string, apply: boolean): Ov
       if (st.isSymbolicLink()) continue; // never follow or replace symlinks (USER is one)
       if (st.isDirectory()) {
         if (SKIP_DIRS.has(name)) continue;
+        // A skill dir is atomic: an existing one that is not WorkOS's is never merged into.
+        if (what === "skills" && s === src && existsSync(dp)) {
+          const rel = relative(o.configRoot, dp);
+          const files = o.classifier.walk(rel).filter((f) => !f.endsWith(".DS_Store") && !f.split("/").includes("node_modules"));
+          const owned = o.classifier.isRecorded(rel) || files.every((f) => mayOverwrite(o, join(o.configRoot, f)));
+          if (!owned) { r.keptYours.push(rel); continue; }
+        }
         walk(sp, dp);
         continue;
       }
@@ -140,8 +173,10 @@ function overlayTree(src: string, dst: string, what: string, apply: boolean): Ov
           r.current++;
           continue;
         }
+        if (!mayOverwrite(o, dp)) { r.keptYours.push(relative(o.configRoot, dp)); continue; }
         if (apply) {
           try {
+            o.ledger().beforeWrite(dp, "replace", "overlay: newer WorkOS release");
             cpSync(sp, dp);
           } catch (err) {
             r.failures.push(`copy ${sp}: ${String(err)}`);
@@ -152,6 +187,7 @@ function overlayTree(src: string, dst: string, what: string, apply: boolean): Ov
       } else {
         if (apply) {
           try {
+            o.ledger().recordAdd(dp);
             mkdirSync(dirname(dp), { recursive: true });
             cpSync(sp, dp);
           } catch (err) {
@@ -168,29 +204,47 @@ function overlayTree(src: string, dst: string, what: string, apply: boolean): Ov
   return r;
 }
 
-function overlayFile(src: string, dst: string, what: string, apply: boolean, backupFirst: boolean): OverlayResult {
-  const r: OverlayResult = { what, src, dst, present: existsSync(src), updated: 0, current: 0, created: 0, failures: [] };
+function overlayFile(src: string, dst: string, what: string, apply: boolean, backupFirst: boolean, o: Owner): OverlayResult {
+  const r: OverlayResult = { what, src, dst, present: existsSync(src), updated: 0, current: 0, created: 0, keptYours: [], failures: [] };
   if (!r.present) return r;
   const exists = existsSync(dst);
+  const isClaudeMd = relative(o.configRoot, dst) === "CLAUDE.md";
+  if (exists && isClaudeMd && !addedPaths(o.configRoot).includes("CLAUDE.md")) {
+    // Someone else's CLAUDE.md: rebuild only the WorkOS block, keeping its import state.
+    const text = readFileSync(dst, "utf8");
+    const loc = findBlock(text);
+    if (!loc) {
+      r.keptYours.push("CLAUDE.md (no WorkOS block — run ActivateImports.ts to insert one)");
+      return r;
+    }
+    const { block } = buildBlock(readFileSync(src, "utf8"), blockState(loc.inner), () => false);
+    const up = upsertBlock(text, block);
+    if (up.action === "unchanged") { r.current = 1; return r; }
+    if (apply) {
+      try {
+        o.ledger().beforeWrite(dst, "claude-md-block", "overlay: WorkOS block rebuilt from the new template");
+        atomicWriteText(dst, up.text);
+        r.backupPath = o.ledger().backupPathFor(dst);
+      } catch (err) {
+        r.failures.push(`block ${dst}: ${String(err)}`);
+        return r;
+      }
+    }
+    r.updated = 1;
+    return r;
+  }
   if (exists && sameBytes(src, dst)) {
     r.current = 1;
     return r;
   }
   if (apply) {
     // Preserve an operator's hand-edited file before overwriting it (adaptation from the
-    // ported PR): CLAUDE.md especially is expected to carry local edits, and the overlay
-    // restores it from the template. A recoverable snapshot beats a silent clobber.
-    if (exists && backupFirst) {
-      const bak = `${dst}.pre-overlay-${stamp()}.bak`;
-      try {
-        cpSync(dst, bak);
-        r.backupPath = bak;
-      } catch (err) {
-        r.failures.push(`backup ${dst}: ${String(err)}`);
-        return r;
-      }
-    }
+    // ported PR): the ledger keeps the pre-overlay copy, and Rollback restores it.
     try {
+      if (exists) {
+        o.ledger().beforeWrite(dst, "replace", "overlay: newer WorkOS release");
+        if (backupFirst) r.backupPath = o.ledger().backupPathFor(dst);
+      } else o.ledger().recordAdd(dst);
       mkdirSync(dirname(dst), { recursive: true });
       cpSync(src, dst);
     } catch (err) {
@@ -243,12 +297,19 @@ function main(): void {
     process.exit(1);
   }
 
+  let ledger: Ledger | null = null;
+  const owner: Owner = {
+    configRoot,
+    classifier: new Classifier(configRoot, skillRoot),
+    legacy: readManifest(configRoot).length === 0 && existsSync(join(configRoot, "WORKOS", "VERSION")),
+    ledger: () => (ledger ??= new Ledger(configRoot, "OverlaySystem")),
+  };
   const results: OverlayResult[] = [];
   for (const [ps, ds] of SYSTEM_TREES) {
-    results.push(overlayTree(join(payloadInstall, ps), join(configRoot, ds), ps, apply));
+    results.push(overlayTree(join(payloadInstall, ps), join(configRoot, ds), ps, apply, owner));
   }
   for (const [ps, ds, backup] of SYSTEM_FILES) {
-    results.push(overlayFile(join(payloadInstall, ps), join(configRoot, ds), ps, apply, backup));
+    results.push(overlayFile(join(payloadInstall, ps), join(configRoot, ds), ps, apply, backup, owner));
   }
 
   const failures = results.flatMap((r) => r.failures);
@@ -257,6 +318,7 @@ function main(): void {
   const created = results.reduce((n, r) => n + r.created, 0);
   const current = results.reduce((n, r) => n + r.current, 0);
   const backups = results.map((r) => r.backupPath).filter((p): p is string => Boolean(p));
+  const keptYours = results.flatMap((r) => r.keptYours);
 
   // VERSION last, and only when everything else succeeded — a partial update must never
   // leave a marker claiming the new version.
@@ -268,6 +330,7 @@ function main(): void {
     version.from = existsSync(versionDst) ? readFileSync(versionDst, "utf8").trim() : null;
     if (apply && ok) {
       try {
+        owner.ledger().beforeWrite(versionDst, "replace", "overlay: VERSION");
         writeFileSync(versionDst, version.to);
         version.written = true;
       } catch (err) {
@@ -294,6 +357,7 @@ function main(): void {
     created,
     alreadyCurrent: current,
     backups,
+    keptYours,
     version,
     failures,
     results,

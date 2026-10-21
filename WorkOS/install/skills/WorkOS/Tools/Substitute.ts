@@ -8,6 +8,12 @@
  * — same traversal for both, so anything the check cannot see was never substituted
  * either. Dry-run by default: reports the surviving placeholders and writes nothing.
  *
+ * Scope: ONLY WorkOS-owned files under the config root (payload match, or recorded as
+ * added in the install manifest) plus settings.json. LifeOS copies, the developer's files
+ * and Claude Code's state are never read or rewritten — before this, a run over a LifeOS
+ * root rewrote 116–232 LifeOS files with no backup. Each rewrite is backed up through the
+ * ledger first. A --root outside the config root is taken as given.
+ *
  * Usage:
  *   bun Substitute.ts --principal-name <n> --da-name <n>
  *       [--principal-full-name <n>] [--da-full-name <n>]   (default: the short name)
@@ -21,8 +27,10 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
-import { checkSurvivingPlaceholders, detectDevTree, substituteTree } from "./InstallEngine";
+import { join, relative, isAbsolute } from "node:path";
+import { checkSurvivingPlaceholders, detectDevTree, substituteTree, type TreeScope } from "./InstallEngine";
+import { Classifier } from "./lib/inventory";
+import { Ledger } from "./lib/ledger";
 
 function main(): void {
   const a = process.argv.slice(2);
@@ -46,7 +54,15 @@ function main(): void {
   const da = get("--da-name");
   const version = get("--version") || (existsSync(versionFile) ? readFileSync(versionFile, "utf8").trim() : undefined);
 
-  const before = roots.map((r) => ({ root: r, ...checkSurvivingPlaceholders(r) }));
+  const classifier = new Classifier(configRoot, get("--skill-root") || join(import.meta.dir, ".."));
+  const filter = (file: string): boolean => {
+    const rel = relative(configRoot, file);
+    if (rel.startsWith("..") || isAbsolute(rel)) return true; // explicit root outside the config root
+    if (rel === "settings.json") return true;
+    return classifier.file(rel).cls === "workos";
+  };
+  const scope: TreeScope = { filter };
+  const before = roots.map((r) => ({ root: r, ...checkSurvivingPlaceholders(r, scope) }));
   if (!apply) {
     console.log(JSON.stringify({
       ok: true, dryRun: true, configRoot, roots,
@@ -70,8 +86,9 @@ function main(): void {
     "{{DA_FULL_NAME}}": get("--da-full-name") || da!,
     "{{WORKOS_VERSION}}": version!,
   };
-  const substituted = roots.map((r) => ({ root: r, ...substituteTree(r, vars) }));
-  const after = roots.map((r) => ({ root: r, ...checkSurvivingPlaceholders(r) }));
+  const ledger = new Ledger(configRoot, "Substitute");
+  const substituted = roots.map((r) => ({ root: r, ...substituteTree(r, vars, { filter, ledger }) }));
+  const after = roots.map((r) => ({ root: r, ...checkSurvivingPlaceholders(r, scope) }));
   const surviving = after.reduce((n, r) => n + r.total, 0);
   console.log(JSON.stringify({
     ok: surviving === 0, configRoot, roots, substituted, surviving,

@@ -20,23 +20,28 @@
  * Safety: dry-run by default (`--apply` to mutate); REFUSES on the author's live
  * source tree (`--allow-dev` to override); idempotent per component (a loaded,
  * unchanged service is left running — no restart, no backup churn); never
- * overwrites a populated file without a timestamped backup; a component whose
+ * overwrites a populated file without a ledger backup (.workos-backup/<run>/, undone by
+ * Rollback.ts); an existing statusLine that is not WorkOS's is KEPT unless
+ * `--replace-statusline`; an existing agent/command file is never written into (kept,
+ * reported); on Bedrock/Vertex without Fable in availableModels, agents/Max.md is
+ * installed with `model: opus` (the max rung resolves to opus there); a component whose
  * prerequisites are absent reports a LOUD blocker and fails the run (no silent
  * no-op success).
  *
  * Usage:
  *   bun DeployComponents.ts [--components statusline,worksweep,derivedsync | --all]
  *                           [--config-root <dir>] [--skill-root <dir>]
- *                           [--apply] [--allow-dev]
+ *                           [--apply] [--allow-dev] [--replace-statusline]
  *   (dry-run by default — reports the plan per component without writing)
  */
 
 import { execFileSync } from "node:child_process";
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { atomicWriteText } from "./lib/atomic-write";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { homedir } from "node:os";
-import { copyMissing, detectDevTree, isTestFile } from "./InstallEngine";
+import { detectDevTree, fableUnavailable, isTestFile } from "./InstallEngine";
+import { Ledger } from "./lib/ledger";
 
 // Enhancement components are the à-la-carte half of setup. The "WorkOS Core"
 // (skills + system prompt + base settings + CLAUDE.md) is installed by Setup's
@@ -70,6 +75,9 @@ interface Ctx {
   home: string;
   bun: string; // resolved bun binary path — substituted for __BUN_PATH__ in systemd units
   apply: boolean;
+  replaceStatusline: boolean;
+  /** Created on first write — dry-runs never touch the manifest. */
+  ledger: () => Ledger;
 }
 
 interface ComponentResult {
@@ -102,14 +110,10 @@ function resolveWorkosDir(configRoot: string): string {
   return join(configRoot, "WORKOS");
 }
 
-const stamp = (): string => String(Date.now());
-
-/** Back up a file aside as <file>.workos-backup-<ts> (only if it exists). */
-function backup(path: string): string | undefined {
-  if (!existsSync(path)) return undefined;
-  const dst = `${path}.workos-backup-${stamp()}`;
-  copyFileSync(path, dst);
-  return dst;
+/** Back up (first time this run) and record a file before it is rewritten. */
+function backup(path: string, ctx: Ctx, detail: string): string {
+  ctx.ledger().beforeWrite(path, "settings-key", detail);
+  return ctx.ledger().backupRoot;
 }
 
 /** Where a component's path can be sourced from. */
@@ -127,6 +131,7 @@ function ensurePresent(rel: string, ctx: Ctx): boolean {
   if (existsSync(dst)) return true;
   const src = join(ctx.payloadRoot, rel);
   if (!existsSync(src)) return false;
+  ctx.ledger().recordAdd(dst);
   mkdirSync(dirname(dst), { recursive: true });
   cpSync(src, dst, { recursive: true, filter: (p) => !isTestFile(p) });
   return true;
@@ -173,9 +178,19 @@ function deployStatusline(ctx: Ctx): ComponentResult {
     return r;
   }
   r.ready = true;
+  // An existing statusLine that is not WorkOS's is the developer's: keep it unless asked.
+  let existing: Record<string, unknown> | undefined;
+  try { existing = existsSync(settingsPath) ? JSON.parse(readFileSync(settingsPath, "utf-8")).statusLine : undefined; } catch { /* reported below */ }
+  const foreign = !!existing && existing.command !== command;
+  if (foreign && !ctx.replaceStatusline) {
+    r.actions.push(`kept (yours): settings.json statusLine → ${String(existing!.command ?? JSON.stringify(existing))} — pass --replace-statusline to swap in WorkOS's`);
+    r.applied = false;
+    if (ctx.apply) r.probe = { name: "statusline-kept", passed: true, detail: "existing non-WorkOS statusLine kept" };
+    return r;
+  }
   if (!ctx.apply) {
     if (!av.inLive) r.actions.push(`copy WORKOS_StatusLine.sh from payload → ${scriptPath}`);
-    r.actions.push(`chmod +x ${scriptPath}`, `wire settings.json statusLine → ${command}`);
+    r.actions.push(`chmod +x ${scriptPath}`, `wire settings.json statusLine → ${command}${foreign ? " (replacing yours — --replace-statusline)" : ""}`);
     return r;
   }
 
@@ -197,7 +212,7 @@ function deployStatusline(ctx: Ctx): ComponentResult {
     const current = settings.statusLine as Record<string, unknown> | undefined;
     const alreadyWired = current?.command === command;
     if (!alreadyWired) {
-      backup(settingsPath);
+      backup(settingsPath, ctx, "statusLine → WorkOS");
       // ported from public PR #1772, @asdf8675309; value adapted to 5 — a 1s
       // refresh re-runs the statusline script every second for no visible gain.
       settings.statusLine = { type: "command", command, refreshInterval: 5 };
@@ -249,7 +264,7 @@ function deploySettingsKey(component: Component, key: string, ctx: Ctx): Compone
     }
     const already = JSON.stringify(settings[key]) === JSON.stringify(enh[key]);
     if (!already) {
-      backup(settingsPath);
+      backup(settingsPath, ctx, `${key} → WorkOS`);
       settings[key] = enh[key];
       // Atomic — never leave a half-written settings.json (public PR #1643, @elhoim)
       atomicWriteText(settingsPath, JSON.stringify(settings, null, 2) + "\n");
@@ -264,61 +279,72 @@ function deploySettingsKey(component: Component, key: string, ctx: Ctx): Compone
   return r;
 }
 
-/** Agents: copyMissing the shipped agents tree into the harness agents dir (never overwrites). */
-function deployAgents(ctx: Ctx): ComponentResult {
-  const r: ComponentResult = { component: "agents", ready: false, actions: [], blockers: [] };
-  const src = join(ctx.installRoot, "agents");
-  const dst = join(ctx.configRoot, "agents");
-  if (!existsSync(src) && !existsSync(dst)) {
-    r.blockers.push(`agents not in payload (${src}) and not already installed (${dst})`);
-    return r;
-  }
-  r.ready = true;
-  if (!ctx.apply) {
-    r.actions.push(existsSync(src) ? `copyMissing agents → ${dst} (never overwrites existing)` : `agents already present at ${dst} — no-op`);
-    return r;
-  }
-  try {
-    if (!existsSync(src)) {
-      r.applied = false;
-      r.probe = { name: "agents-present", passed: true, detail: `already present at ${dst} (no payload to copy)` };
-      return r;
+/**
+ * Copy a shipped file tree (agents/ or commands/) file by file: a file that already exists
+ * is the developer's (or an edited LifeOS copy) and is never written into — kept, reported.
+ * `transform` may rewrite a file's text on the way in (Max.md on Bedrock).
+ */
+function copyFilesKeepingYours(src: string, dst: string, ctx: Ctx, transform?: (rel: string, text: string) => string): { copied: number; kept: string[]; failures: string[] } {
+  const out = { copied: 0, kept: [] as string[], failures: [] as string[] };
+  const walk = (d: string): void => {
+    for (const e of readdirSync(d).sort()) {
+      const sp = join(d, e);
+      if (statSync(sp).isDirectory()) { walk(sp); continue; }
+      if (isTestFile(e)) continue;
+      const rel = relative(src, sp);
+      const dp = join(dst, rel);
+      if (existsSync(dp)) { out.kept.push(rel); continue; }
+      try {
+        ctx.ledger().recordAdd(dp);
+        mkdirSync(dirname(dp), { recursive: true });
+        const text = transform ? transform(rel, readFileSync(sp, "utf-8")) : null;
+        if (text !== null) atomicWriteText(dp, text);
+        else cpSync(sp, dp, { preserveTimestamps: true });
+        out.copied++;
+      } catch (err) {
+        out.failures.push(`${sp} → ${dp}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
-    const { copied, failures } = copyMissing(src, dst);
-    r.applied = copied > 0;
-    r.probe = { name: "agents-copied", passed: failures.length === 0 && existsSync(dst), detail: `${copied} agent file(s) copied${failures.length ? `, ${failures.length} failed` : ""}` };
-  } catch (err) {
-    r.error = err instanceof Error ? err.message : String(err);
-  }
-  return r;
+  };
+  walk(src);
+  return out;
 }
 
-// commands mirrors agents exactly: copy the payload's install/commands/ into the
-// user's ~/.claude/commands/, never overwriting. The payload is already filtered
-// at emit time to public commands only (a command ships iff its target skill
-// ships), so there is nothing private-pointing to guard against here.
-function deployCommands(ctx: Ctx): ComponentResult {
-  const r: ComponentResult = { component: "commands", ready: false, actions: [], blockers: [] };
-  const src = join(ctx.installRoot, "commands");
-  const dst = join(ctx.configRoot, "commands");
+/** Max.md pins `model: fable`; where Fable is not offered (Bedrock/Vertex list) it must be opus. */
+export function maxModelTransform(fableOff: boolean): ((rel: string, text: string) => string) | undefined {
+  if (!fableOff) return undefined;
+  return (rel, text) => (rel === "Max.md" ? text.replace(/^model:\s*fable\s*$/m, "model: opus") : text);
+}
+
+function deployFileTree(component: "agents" | "commands", ctx: Ctx): ComponentResult {
+  const r: ComponentResult = { component, ready: false, actions: [], blockers: [] };
+  const src = join(ctx.installRoot, component);
+  const dst = join(ctx.configRoot, component);
   if (!existsSync(src) && !existsSync(dst)) {
-    r.blockers.push(`commands not in payload (${src}) and not already installed (${dst})`);
+    r.blockers.push(`${component} not in payload (${src}) and not already installed (${dst})`);
     return r;
   }
   r.ready = true;
+  const fableOff = component === "agents" && fableUnavailable(ctx.configRoot);
   if (!ctx.apply) {
-    r.actions.push(existsSync(src) ? `copyMissing commands → ${dst} (never overwrites existing)` : `commands already present at ${dst} — no-op`);
+    if (!existsSync(src)) { r.actions.push(`${component} already present at ${dst} — no-op`); return r; }
+    const existing = existsSync(dst) ? readdirSync(src).filter((e) => existsSync(join(dst, e))) : [];
+    r.actions.push(`copy missing ${component} → ${dst} (never writes into an existing file)`);
+    if (existing.length) r.actions.push(`kept (yours): ${existing.map((e) => `${component}/${e}`).join(", ")}`);
+    if (fableOff) r.actions.push("Bedrock/Vertex without Fable in availableModels — agents/Max.md installs with model: opus");
     return r;
   }
   try {
     if (!existsSync(src)) {
       r.applied = false;
-      r.probe = { name: "commands-present", passed: true, detail: `already present at ${dst} (no payload to copy)` };
+      r.probe = { name: `${component}-present`, passed: true, detail: `already present at ${dst} (no payload to copy)` };
       return r;
     }
-    const { copied, failures } = copyMissing(src, dst);
+    const { copied, kept, failures } = copyFilesKeepingYours(src, dst, ctx, maxModelTransform(fableOff));
     r.applied = copied > 0;
-    r.probe = { name: "commands-copied", passed: failures.length === 0 && existsSync(dst), detail: `${copied} command file(s) copied${failures.length ? `, ${failures.length} failed` : ""}` };
+    if (kept.length) r.actions.push(`kept (yours): ${kept.map((k) => `${component}/${k}`).join(", ")}`);
+    if (fableOff && !kept.includes("Max.md")) r.actions.push("agents/Max.md installed with model: opus (no Fable on this provider)");
+    r.probe = { name: `${component}-copied`, passed: failures.length === 0 && existsSync(dst), detail: `${copied} file(s) copied, ${kept.length} kept (yours)${failures.length ? `, ${failures.length} failed` : ""}` };
   } catch (err) {
     r.error = err instanceof Error ? err.message : String(err);
   }
@@ -387,8 +413,8 @@ function deploy(component: Component, ctx: Ctx): ComponentResult {
     case "statusline": return deployStatusline(ctx);
     case "tooltips": return deploySettingsKey("tooltips", "spinnerTipsOverride", ctx);
     case "spinnerverbs": return deploySettingsKey("spinnerverbs", "spinnerVerbs", ctx);
-    case "agents": return deployAgents(ctx);
-    case "commands": return deployCommands(ctx);
+    case "agents": return deployFileTree("agents", ctx);
+    case "commands": return deployFileTree("commands", ctx);
   }
   // Background-service components: delegate to Services.ts
   if (isServiceComponent(component)) {
@@ -447,6 +473,8 @@ function main(): void {
     // the standard bun install location.
     bun: /\/bun$/.test(process.execPath) ? process.execPath : join(home, ".bun", "bin", "bun"),
     apply,
+    replaceStatusline: a.includes("--replace-statusline"),
+    ledger: (() => { let l: Ledger | null = null; return () => (l ??= new Ledger(configRoot, "DeployComponents")); })(),
   };
 
   const results = selected.map((c) => deploy(c, ctx));

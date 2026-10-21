@@ -11,17 +11,24 @@
  *
  * Semantics match the sibling installers (DeployCore/InstallHooks):
  *   - settings.json absent → write the expanded template whole.
- *   - settings.json present → additive merge: only ABSENT top-level keys and
- *     ABSENT env keys are added (expanded); existing values are never touched.
- *   - Dry-run by default; `--apply` mutates; backup before every write.
+ *   - settings.json present → merge (lib/settings-merge.ts): permissions allow/deny/ask
+ *     are UNIONED (the developer's rules are never removed), env keys and other top-level
+ *     keys are added only when absent, model / availableModels / theme / plugin keys are
+ *     never added or changed, and security-relevant keys (skip*PermissionPrompt, autoMode,
+ *     defaultMode, allowedHttpHookUrls, includeGitInstructions, autoMemoryEnabled,
+ *     cleanupPeriodDays) are added only when absent and LISTED in the dry-run as
+ *     `securityRelevantSettingsToAdd` so the human sees them before saying yes.
+ *   - Dry-run by default; `--apply` mutates; the ledger backs settings.json up first.
  *   - REFUSES the author's live source tree (`--allow-dev` to override).
  *
  * Usage:
  *   bun InstallSettings.ts [--config-root <dir>] [--skill-root <dir>] [--apply] [--allow-dev]
  */
 
-import { copyFileSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { atomicWriteText } from "./lib/atomic-write";
+import { Ledger } from "./lib/ledger";
+import { planSettingsMerge, securityKeysIn } from "./lib/settings-merge";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { detectDevTree } from "./InstallEngine";
@@ -94,27 +101,37 @@ const report: Record<string, unknown> = { ok: true, apply: args.apply, target: t
 if (!existsSync(targetPath)) {
   report.mode = "create";
   report.topLevelKeys = Object.keys(template).length;
-  // Atomic — never leave a half-written settings.json (public PR #1643, @elhoim)
-  if (args.apply) atomicWriteText(targetPath, JSON.stringify(template, null, 2) + "\n");
+  report.securityRelevantSettingsToAdd = securityKeysIn(template);
+  if (args.apply) {
+    new Ledger(args.configRoot, "InstallSettings").beforeWrite(targetPath, "settings-key", "settings.json created from the template");
+    // Atomic — never leave a half-written settings.json (public PR #1643, @elhoim)
+    atomicWriteText(targetPath, JSON.stringify(template, null, 2) + "\n");
+  }
 } else {
-  const current = JSON.parse(readFileSync(targetPath, "utf8")) as Record<string, unknown>;
-  const addedKeys: string[] = [];
-  for (const [k, v] of Object.entries(template)) {
-    if (k === "env") continue;               // handled per-key below
-    if (!(k in current)) { current[k] = v; addedKeys.push(k); }
+  let current: Record<string, unknown>;
+  try {
+    current = JSON.parse(readFileSync(targetPath, "utf8")) as Record<string, unknown>;
+  } catch (e) {
+    console.log(JSON.stringify({ ok: false, error: `settings.json is not valid JSON (${e instanceof Error ? e.message : String(e)}) — fix it and re-run; nothing was written.` }, null, 2));
+    process.exit(1);
   }
-  const curEnv = (current.env && typeof current.env === "object" ? current.env : (current.env = {})) as Record<string, unknown>;
-  const tplEnv = (template.env || {}) as Record<string, unknown>;
-  const addedEnv: string[] = [];
-  for (const [k, v] of Object.entries(tplEnv)) {
-    if (!(k in curEnv)) { curEnv[k] = v; addedEnv.push(k); }
-  }
+  const plan = planSettingsMerge(current, template);
   report.mode = "merge";
-  report.addedKeys = addedKeys;
-  report.addedEnv = addedEnv;
-  if (args.apply && (addedKeys.length || addedEnv.length)) {
-    copyFileSync(targetPath, targetPath + ".backup-" + new Date().toISOString().replace(/[:.]/g, "-"));
-    atomicWriteText(targetPath, JSON.stringify(current, null, 2) + "\n");
+  report.addedKeys = plan.addedKeys;
+  report.addedEnv = plan.addedEnv;
+  report.permissionsAdded = {
+    allow: plan.permissions.allow.length, deny: plan.permissions.deny.length, ask: plan.permissions.ask.length,
+    otherKeys: plan.permissions.otherKeys,
+  };
+  report.securityRelevantSettingsToAdd = plan.security;
+  report.leftToYou = plan.untouched;
+  if (!args.apply && plan.permissions.allow.length + plan.permissions.deny.length + plan.permissions.ask.length > 0) {
+    report.permissionRulesToAdd = plan.permissions;
+  }
+  if (args.apply && plan.changed) {
+    new Ledger(args.configRoot, "InstallSettings").beforeWrite(targetPath, "settings-key",
+      `merged: keys ${plan.addedKeys.join(",") || "-"}; env ${plan.addedEnv.join(",") || "-"}; permissions +${plan.permissions.allow.length}/${plan.permissions.deny.length}/${plan.permissions.ask.length}`);
+    atomicWriteText(targetPath, JSON.stringify(plan.merged, null, 2) + "\n");
   } else if (args.apply) {
     report.note = "nothing to add — no write, no backup";
   }

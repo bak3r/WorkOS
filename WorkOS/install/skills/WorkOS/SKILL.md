@@ -44,7 +44,7 @@ Both come from the skill's own single sources of truth — `INSTALL.md` at the s
 | `interview`, "onboard me", "run the interview", work TELOS capture | `Workflows/Interview.md` |
 | `doctor`, "check my install", "what's broken", "what capabilities are live" | run `bun <configRoot>/WORKOS/TOOLS/Doctor.ts` (see `INSTALL.md`) |
 | `update`, "update WorkOS", after a version bump | `Workflows/Update.md` |
-| `uninstall`, "remove WorkOS" | `Workflows/Uninstall.md` |
+| `uninstall`, "remove WorkOS", "roll back the install", "undo WorkOS" | `Workflows/Uninstall.md` (backed by `Tools/Rollback.ts`) |
 
 `doctor` is the one tool-backed route — it needs no workflow because `Doctor.ts` is self-describing: it prints the four capability states (live / broken / declined / stale) and the exact fix command for anything broken. Relay its table, offer the fix it names, and honor `decline` — a declined capability is a legitimate way to run WorkOS, never a defect to nag about.
 
@@ -52,14 +52,14 @@ Default flow (`/WorkOS setup`): **Setup phase** (system integration) → transit
 
 ## The two phases
 
-**Setup (logistics, first).** Detect OS + harness → scan for conflicts and surface them → install prerequisites → overlay the system templates → scaffold the USER tree + link it → **trust-gated hook install** (show the exact change, back up `settings.json`, wait for yes) → activate the identity imports → verify with two evidence classes. Adapts to OS (macOS/Linux/Windows) and harness (Claude Code / Cursor / OpenClaw). The config root is `$CLAUDE_CONFIG_DIR` when set (the sbx sandbox sets `<workspace>/.claude`).
+**Setup (logistics, first).** Inventory the config root (`Tools/Inventory.ts`, read-only) and, when LifeOS is there, adopt it (`Tools/Adopt.ts`: untouched LifeOS copies to the backup, work memory into WORKOS/MEMORY) → detect OS + harness → scan for conflicts and surface them → install prerequisites → overlay the system templates → scaffold the USER tree + link it → **trust-gated hook install** (show the exact change, back up `settings.json`, wait for yes) → activate the identity imports → verify with two evidence classes. Adapts to OS (macOS/Linux/Windows) and harness (Claude Code / Cursor / OpenClaw). The config root is `$CLAUDE_CONFIG_DIR` when set (the sbx sandbox sets `<workspace>/.claude`).
 
 **Interview (meaning, second).** Name the DA → work identity → team & process (Jira, GitLab, ceremonies) → stack & conventions → dev environment → work projects → work goals into TELOS → domain vocabulary → **pull in sources the user provides** (repo CLAUDE.md/README files, ADRs, onboarding docs — read locally, never sent out) → regenerate the TELOS summary. By the end, the config tree is populated, not empty scaffolding.
 
 ## Hard rules
 
 - **Setup before Interview, always.** Hooks/integration land before any onboarding write.
-- **Additive, never clobbering.** `install.sh` touches only the WorkOS skill dir; setup writes are `existsSync`-guarded. Never overwrite or `rm` a populated dir or a foreign file.
+- **Additive for everything that isn't WorkOS's.** Files the developer authored or edited are kept and never written into; untouched LifeOS copies are replaced only through Adopt, after being moved to `.workos-backup/<run>/`. Every write is recorded in `WORKOS/install-manifest.jsonl`, so `Tools/Rollback.ts` restores the root byte-identical.
 - **Permission before mutation.** Hook install shows the exact change (file count + settings entries) and backs up `settings.json` first. Nothing changes without an explicit yes.
 - **Config root keeps its canonical name.** The user tree lives under the config dir and is linked into the harness tree; "WorkOS" is the brand, the resolved config path does not rename (renaming it breaks the identity `@`-imports).
 - **Dev-tree refusal.** The install tools refuse to run inside the WorkOS source repo (detected via the dev-tree marker: the private maintenance skill `skills/_WORKOS` present under the config root). Never mutate the author's live system.

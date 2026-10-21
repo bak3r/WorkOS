@@ -21,6 +21,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 import { join, resolve } from "node:path";
 import { lstatSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
+import { Ledger } from "./lib/ledger";
 import { checkSymlinkContract, detectDevTree, setupUserSeparation } from "./InstallEngine";
 
 /** Canonical on-disk path, or null when the path does not exist. */
@@ -104,6 +105,10 @@ function main(): void {
     process.exit(0);
   }
 
+  // Record what this creates (data home outside the root, the WORKOS/USER link) for Rollback.
+  const ledger = new Ledger(configRoot, "LinkUser");
+  ledger.recordAdd(join(configDir, "USER"), "USER data home", "dir");
+  ledger.recordAdd(join(configRoot, "WORKOS", "USER"), "USER symlink", "symlink");
   const result = setupUserSeparation(configRoot, configDir);
   const contract = checkSymlinkContract(configRoot, configDir);
   const ok = contract.passed && !result.error;

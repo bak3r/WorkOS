@@ -13,7 +13,32 @@
  * ON A NEW RELEASE: bump CURRENT (one edit), then `bun UpdateModels.ts --check`.
  */
 
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 export type ClaudeTier = "opus" | "sonnet" | "haiku" | "fable";
+
+/**
+ * Is the `fable` alias usable on this install? On Bedrock / Vertex the model list is the
+ * operator's `availableModels` in settings.json; when that list exists and names no Fable id
+ * (Bedrock offers none today), `max` must resolve to opus or every max-rung call fails.
+ * Anthropic API / subscription installs (no provider flag, or no list) keep Fable.
+ * Mirrors the installer's fableUnavailable() (skills/WorkOS/Tools/InstallEngine.ts), which
+ * also installs agents/Max.md with `model: opus` in that case.
+ */
+export function fableOffered(env: NodeJS.ProcessEnv = process.env): boolean {
+  let settings: { env?: Record<string, unknown>; availableModels?: unknown } = {};
+  try {
+    const root = env.CLAUDE_CONFIG_DIR || join(env.HOME || homedir(), ".claude");
+    settings = JSON.parse(readFileSync(join(root, "settings.json"), "utf8"));
+  } catch { /* no settings → nothing restricts the lineup */ }
+  const on = (k: string) => ["1", "true"].includes(String(env[k] ?? settings.env?.[k] ?? ""));
+  if (!on("CLAUDE_CODE_USE_BEDROCK") && !on("CLAUDE_CODE_USE_VERTEX")) return true;
+  const list = settings.availableModels;
+  if (!Array.isArray(list)) return true;
+  return list.some((m) => typeof m === "string" && /fable/i.test(m));
+}
 
 /** Intent levels. Consumers name a level, never a model name. */
 export type EffortLevel = "max" | "high" | "medium" | "low";
@@ -21,10 +46,12 @@ export type EffortLevel = "max" | "high" | "medium" | "low";
 /**
  * Level → tier. THE SINGLE EDIT POINT on a lineup change: if Fable leaves the subscription,
  * set `max: "opus"` and every consumer follows. `max` and `high` are distinct models, which is
- * what makes the Inference.ts max→high fallback a real degrade rather than a no-op.
+ * what makes the Inference.ts max→high fallback a real degrade rather than a no-op — except
+ * where the provider offers no Fable (fableOffered() false: Bedrock/Vertex with an
+ * availableModels list and no Fable id), where max resolves to opus at runtime.
  */
 export const EFFORT_MODEL: Record<EffortLevel, ClaudeTier> = {
-  max: "fable",   // top rung (~2× Opus)
+  max: fableOffered() ? "fable" : "opus",   // top rung (~2× Opus); opus where Fable is not offered
   high: "opus",
   medium: "sonnet",
   low: "haiku",

@@ -21,6 +21,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { copyMissing, detectDevTree } from "./InstallEngine";
+import { Ledger } from "./lib/ledger";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -60,7 +61,9 @@ function main(): void {
     process.exit(0);
   }
 
-  const { copied, failures } = copyMissing(templateUser, dataUser);
+  // The data home lives outside the config root; the ledger records it (absolute path) so
+  // Rollback can remove a scaffold this run created (only with --remove-user-data; it is kept by default).
+  const { copied, failures } = copyMissing(templateUser, dataUser, new Ledger(configRoot, "ScaffoldUser"));
   console.log(JSON.stringify({ ok: failures.length === 0, written: true, from: templateUser, to: dataUser, copied, failures }, null, 2));
   process.exit(failures.length === 0 ? 0 : 1);
 }
