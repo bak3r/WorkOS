@@ -17,7 +17,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 
 export interface OptionalDep {
   /** npm package name, e.g. "handlebars". */
@@ -41,19 +41,26 @@ export const NPM_DEPS: ReadonlyArray<{ pkg: string; feature: string; dir: string
   { pkg: "@ai-sdk/anthropic", feature: "Evals multi-turn scenarios (ScenarioRunner)", dir: "skills/Evals" },
 ];
 
-/** True when `pkg` is installed in a node_modules at `dir` or any ancestor (Node/Bun resolution order). Never triggers an install. */
+/**
+ * True when `pkg` is installed in a node_modules at `dir` or any ancestor, or in a
+ * NODE_PATH entry (Node/Bun resolution order; the docker-sbx `workos` kit installs
+ * into the image and sets NODE_PATH). Never triggers an install.
+ */
 export function isInstalled(pkg: string, dir: string): boolean {
   for (let d = dir; ; d = dirname(d)) {
     if (existsSync(join(d, "node_modules", pkg, "package.json"))) return true;
-    if (dirname(d) === d) return false;
+    if (dirname(d) === d) break;
   }
+  return (process.env.NODE_PATH ?? "")
+    .split(delimiter)
+    .some((p) => p !== "" && existsSync(join(p, pkg, "package.json")));
 }
 
 export function missingDepMessage(d: OptionalDep): string {
   return (
     `${d.feature} is unavailable: npm package '${d.pkg}' is not installed.\n` +
-    `  Fix: run \`bun install\` in ${d.installDir} where the npm registry is reachable` +
-    ` (a deny-all-egress sandbox cannot; see GETTING-STARTED.md "Optional npm dependencies").`
+    `  Fix: run \`bun install\` in ${d.installDir} where the npm registry is reachable,` +
+    ` or in Docker Sandboxes compose the \`workos\` kit (see GETTING-STARTED.md "Optional npm dependencies").`
   );
 }
 
