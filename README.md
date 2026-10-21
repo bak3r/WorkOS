@@ -30,6 +30,7 @@ Built for [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) (Linux micro
 Requirements in a sandbox:
 
 - the `bun` kit (hooks and tools are `#!/usr/bin/env bun`);
+- the `ripgrep-jq` kit (hooks and tools shell out to `rg` and `jq`, and apt is blocked in the sandbox);
 - the `claude-home-link` kit, because the config root is `CLAUDE_CONFIG_DIR=<workspace>/.claude` and hooks also resolve `~/.claude`;
 - optional: `gitlab-cli` (for GitLab context) and `atlassian-mcp`, which provides `JIRA_URL`, `JIRA_USERNAME` and `JIRA_API_TOKEN` (for Jira context).
 
