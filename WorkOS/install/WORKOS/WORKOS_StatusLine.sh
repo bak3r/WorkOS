@@ -2,7 +2,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # WorkOS Status Line — Responsive display with 4 modes by terminal width:
 #   nano (<35), micro (35-54), mini (55-79), normal (80+)
-# Normal output: WorkOS Header → Context → Usage → Git → Memory → Quote
+# Normal output: WorkOS Header → Context → Usage → Git → Memory
 # ═══════════════════════════════════════════════════════════════════════════════
 
 set -o pipefail
@@ -18,7 +18,10 @@ if [ -z "$HOME" ]; then
     [ -z "$HOME" ] && HOME="$(eval echo "~$(id -un)" 2>/dev/null)"
 fi
 
-WORKOS_DIR="${WORKOS_DIR:-$HOME/.claude/WORKOS}"
+# Config root: CLAUDE_CONFIG_DIR when the harness moved it (Docker Sandboxes put it in
+# the workspace), else ~/.claude.
+CLAUDE_HOME="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+WORKOS_DIR="${WORKOS_DIR:-$CLAUDE_HOME/WORKOS}"
 # Claude Code injects settings.json env values without shell expansion (WorkOS#1404):
 # a shipped value of "$HOME/.claude/WORKOS" arrives literal. Expand it here.
 WORKOS_DIR="${WORKOS_DIR/#\$HOME/$HOME}"
@@ -58,7 +61,6 @@ case "$WORKOS_DIR" in
     *'$HOME'*|*'${HOME}'*|*'~'*) echo "WorkOS"; exit 0 ;;
 esac
 
-CLAUDE_HOME="$HOME/.claude"
 
 # BUN_BIN — defensive only. MEASURED 2026-07-27: the statusline inherits the
 # full interactive PATH (/opt/homebrew/bin included), so a bare `bun` resolves
@@ -95,7 +97,6 @@ mkdir -p "$STATUSLINE_LOCAL_STATE" 2>/dev/null
 SETTINGS_FILE="$CLAUDE_HOME/settings.json"
 RATINGS_FILE="$WORKOS_DIR/MEMORY/LEARNING/SIGNALS/ratings.jsonl"
 MODEL_CACHE="$STATUSLINE_LOCAL_STATE/model-cache.txt"
-QUOTES_FILE="$WORKOS_DIR/USER/PRINCIPAL/Quotes.txt"
 USAGE_CACHE="/tmp/pai-usage-${USER:-anon}.json"
 USAGE_LOCK="/tmp/pai-usage-${USER:-anon}.lock"   # P4: single-fetcher mutex (atomic mkdir; portable, no flock(1))
 LEARNING_CACHE="$WORKOS_DIR/MEMORY/STATE/learning-cache.sh"
@@ -164,7 +165,6 @@ ALGO_VERSION="${ALGO_VERSION:-—}"
 # │ Usage           │  900s  │ 15 min: /api/oauth/usage has aggressive 429 limits│
 # │ Learning        │   30s  │ Ratings change infrequently mid-session          │
 # │ Session name    │ mtime  │ Invalidated when source files change             │
-# │ Quote           │   n/a  │ Curated corpus, deterministic 60s window         │
 # │ Model           │ n/a    │ Written once per session, no TTL                 │
 # │ Terminal width  │ n/a    │ Written once, read as fallback                   │
 # └─────────────────┴────────┴──────────────────────────────────────────────────┘
@@ -651,8 +651,6 @@ sep() {
 #   git.sh      — Branch, stash, sync, last commit (all modes)
 #   counts.sh   — File/skill/hook counts from settings.json + live skill count
 #   usage.sh    — Anthropic API rate limits 5H/WK (normal)
-# Quote line renders directly from $QUOTES_FILE at the bottom of the script —
-# no cache, no network, no parallel block, just one awk call.
 # Results are sourced after `wait` at the end of the block.
 
 _parallel_tmp="/tmp/pai-parallel-$$"
@@ -1034,11 +1032,6 @@ USAGEEOF
 } &
 fi
 
-# Quote line restored 2026-05-12 — replaced the dead ZenQuotes API path with a
-# curated corpus at $WORKOS_DIR/USER/PRINCIPAL/Quotes.txt ("text|author" per line;
-# a starter set ships as a template, grow your own). Selection is a deterministic
-# function of wall-clock time: (epoch / 60) % count. No network, no cache, no
-# refresh logic; the renderer no-ops if the file is absent.
 
 # --- PARALLEL BLOCK END - wait for all to complete ---
 wait
@@ -1128,9 +1121,6 @@ USAGE_EXTRA='\033[38;2;140;90;60m'
 USAGE_EXTRA_ACTIVE='\033[38;2;251;146;60m'   # Bright orange — extra credits burning NOW
 USAGE_STALE='\033[38;2;120;113;108m'   # Warm gray for stale labels (not values)
 
-# Quote (gold)
-QUOTE_PRIMARY='\033[38;2;252;211;77m'
-QUOTE_AUTHOR='\033[38;2;180;140;60m'
 
 # WorkOS Branding
 WORKOS_P='\033[38;2;37;99;235m'          # Blue-600 (was navy 30;58;138 — too dark on navy bg)
@@ -1921,7 +1911,22 @@ if [ "$MODE" = "normal" ]; then
     _cyber_overlay="$HOME/.claude/WORKOS/USER/CUSTOMIZATIONS/StatusLineCyberLane.sh"
     [ -f "$_cyber_overlay" ] && . "$_cyber_overlay"
     [ -n "$_cyber_agent_lbl" ] && _ar_line+="$(_ar_tok "$_rs_cyber" cyber "$_lbl_cyber" "$mix_cyber") "
-    _ar_line+="$(_ar_tok "$_rs_max"   max    "$_lbl_max"  "$mix_max")"
+    # The MAX rung names a model the provider must actually offer. On Bedrock or
+    # Vertex, settings.json availableModels lists what the account can run; when
+    # that list exists and holds no Fable id, the rung is not shown (WorkOS's max
+    # rung then resolves to Opus). No list → unknown → keep the rung.
+    _max_offered=1
+    if [ "${CLAUDE_CODE_USE_BEDROCK:-}" = "1" ] || [ "${CLAUDE_CODE_USE_VERTEX:-}" = "1" ]; then
+        _avail=$(jq -r '(.availableModels // empty) | if type=="array" then join(" ") else empty end' "$SETTINGS_FILE" 2>/dev/null)
+        if [ -n "$_avail" ]; then
+            case "$_avail" in *[Ff]able*) ;; *) _max_offered=0 ;; esac
+        fi
+    fi
+    if [ "$_max_offered" = "1" ]; then
+        _ar_line+="$(_ar_tok "$_rs_max"   max    "$_lbl_max"  "$mix_max")"
+    else
+        _ar_line="${_ar_line% }"
+    fi
 
     # ── MAX agent panel (principal 2026-08-06): the named heavy-analysis
     # AGENT renders behind a pipe in its identity color
@@ -2454,90 +2459,11 @@ elif [ "${usage_state:-absent}" != "absent" ]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# LINE 6.5: LOGGED-IN ACCOUNT (normal mode only) — light gray, above the quote
+# LINE 6.5: LOGGED-IN ACCOUNT (normal mode only) — light gray, last line
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if [ "$MODE" = "normal" ]; then
     # Live login email from ~/.claude.json (.oauthAccount.emailAddress updates on /login)
     _acct_email=$(jq -r '.oauthAccount.emailAddress // empty' "$HOME/.claude.json" 2>/dev/null)
     [ -n "$_acct_email" ] && printf "${SLATE_500}${_acct_email}${RESET}\n"
-fi
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# LINE 7: QUOTE (normal mode only)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-if [ "$MODE" = "normal" ] && [ -f "$QUOTES_FILE" ]; then
-    # Curated corpus, deterministic time-based selection — same quote for each
-    # 60-second window, no cache, no network.
-    quote_count=$(wc -l < "$QUOTES_FILE" 2>/dev/null | tr -d ' ')
-    if [ "${quote_count:-0}" -gt 0 ]; then
-        quote_idx=$(( ($(date +%s) / 60) % quote_count + 1 ))
-        quote_line=$(awk -v n="$quote_idx" 'NR==n {print; exit}' "$QUOTES_FILE")
-        quote_text="${quote_line%%|*}"
-        quote_author="${quote_line#*|}"
-        if [ -n "$quote_text" ] && [ -n "$quote_author" ] && [ "$quote_text" != "$quote_line" ]; then
-            # Byte overhead: opening " + closing " + space + em-dash (3 UTF-8 bytes) = 6
-            full_len=$((${#quote_text} + ${#quote_author} + 6))
-
-            if [ "$full_len" -le "$content_width" ]; then
-                # Happy path: fits on one line
-                printf "${SLATE_400}\"${quote_text}\"${RESET} ${QUOTE_AUTHOR}—${quote_author}${RESET}\n"
-            else
-                # Multi-line: width-aware wrap at word boundaries.
-                # Each wrapped line is bounded by content_width - 2 (room for opening
-                # quote on line 1 OR 2-space indent on continuation lines).
-                fold_w=$((content_width - 2))
-                [ "$fold_w" -lt 20 ] && fold_w=20
-
-                _wrapped=$(printf '%s' "$quote_text" | fold -s -w "$fold_w")
-
-                # Split wrapped output into an array (bash 3.2 compatible)
-                _old_ifs="$IFS"
-                IFS=$'\n'
-                set -f
-                _lines=($_wrapped)
-                set +f
-                IFS="$_old_ifs"
-                _n=${#_lines[@]}
-
-                # Print every line except the last; last gets author handling
-                _i=0
-                while [ "$_i" -lt $((_n - 1)) ]; do
-                    _line="${_lines[$_i]% }"  # fold -s leaves a trailing space at breaks
-                    if [ "$_i" -eq 0 ]; then
-                        printf "${SLATE_400}\"${_line}${RESET}\n"
-                    else
-                        printf "  ${SLATE_400}${_line}${RESET}\n"
-                    fi
-                    _i=$((_i + 1))
-                done
-
-                # Last line: open quote only if it's also the first line
-                _last="${_lines[$((_n - 1))]% }"
-                if [ "$_n" -eq 1 ]; then
-                    _last_prefix="${SLATE_400}\""
-                    _last_indent=""
-                    _last_open_len=1
-                else
-                    _last_prefix="  ${SLATE_400}"
-                    _last_indent="  "
-                    _last_open_len=0
-                fi
-
-                # Length if author sits on same line as last text line:
-                # indent(2 or 0) + open_quote(1 or 0) + last + close_quote(1) + space(1) + em-dash(3) + author
-                _shared_len=$((${#_last_indent} + _last_open_len + ${#_last} + 1 + 1 + 3 + ${#quote_author}))
-
-                if [ "$_shared_len" -le "$content_width" ]; then
-                    # Author fits — share line with last text line
-                    printf "${_last_prefix}${_last}\"${RESET} ${QUOTE_AUTHOR}—${quote_author}${RESET}\n"
-                else
-                    # Author would overflow — push to its own indented line
-                    printf "${_last_prefix}${_last}\"${RESET}\n"
-                    printf "  ${QUOTE_AUTHOR}—${quote_author}${RESET}\n"
-                fi
-            fi
-        fi
-    fi
 fi
