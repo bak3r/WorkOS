@@ -1,0 +1,9 @@
+{
+  "name": "prompting-tools",
+  "private": true,
+  "type": "module",
+  "description": "npm dependency of RenderTemplate.ts / ValidateTemplate.ts. Run `bun install` here where the npm registry is reachable; without it both tools report 'unavailable' and exit 1.",
+  "dependencies": {
+    "handlebars": "^4.7.8"
+  }
+}

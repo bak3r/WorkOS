@@ -1,0 +1,12 @@
+{
+  "name": "workos-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "WorkOS TOOLS runtime dependencies (graph layer over the memory system)",
+  "dependencies": {
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2",
+    "graphology-metrics": "^2.4.0"
+  }
+}

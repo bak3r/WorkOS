@@ -1,0 +1,31 @@
+# Fabric patterns stripped from WorkOS (personal-life only). UpdatePatterns passes this
+# file to rsync --exclude-from so an upstream sync never re-adds them. One name per line.
+find_female_life_partner
+heal_person
+recommend_yoga_practice
+t_describe_life_outlook
+t_find_negative_thinking
+t_give_encouragement
+extract_recipe
+recommend_artists
+extract_song_meaning
+analyze_spiritual_text
+create_npc
+create_rpg_summary
+summarize_rpg_session
+provide_guidance
+# Content-creator and person-profiling patterns (WorkOS cleanup pass)
+tweet
+create_podcast_image
+create_show_intro
+enrich_blog_post
+create_video_chapters
+extract_sponsors
+analyze_personality
+predict_person_actions
+model_as_sherlock_freud
+create_story_about_person
+create_story_about_people_interaction
+# Index files were edited to drop the names above; keep the local copies.
+pattern_explanations.md
+suggest_pattern/

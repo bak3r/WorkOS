@@ -1,0 +1,33 @@
+---
+provenance: template
+---
+
+# CUSTOMIZATIONS
+
+User-specific extensions of WorkOS system components. The WorkOS framework ships with generic skills and agents. This directory holds the per-user content that those generic components layer over at runtime — the things that make *your* WorkOS different from every other WorkOS install.
+
+## Contract
+
+Anything running a system component MUST look here for user content that applies to **this principal but not every WorkOS user.**
+
+- **Skills** read `CUSTOMIZATIONS/SKILLS/<SkillName>/` for per-user preferences, source lists, writing profiles, project names, and other context the public skill body cannot contain. The skill body stays generic; the user file overlays at runtime. The user copy wins.
+
+## Structure
+
+```
+CUSTOMIZATIONS/
+└── SKILLS/      ← per-skill override files (one subdir per customized skill)
+```
+
+## Why This Lives Under USER
+
+`WORKOS/USER/` holds everything specific to one principal. `CUSTOMIZATIONS/` is the part of USER that other system components read on every invocation — not standalone reference data (`CONTACTS.md`, `OPINIONS.md`) but live overlays that change how WorkOS behaves for this user.
+
+## When To Add Something Here
+
+- A skill needs your team's conventions, your source list, your projects, or your writing style → write a `SKILLS/<SkillName>/PREFERENCES.md` (or whatever file that skill documents reading).
+
+## When NOT To Put Something Here
+
+- Reference data the user just **reads** (identity, projects, contacts, opinions, TELOS) — that's a sibling of `CUSTOMIZATIONS/`, not a child. Customizations are about *behavior*, not *facts*.
+- One-off experiments → use `MEMORY/WORK/{slug}/` instead and promote to `CUSTOMIZATIONS/` if it earns its keep.

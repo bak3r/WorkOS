@@ -1,0 +1,43 @@
+# USER/WORK/config.yaml — Work System settings (optional; every key has a default).
+#
+# The system of record is the local ledger in this directory (ledger.jsonl,
+# rendered to TASKLIST.md). Jira and GitLab are READ-ONLY context: WorkOS never
+# creates, edits, transitions or comments on anything in either. Nothing in
+# this file can change that.
+#
+# Loader: hooks/lib/work-config.ts. Docs: WORKOS/DOCUMENTATION/Work/WorkSystem.md
+
+# Ledger capture on/off (ReminderRouter, WorkSweep, CommitmentSweep).
+# Manual `bun WORKOS/TOOLS/WorkLedger.ts ...` commands work either way.
+enabled: true
+
+# TASKLIST.md section order. Ledger statuses: queued, ready, in-progress,
+# blocked, in-review, done, dropped. Open statuses left out still render last.
+kanban_statuses: [in-progress, blocked, in-review, ready, queued]
+
+# Capture switches.
+capture_native: true      # WorkSweep catches NATIVE-mode sessions that left artifacts
+capture_sweep: true       # WorkSweep runs at all
+capture_reminders: true   # ReminderRouter turns "remind me to X" prompts into items
+
+# ISA `project:` value → the project name recorded on ledger items.
+# project_property:
+#   some-repo: Some Product
+
+# Jira — read-only. auto = on when JIRA_URL is set (JIRA_USERNAME and
+# JIRA_API_TOKEN are needed too). Keys differ per team, so nothing is
+# hardcoded: leave project_keys empty to accept any KEY-123 shape (minus
+# known false positives such as ISC-12, UTF-8, SHA-256), or list your teams'
+# prefixes to accept only those.
+jira:
+  enabled: auto
+  project_keys: []
+  # jql: assignee = currentUser() AND sprint in openSprints() AND statusCategory != Done ORDER BY updated DESC
+
+# GitLab — read-only, via `glab api --method GET`. auto = on when GITLAB_HOST is set.
+gitlab:
+  enabled: auto
+
+# Minutes before the cached Jira/GitLab context is refreshed (in the background,
+# at session start).
+context_ttl_minutes: 15

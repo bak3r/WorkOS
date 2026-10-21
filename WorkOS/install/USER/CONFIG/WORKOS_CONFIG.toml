@@ -1,0 +1,27 @@
+# WORKOS_CONFIG.toml — user-owned WorkOS configuration
+#
+# Bootstrap default. The WorkOS Setup + Interview fill in your real values.
+# Canonical source for principal identity, DA identity, and path roots. System
+# code reads these through WORKOS/TOOLS/WorkosConfig.ts (loadWorkosConfig()).
+# Secrets stay in <configRoot>/.env — never here.
+#
+# This file lives under WORKOS/USER/CONFIG/ (USER zone) — it never ships in a public
+# release with real values; this is the clean scaffold. It is yours; edit freely.
+#
+# Schema reference: the `WorkosConfig` interface in WORKOS/TOOLS/WorkosConfig.ts.
+
+[principal]
+name = "Your Name"                 # required — your display name
+pronunciation = ""                 # optional — phonetic spelling if needed
+timezone = "UTC"                   # required — IANA timezone (set yours in Interview)
+
+[da]
+name = "Aria"                      # required — your DA's name (rename to anything)
+full_name = ""
+display_name = ""
+color = "#3B82F6"
+
+[paths]
+user_dir = "~/.claude/WORKOS/USER"
+# projects_dir = "~/work"          # optional — where your work repos live. Unset: $PROJECTS_DIR,
+                                   # else the parent of $CLAUDE_CONFIG_DIR (the sandbox workspace), else ~

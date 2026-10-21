@@ -1,0 +1,9 @@
+{
+  "name": "workos-runtime",
+  "private": true,
+  "type": "module",
+  "description": "Shared runtime dependencies for WorkOS hooks and WORKOS/TOOLS scripts. Deployed to <configRoot>/package.json by DeployCore.ts so `bun install` resolves node_modules for both <configRoot>/hooks/ and <configRoot>/WORKOS/.",
+  "dependencies": {
+    "yaml": "^2.8.2"
+  }
+}

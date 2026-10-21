@@ -1,0 +1,78 @@
+{{!--
+  ROSTER Template - Agent & Skill Definitions
+
+  Purpose: Generate structured definitions from YAML data sources.
+
+  Use Cases:
+  - Agent personality rosters
+  - Skill directory listings
+  - Team composition overviews
+
+  Input Data Structure (agents):
+  ```yaml
+  agents:
+    agent_id:
+      id: string
+      name: string
+      display_name: string
+      role: string
+      emoji: string
+      personality:
+        traits: [string]
+        perspective: string
+        style: string
+      backstory: string (optional)
+  ```
+
+  Usage:
+  bun run RenderTemplate.ts -t Primitives/Roster.hbs -d Data/Agents.yaml -o Compiled/AgentRoster.md
+--}}
+
+# Agent Roster
+
+{{#if version}}
+**Version:** {{version}}
+{{/if}}
+{{#if last_updated}}
+**Last Updated:** {{last_updated}}
+{{/if}}
+
+---
+
+{{#each agents}}
+## {{emoji}} {{display_name}} ({{role}})
+
+**ID:** `{{id}}`
+{{#if name}}
+**Character Name:** {{name}}
+{{/if}}
+{{#if archetype}}
+**Archetype:** {{titlecase archetype}}
+{{/if}}
+
+{{#if personality}}
+### Personality
+
+**Perspective:** "{{personality.perspective}}"
+
+**Traits:**
+{{#each personality.traits}}
+- {{this}}
+{{/each}}
+
+{{#if personality.style}}
+**Communication Style:**
+{{personality.style}}
+{{/if}}
+{{/if}}
+
+{{#if backstory}}
+### Backstory
+
+{{backstory}}
+{{/if}}
+
+---
+
+{{/each}}
+

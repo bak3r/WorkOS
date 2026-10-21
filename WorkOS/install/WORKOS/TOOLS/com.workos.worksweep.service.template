@@ -1,0 +1,27 @@
+# com.workos.worksweep.service.template — Source template (Linux, systemd --user).
+# Install via:
+#   bun ~/.claude/WORKOS/TOOLS/InstallWorkSweep.ts
+#
+# The installer reads $HOME and `which bun` at install time, substitutes the
+# {{HOME}}/{{BUN}}/{{BUN_DIR}} placeholders, writes the materialized unit to
+# ~/.config/systemd/user/, and enables it via systemctl --user. This template
+# stays clean of principal-specific paths so it ships in the public WorkOS
+# release.
+#
+# Behavior: one-shot run of WorkSweep.ts, triggered by the paired timer unit
+# (com.workos.worksweep.timer). stdout/stderr append to
+# MEMORY/STATE/com.workos.worksweep.log.
+#
+# public PR #1692, @takanorinishida
+
+[Unit]
+Description=WorkOS Work Sweep — periodic Work System capture (session catch-up, stale flagging, project checks, TELOS goals)
+
+[Service]
+Type=oneshot
+ExecStart={{BUN}} {{HOME}}/.claude/WORKOS/TOOLS/WorkSweep.ts
+WorkingDirectory={{HOME}}/.claude
+Environment=HOME={{HOME}}
+Environment=PATH={{BUN_DIR}}:/usr/local/bin:/usr/bin:/bin
+StandardOutput=append:{{HOME}}/.claude/WORKOS/MEMORY/STATE/com.workos.worksweep.log
+StandardError=append:{{HOME}}/.claude/WORKOS/MEMORY/STATE/com.workos.worksweep.log
