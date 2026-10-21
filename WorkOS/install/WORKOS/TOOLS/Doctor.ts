@@ -347,7 +347,12 @@ const CAPS: CapSpec[] = [
     title: 'Browser verification (Interceptor)',
     powers: 'real-browser verification of all web/UI claims',
     ttlHours: 24 * 7,
-    configured: () => true, // ships with WorkOS; a missing browser is broken, not unconfigured
+    // No browser binary at all = 'off', not broken: a headless box (Docker Sandboxes)
+    // can never have one, and doctrine then falls back to labelled test/HTTP
+    // evidence. A browser that is present but not set up is still 'broken'.
+    optional: true,
+    configured: () => chromeBinary() !== null,
+    offDetail: () => 'no Chrome/Brave/Chromium on this machine (expected in Docker Sandboxes) — web claims use labelled test/HTTP evidence instead of a browser check',
     probeOffline: async () => {
       const skill = existsSync(join(CONFIG_ROOT, 'skills', 'Interceptor', 'SKILL.md'));
       if (!skill) return { ok: false, detail: 'Interceptor skill not installed' };
@@ -384,9 +389,9 @@ const CAPS: CapSpec[] = [
     fixCmd: 'run the Interceptor skill setup (clone repo, install extension, pin INTERCEPTOR_TEST_CONTEXT_ID), then re-run: bun WORKOS/TOOLS/Doctor.ts',
   },
   // ── external binaries shipped code shells out to ───────────────────────────
-  // Each of these is spawned directly by shipped code, so absence is "broken",
-  // not "unconfigured" — hence configured: () => true. They stay honest about
-  // what absence actually costs.
+  // Each of these is spawned directly by shipped code. ripgrep is core, so its
+  // absence is "broken"; the browser-bound ones (ImageMagick, ffmpeg) are "off"
+  // on a machine with no browser. They stay honest about what absence costs.
   // public PR #1660 and #1661, @elhoim
   {
     id: 'ripgrep',
@@ -405,7 +410,11 @@ const CAPS: CapSpec[] = [
     title: 'Image inspection (ImageMagick)',
     powers: "Interceptor's blank-frame guard, measured zoom, and Art composition",
     ttlHours: 24 * 7,
-    configured: () => true, // the capture guard and Art both shell out to `magick`
+    // Its consumers are Interceptor's capture guard and zoom (need a browser) and
+    // Art's AddBg; with no browser it is optional, so absence is 'off'.
+    optional: true,
+    configured: () => chromeBinary() !== null || which('magick'),
+    offDetail: () => 'not installed (optional without a browser) — Art AddBg is unavailable',
     probeOffline: async () =>
       which('magick')
         ? { ok: true, detail: 'magick on PATH' }
@@ -475,7 +484,10 @@ const CAPS: CapSpec[] = [
     title: 'Audio/video processing (ffmpeg)',
     powers: 'the Interceptor zoom fallback and FrameScrub video frames',
     ttlHours: 24 * 7,
-    configured: () => true, // Interceptor Zoom/FrameScrub spawn `ffmpeg` directly
+    // Only Interceptor Zoom/FrameScrub spawn it, so it matters only where a browser exists.
+    optional: true,
+    configured: () => chromeBinary() !== null || which('ffmpeg'),
+    offDetail: () => 'not installed (only needed by Interceptor video/zoom tools, which need a browser)',
     probeOffline: async () =>
       which('ffmpeg')
         ? { ok: true, detail: 'ffmpeg on PATH' }
@@ -487,7 +499,9 @@ const CAPS: CapSpec[] = [
     title: 'YouTube ingestion (yt-dlp)',
     powers: "the Upgrade skill's channel scan and transcript fetch",
     ttlHours: 24 * 7,
-    configured: () => true,
+    optional: true,
+    configured: () => which('yt-dlp'),
+    offDetail: () => 'not installed (optional) — the Upgrade skill skips YouTube steps',
     probeOffline: async () =>
       which('yt-dlp')
         ? { ok: true, detail: 'yt-dlp on PATH' }
@@ -499,7 +513,9 @@ const CAPS: CapSpec[] = [
     title: 'Prompt patterns (fabric)',
     powers: "the Fabric skill's pattern library and YouTube transcript fetch",
     ttlHours: 24 * 7,
-    configured: () => true,
+    optional: true,
+    configured: () => which('fabric'),
+    offDetail: () => 'fabric CLI not installed (optional) — the Fabric skill runs its bundled patterns natively',
     probeOffline: async () =>
       which('fabric')
         ? { ok: true, detail: 'fabric on PATH' }

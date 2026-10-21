@@ -205,8 +205,11 @@ for (const h of REQUIRED_REGISTRATIONS) {
 
 // CHECK 4: review-state.json exists and is readable
 let lastReviewAt: string | null = null;
-if (!existsSync(REVIEW_STATE)) {
-  add("state-missing", "warn", "review-state.json does not exist yet — reviewer never fired.");
+// A reviewer that has never fired is the normal state of a new install, not a
+// fault: it fires after enough turns. Only a state that exists and breaks warns.
+const reviewerNeverFired = !existsSync(REVIEW_STATE);
+if (reviewerNeverFired) {
+  add("state-missing", "ok", "review-state.json does not exist yet — the reviewer has not fired (normal on a new install).");
 } else {
   try {
     const state = JSON.parse(readFileSync(REVIEW_STATE, "utf-8"));
@@ -244,8 +247,10 @@ if (existsSync(REVIEWER_RUNS)) {
       add("historical-runs-present", "ok", `${runs.length} historical reviewer run(s) captured.`, { count: runs.length });
     }
   } catch {}
+} else if (reviewerNeverFired) {
+  add("no-runs-dir", "ok", "reviewer-runs/ does not exist yet — the reviewer has not fired (normal on a new install).");
 } else {
-  add("no-runs-dir", "warn", "reviewer-runs/ directory does not exist yet.");
+  add("no-runs-dir", "warn", "reviewer-runs/ directory does not exist although the reviewer has fired.");
 }
 
 // CHECK 7: memory files present
@@ -360,7 +365,17 @@ const cortexEvidence = collectCortexEvidence({ root: CLAUDE, nowMs: process.env.
   ...(observabilityMaxBytes === undefined ? {} : { observabilityMaxBytes }), ...(observabilityMaxAgeMs === undefined ? {} : { observabilityMaxAgeMs }),
 }, indexManifest: process.env.CORTEX_INDEX_MANIFEST });
 const cortexAssessment = assessCortexEvidence(cortexEvidence);
-for (const finding of cortexAssessment.findings) add(finding.id, finding.severity, finding.message, finding.evidence);
+// Evidence that only exists once the memory loop has run is absent on a new install;
+// that absence is expected until the reviewer first fires. Stale, malformed or
+// failed evidence still reports at its own severity.
+const NEW_INSTALL_ABSENT = new Set(["reviewer-evidence-missing", "retrieval-missing", "proposal-evidence-missing", "observability-evidence-missing"]);
+for (const finding of cortexAssessment.findings) {
+  if (reviewerNeverFired && NEW_INSTALL_ABSENT.has(finding.id)) {
+    add(finding.id, "ok", `${finding.message} (normal on a new install: the memory loop has not run yet)`, finding.evidence);
+  } else {
+    add(finding.id, finding.severity, finding.message, finding.evidence);
+  }
+}
 
 // SUMMARY
 const criticals = findings.filter(f => f.severity === "critical");
