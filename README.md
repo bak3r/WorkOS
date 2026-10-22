@@ -44,6 +44,8 @@ The install is driven by an AI, from a local copy (no network needed):
 
 Shell bootstrap alternative: `WORKOS_SRC=<path> bash <path>/WorkOS/install/install.sh`.
 
+**Permission defaults.** The settings template turns on auto mode (`permissions.defaultMode: "auto"`) and skips the dangerous-mode confirmation (`skipDangerousModePermissionPrompt: true`), because WorkOS targets an isolated sandbox. Over an existing `settings.json` the installer lists these keys as security-relevant before it changes them. On a normal workstation, review them in `WorkOS/install/settings.system.json` before you install, and set them back if you want Claude Code to ask first.
+
 ## Launching
 
 The constitution (`WORKOS/WORKOS_SYSTEM_PROMPT.md`: response format, verification and security rules) is loaded by launching through the `workos` command, which runs Claude Code with `--append-system-prompt-file`. A plain `claude` session still gets the hooks and `CLAUDE.md` context, but not the constitution.

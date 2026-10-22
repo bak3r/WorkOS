@@ -61,6 +61,10 @@ out/
 private/
 secrets/
 credentials/
+# Uppercase too: git matches case-sensitively on Linux checkouts
+PRIVATE/
+SECRETS/
+CREDENTIALS/
 
 # Local copies of a Claude Code home (credentials, transcripts) never enter the repo
 claudeFolder*.zip
