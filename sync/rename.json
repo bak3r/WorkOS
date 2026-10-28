@@ -1,6 +1,7 @@
 {
   "$note": "How an upstream LifeOS payload path and its text become WorkOS. Rebuilt 2026-10-28 by measurement, since the fork recorded no map: with these rules, 644 of the 1033 in-scope files WorkOS 1.0.2 shares with LifeOS v7.40.4 match the renamed upstream byte for byte (SyncPlan's 'rename fidelity' line); sampled remaining differences are WorkOS's own edits, not missed renames. Order matters: rules apply top to bottom.",
   "text": [
+    ["OPERATIONAL_PREFERENCES", "OPERATIONAL_RULES"],
     ["LIFEOS", "WORKOS"],
     ["LifeOS", "WorkOS"],
     ["LifeOs", "WorkOs"],
@@ -8,6 +9,7 @@
     ["lifeos", "workos"]
   ],
   "paths": [
+    ["OPERATIONAL_PREFERENCES", "OPERATIONAL_RULES"],
     ["LIFEOS", "WORKOS"],
     ["LifeOS", "WorkOS"],
     ["LifeOs", "WorkOs"],

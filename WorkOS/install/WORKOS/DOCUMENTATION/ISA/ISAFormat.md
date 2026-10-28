@@ -652,7 +652,7 @@ role: replicate — elevenreader.io          # comparator contract line (when an
 | id | provenance | derivation | evidence | disposition | rationale |
 |----|------------|------------|----------|-------------|-----------|
 | C-1 | exemplar-observed | observed | https://elevenreader.io (fetched) | ISC-12 | core playback surface |
-| C-2 | corpus-preference | entailed | OPERATIONAL_PREFERENCES § Deployment | ISC-31 | brand assets standing rule |
+| C-2 | corpus-preference | entailed | OPERATIONAL_RULES § Deployment | ISC-31 | brand assets standing rule |
 | C-3 | category-standard | hypothesized | model-prior | fog | accessibility pass, no probe yet |
 | C-4 | exemplar-observed | observed | https://elevenreader.io (model-prior) | oos | cloud sync — beyond local-first vision |
 ```

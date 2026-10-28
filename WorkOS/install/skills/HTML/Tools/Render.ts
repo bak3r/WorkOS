@@ -85,7 +85,7 @@ const REGISTERS: Record<string, Register> = {
   },
 };
 
-const FONT_DIRS = [join(homedir(), "Library/Fonts"), "/Library/Fonts", "/System/Library/Fonts/Supplemental"];
+const FONT_DIRS = [join(homedir(), "Library/Fonts"), "/Library/Fonts", "/System/Library/Fonts/Supplemental", join(homedir(), ".local/share/fonts"), "/usr/local/share/fonts", "/usr/share/fonts"];
 
 // ---------- helpers ----------
 
@@ -234,7 +234,7 @@ ${doc.footer ? `<p class="foot">${doc.footer}</p>` : ""}
 // ---------- CLI ----------
 
 const EXAMPLE: Doc = {
-  title: "Never a Liberal?",
+  title: "Is the Claim True?",
   eyebrow: "A red team of one claim · evidence brief",
   subtitle: "The claim under test, with verbatim sourced quotes both ways.",
   summary: { label: "Verdict", html: "<b>False on the letter.</b> Survives only as a definitional argument." },
