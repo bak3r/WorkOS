@@ -10,7 +10,7 @@ WorkOS is a work-only fork of [LifeOS](https://github.com/danielmiessler/LifeOS)
 - **Work context.** `USER/` holds your work identity, team and colleagues, tech-stack conventions, dev environment, work projects and work goals (TELOS, now scoped to your role).
 - **Memory (Cortex).** Session learnings, a typed knowledge archive, curated proposals into the always-loaded context.
 - **Hooks.** Safety and containment guards, verification gates, context loading, memory capture, observability (JSONL), and throttled background maintenance.
-- **Skills.** Research, red-teaming, root-cause analysis, systems thinking, ISA tooling, evals, hardening (property and mutation testing), prompting, Fabric patterns, diagrams, code-review helpers (MR comments, MR descriptions, QA notes) and more.
+- **Skills.** Research, red-teaming, root-cause analysis, systems thinking, ISA tooling, evals, hardening (property and mutation testing), prompting, Fabric patterns, diagrams, code-review helpers (MR comments, MR descriptions, QA test notes, bug scenarios, review prep, comment pruning, junior-level explanations) and more.
 - **A local work ledger** with read-only GitLab and Jira context (below).
 
 ## What was removed
