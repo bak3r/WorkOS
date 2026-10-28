@@ -201,6 +201,8 @@ Exits 1 on a usage error, 2 when the record cannot be read or written. No comman
 | `SkillCoverage.ts` | whether an existing skill already covers a need, before a new one is made | `bun WORKOS/TOOLS/SkillCoverage.ts "<need>"` |
 | `SkillHygieneGate.ts` | the skills tree is publishable-clean: no identity strings, home paths or vendored deps, and only the permitted frontmatter keys | `bun WORKOS/TOOLS/SkillHygieneGate.ts [--skill <Name>] [--root <dir>] [--no-deny-list]` |
 
+`ContextLoad.ts` is the deterministic section loader for skills that ship a `Context.json` (Webdesign, ISA): `bun WORKOS/TOOLS/ContextLoad.ts <Skill> load <bundle>|list|search "<query>"` returns the named sections with their source hashes.
+
 `--root` points the hygiene gate at a copy of the tree, such as `WorkOS/install` in the source repository. Without `WORKOS/USER/SECURITY/DENY_LIST.txt` only the generic checks run, and the gate exits 2 unless `--no-deny-list` says that is expected. Supporting modules: `lib/IntentSections.ts`, `lib/SkillCatalog.ts` (the short-description cap), and `lib/Boundary.ts` (path confinement only).
 
 ---
