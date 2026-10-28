@@ -19,7 +19,7 @@ version: 1.4.3
 **Configuration:** `~/.claude/settings.json` (GENERATED — merged from `settings.system.json` + `WORKOS/USER/CONFIG/settings.user.json` by `MergeSettings.ts`; for events the user file defines as a plain array — UserPromptSubmit, PostToolUse, PreToolUse, Stop, SessionEnd — the user array REPLACES the system array, so `settings.json` is the only registration truth. `settings.user.json` does not exist on a fresh install — `MergeSettings` no-ops cleanly until you create it to carry user-side overrides)
 **Status:** Active — hook counts below are hand-maintained (the `UpdateCounts.ts` count-cache write was removed 2026-05-06; statusline/Banner read live via `GetCounts.ts`)
 
-> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-28, 1.1.0).** 37 distinct hook files are registered in `hooks/hooks.json` across 63 hook commands; **45 hook files exist on disk (all `.hook.ts`, no `.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 8 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`DestructiveGuard` and `PublicPushGate` are registered directly on PreToolUse. `LoopDetector` is registered on PostToolUseFailure and runs on PostToolUse through `PostToolObserver`.) WorkOS 1.1.0 retired `PreToolGuard`, the guards it dispatched, `ContextReduction.hook.sh` and `ConfigEvalFire`; `hooks/retired.json` lists each with its reason. The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
+> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-28, 1.1.0).** 37 distinct hook files are registered in `hooks/hooks.json` across 63 hook commands; **46 hook files exist on disk (all `.hook.ts`, no `.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 9 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`DestructiveGuard` and `PublicPushGate` are registered directly on PreToolUse. `LoopDetector` is registered on PostToolUseFailure and runs on PostToolUse through `PostToolObserver`.) WorkOS 1.1.0 retired `PreToolGuard`, the guards it dispatched, `ContextReduction.hook.sh` and `ConfigEvalFire`; `hooks/retired.json` lists each with its reason. The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
 
 ---
 
@@ -1303,7 +1303,7 @@ HOOK LIFECYCLE:
 
 HOOKS BY EVENT (11 events wired in hooks/hooks.json; regenerated 2026-10-28.
 37 distinct hook files registered, all .hook.ts;
-45 hook files on disk [all .hook.ts] — the 8 unregistered .hook.ts are
+46 hook files on disk [all .hook.ts] — the 9 unregistered .hook.ts are
 imported as run()/check() modules by dispatchers, noted [via X] below):
 
 SESSION START (4 hooks + 2 TOOLS):
@@ -1416,7 +1416,7 @@ KEY FILES:
 ~/.claude/settings.system.json       System-side hook/permission source (SYSTEM)
 ~/.claude/WORKOS/USER/CONFIG/settings.user.json  User-side source (USER); its plain-array events REPLACE the system array
 ~/.claude/WORKOS/TOOLS/MergeSettings.ts  Merges system + user → settings.json (runs async at SessionStart)
-~/.claude/hooks/                     Hook scripts (45 .hook.ts files; 37 distinct hook files registered)
+~/.claude/hooks/                     Hook scripts (46 .hook.ts files; 37 distinct hook files registered)
 ~/.claude/hooks/handlers/            Handler modules (8 files)
 ~/.claude/hooks/lib/                 Shared libraries (30 .ts files plus 1 test)
 ~/.claude/hooks/lib/learning-utils.ts Learning categorization
