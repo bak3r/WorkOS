@@ -203,6 +203,8 @@ Exits 1 on a usage error, 2 when the record cannot be read or written. No comman
 
 `ContextLoad.ts` is the deterministic section loader for skills that ship a `Context.json` (Webdesign, ISA): `bun WORKOS/TOOLS/ContextLoad.ts <Skill> load <bundle>|list|search "<query>"` returns the named sections with their source hashes.
 
+`lib/IsaTestStrategy.ts` parses an ISA's `## Test Strategy` rows and staged `## Evals` block for the Development tools (`IsaCheck.ts`, `Inventory.ts`), with `lib/IsaTemplate.ts` and `lib/RetryEintr.ts`. Its `lib/GlanceQuestion.ts` is a parse-only stand-in: it checks a glance question's shape but does **not** judge whether a producer command is safe to run, because nothing in WorkOS runs one (`PRODUCER_SAFETY_CHECKED = false`; a test fails if anything else imports it). Port upstream's module before building any runner.
+
 `--root` points the hygiene gate at a copy of the tree, such as `WorkOS/install` in the source repository. Without `WORKOS/USER/SECURITY/DENY_LIST.txt` only the generic checks run, and the gate exits 2 unless `--no-deny-list` says that is expected. Supporting modules: `lib/IntentSections.ts`, `lib/SkillCatalog.ts` (the short-description cap), and `lib/Boundary.ts` (path confinement only).
 
 ---
