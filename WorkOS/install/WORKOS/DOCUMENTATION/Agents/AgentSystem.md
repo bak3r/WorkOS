@@ -16,7 +16,7 @@ WorkOS has three agent systems that serve different purposes. Confusing them cau
 
 | System | What It Is | When to Use | Has Unique Persona? |
 |--------|-----------|-------------|-------------------|
-| **Agent Tool Subagent Types** | Built-in types plus file-backed agents in `agents/` (Explore, Plan, general-purpose, Max, ClaudeResearcher) | Internal workflow use ONLY | No |
+| **Agent Tool Subagent Types** | Built-in types plus file-backed agents in `agents/` (Explore, Plan, general-purpose, Max, Opus, Sonnet, Haiku, ClaudeResearcher) | Internal workflow use ONLY | No |
 | **Named Agents** | Persistent identities with backstories (your own personas) | Recurring work, relationships | Yes |
 | **Custom Agents** | Agents composed as inline briefs (role/perspective written into the prompt), launched with `general-purpose` | When user says "custom agents" | Yes (described in the brief) |
 
@@ -87,6 +87,9 @@ These are the types available to the **Agent** tool — built-ins plus the file-
 | `Explore` | Codebase exploration | Finding files, understanding structure |
 | `Plan` | Implementation planning | Plan mode |
 | `Max` | Anthropic-family deep-analysis agent (top rung via the `fable` alias; Edit/Write denied at the permission layer). Extremely careful, critical, analytical. A same-vendor second look — it shares the executor's model family, so it cannot surface Anthropic-family blind spots | Genuinely hard analysis, and the added scrutiny pass on super-sensitive work (security boundaries, irreversible actions) |
+| `Opus` | The `opus` rung, two modes set by the prompt: `MODE: build` (default) for production-grade code where judgment is still part of the job, `MODE: audit` for a read-only second look held by contract (use Max when the read-only rule must be enforced). Never audits what it built | Hard or wide builds; an engineering-shaped second look on work it did not build |
+| `Sonnet` | The `sonnet` rung, an executor: builds to a settled brief, fixes bugs, writes docs, and hands open decisions back | Execution once the approach is set |
+| `Haiku` | The `haiku` rung: near-mechanical work (renames, reformatting, boilerplate, schema-checked extraction); returns `needs-judgment` on anything open | Token-heavy, decision-light legs whose output a test or grep can check |
 | `claude-code-guide` | Claude Code knowledge (hooks, settings, slash commands, MCP, agent types, keybindings, IDE, Agent SDK, Claude API) | Any task involving Claude Code internals — freshness check before implementing |
 | `ClaudeResearcher` | Ava Sterling — academic/scholarly research via Claude WebSearch; query decomposition, strategic framing | Research skill workflows |
 
@@ -143,7 +146,7 @@ Agent({ subagent_type: "general-purpose", prompt: agentPrompt })
 Agent({ subagent_type: "general-purpose", prompt: agentPrompt, model: "haiku" })
 ```
 
-An agent file may also pin its own rung in frontmatter (`model: fable` in `Max.md`), which the dispatch inherits unless overridden. `hooks/AgentInvocation.hook.ts` observes and logs the resolved model for every dispatch; the status line lights the rung that actually ran.
+An agent file may also pin its own rung in frontmatter (`model: fable` in `Max.md`, `opus` / `sonnet` / `haiku` in the agents of those names), which the dispatch inherits unless overridden. `hooks/AgentInvocation.hook.ts` observes and logs the resolved model for every dispatch; the status line lights the rung that actually ran.
 
 ---
 
