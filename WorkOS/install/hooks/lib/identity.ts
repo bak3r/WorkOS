@@ -14,6 +14,7 @@
  * resolve identity without parsing markdown on every event.
  */
 
+import { workosPath, getSettingsPath } from './paths';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 // Bun's built-in YAML (bun >= 1.2.21): no npm package, so a deny-all sandbox
@@ -24,11 +25,9 @@ import {
   type WorkosDa,
   type WorkosPrincipal,
 } from '../../WORKOS/TOOLS/WorkosConfig';
-import { homedir } from "node:os";
 
 // HOME ?? USERPROFILE: Windows defines only the latter (public issue #1694, @dissembler21-png)
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const SETTINGS_PATH = join(HOME, '.claude/settings.json');
+const SETTINGS_PATH = getSettingsPath();
 
 // Identity-file paths derive from WorkosConfig's userDir. On fresh installs where
 // WORKOS_CONFIG.toml hasn't been created yet, fall back to the conventional
@@ -38,7 +37,7 @@ function paiUserDir(): string {
   try {
     return loadWorkosConfig().paths.userDir;
   } catch {
-    return join(HOME, '.claude/WORKOS/USER');
+    return workosPath('USER');
   }
 }
 const DA_IDENTITY_PATH = join(paiUserDir(), 'DIGITAL_ASSISTANT/DA_IDENTITY.md');

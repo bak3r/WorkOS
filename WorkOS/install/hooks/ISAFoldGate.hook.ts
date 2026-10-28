@@ -29,15 +29,15 @@
  * TRIGGER: Stop (evaluated inside StopGates.hook.ts, after ISACloseGate)
  */
 
+import { getWorkosDir } from "./lib/paths";
 import type { HookInput } from "./lib/hook-io";
 import { parseTurnEvents, spawnedAgent, type TxEvent } from "./lib/transcript-evidence";
 import { findActiveSessionByUUID } from "./lib/isa-utils";
 import { isaEditedThisTurn, ISA_ADDRESSED_RE } from "./ISACloseGate.hook";
 import { appendFileSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
-import { homedir } from "node:os";
 
-const WORKOS = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS = getWorkosDir();
 const OBS_PATH = join(WORKOS, "MEMORY", "OBSERVABILITY", "isa-fold-gate.jsonl");
 
 /** Prod-mutating command shapes. Conservative and explicit: each one is a class this

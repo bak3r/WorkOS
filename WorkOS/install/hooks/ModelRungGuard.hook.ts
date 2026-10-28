@@ -35,13 +35,14 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * Failure mode: any error logs to stderr and exits 0, never blocking prompts.
  */
 
+import { getClaudeDir } from "./lib/paths";
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
 const STDIN_TIMEOUT_MS = 300;
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_ROOT = join(HOME, ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const WORKOS_DIR = process.env.WORKOS_DIR || join(CLAUDE_ROOT, "WORKOS");
 const SETTINGS_PATH = join(CLAUDE_ROOT, "settings.json");
 const LOG_PATH = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY", "model-rung.jsonl");

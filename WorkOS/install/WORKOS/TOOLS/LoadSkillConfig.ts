@@ -14,9 +14,9 @@
  *   bun ~/.claude/WORKOS/TOOLS/LoadSkillConfig.ts <skill-dir> <filename>
  */
 
+import { workosPath } from './Paths';
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
-import { homedir } from 'os';
 // Bun's built-in YAML (bun >= 1.2.21): no npm package, so a deny-all sandbox
 // without node_modules still loads this file.
 const parseYaml = (s: string): any => Bun.YAML.parse(s);
@@ -36,8 +36,7 @@ interface ExtendManifest {
 }
 
 // Constants
-const HOME = homedir();
-const CUSTOMIZATION_DIR = join(HOME, '.claude', 'WORKOS', 'USER', 'CUSTOMIZATIONS', 'SKILLS');
+const CUSTOMIZATION_DIR = workosPath('USER', 'CUSTOMIZATIONS', 'SKILLS');
 
 /**
  * Deep merge two objects recursively

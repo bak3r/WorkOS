@@ -11,6 +11,7 @@
  * {{PRINCIPAL_NAME}} runs the destructive op themselves if they want the rollback.
  */
 
+import { getClaudeDir, workosPath } from './Paths';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -21,8 +22,8 @@ import { parseCriteriaList } from '../../hooks/lib/isa-utils';
 // so the ContainmentGuard write restriction does not apply. Parser must match
 // the hook's parser exactly: skip blanks and '#' lines, expand tilde / $HOME
 // prefixes, treat the rest as absolute repo paths.
-const ALLOWLIST_PATH = join(homedir(), '.claude', 'checkpoint-repos.txt');
-const WORK_DIR = join(homedir(), '.claude', 'WORKOS', 'MEMORY', 'WORK');
+const ALLOWLIST_PATH = join(getClaudeDir(), 'checkpoint-repos.txt');
+const WORK_DIR = workosPath('MEMORY', 'WORK');
 
 function expandPath(p: string): string {
   let s = p.trim();

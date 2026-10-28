@@ -40,6 +40,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   files_count=172
  */
 
+import { getClaudeDir, getSettingsPath } from "./Paths";
 import { readdirSync, existsSync, statSync } from "fs";
 import { join } from "path";
 import { homedir } from "node:os";
@@ -52,7 +53,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_DIR = join(HOME, ".claude");
+const CLAUDE_DIR = getClaudeDir();
 // skills/, hooks/, settings.json live under CLAUDE_DIR.
 // MEMORY/, USER/ live under WORKOS_DIR (which is CLAUDE_DIR/PAI).
 const WORKOS_DIR = process.env.WORKOS_DIR || join(CLAUDE_DIR, "WORKOS");
@@ -144,7 +145,7 @@ function countSkills(): number {
  * count — only what Claude Code will actually fire.
  */
 function countHooks(): number {
-  const settingsPath = join(HOME, ".claude", "settings.json");
+  const settingsPath = getSettingsPath();
   try {
     const fs = require('fs');
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));

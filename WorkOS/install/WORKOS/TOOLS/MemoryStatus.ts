@@ -22,11 +22,11 @@
  *   bun MemoryStatus.ts --json     # machine-readable JSON output
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { getDAName } from "../../hooks/lib/identity"
 
-import { join as pathJoin, resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
+import { join as pathJoin } from "node:path";
 import {
   PRINCIPAL_MEMORY_PATH,
   DA_MEMORY_PATH,
@@ -34,7 +34,7 @@ import {
 } from "./MemoryTypes";
 import { read as readMemory } from "./MemoryWriter";
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const WORKOS_DIR = pathJoin(CLAUDE_ROOT, "WORKOS");
 const IDEAS_DIR = pathJoin(WORKOS_DIR, "MEMORY", "IDEAS");
 const KNOWLEDGE_DIR = pathJoin(WORKOS_DIR, "MEMORY", "KNOWLEDGE");

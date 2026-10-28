@@ -51,6 +51,7 @@
  *   2 — scan error
  */
 
+import { getClaudeDir } from './Paths';
 import { readFileSync, existsSync, readdirSync, statSync, mkdirSync, writeFileSync, appendFileSync } from 'fs';
 import { join } from 'path';
 import { execFileSync } from 'child_process';
@@ -60,7 +61,7 @@ import { ASCENT, type AscentState } from './ascent';
 import { homedir } from "node:os";
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_DIR = join(HOME, '.claude');
+const CLAUDE_DIR = getClaudeDir();
 const WORKOS_DIR = join(CLAUDE_DIR, 'WORKOS');
 const TOOLS_DIR = join(WORKOS_DIR, 'TOOLS');
 const DOC_DIR = join(WORKOS_DIR, 'DOCUMENTATION');

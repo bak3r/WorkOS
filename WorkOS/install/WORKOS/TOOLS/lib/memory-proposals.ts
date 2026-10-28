@@ -18,6 +18,7 @@
  * (public issues #1804, #1805, @catchingknives)
  */
 
+import { getClaudeDir, workosPath } from "../Paths";
 import { appendFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
@@ -30,7 +31,7 @@ import {
 import { assertInsideUserData } from "./ForeignDataCheck";
 
 const HOME = process.env.HOME ?? homedir();
-const OBS_DIR = join(HOME, ".claude", "WORKOS", "MEMORY", "OBSERVABILITY");
+const OBS_DIR = workosPath("MEMORY", "OBSERVABILITY");
 const PROPOSAL_REPLIES_LOG_PATH = join(OBS_DIR, "proposal-replies.jsonl");
 const IDENTITY_PROPOSALS_LOG_PATH = join(OBS_DIR, "identity-proposals.jsonl");
 
@@ -235,7 +236,7 @@ export function applyProposalEdit(targetFile: string, editText: string): { ok: t
   // from another directory resolved a bare relative path to a nonexistent nested path and every
   // apply failed with "target file missing" even though the file was present (public PR #1507,
   // credit @anikinsasha).
-  const resolved = isAbsolute(targetFile) ? targetFile : join(HOME, ".claude", targetFile);
+  const resolved = isAbsolute(targetFile) ? targetFile : join(getClaudeDir(), targetFile);
   if (!existsSync(resolved)) return { ok: false, reason: `target file missing: ${targetFile}` };
   // Boundary (2026-08-11 incident class): a proposal edit is personal content —
   // its target must physically resolve into the USER_DATA repo. pinProposalTargetFile

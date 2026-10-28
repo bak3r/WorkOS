@@ -30,6 +30,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * Never contacts Jira or GitLab. Always exits 0; failures log but never propagate.
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, appendFileSync } from "fs";
 import { basename, join } from "path";
 import { loadWorkConfig } from "../../hooks/lib/work-config";
@@ -51,7 +52,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 declare const Bun: { spawn: (cmd: string[], opts?: any) => any };
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const WORK_DIR = join(WORKOS_DIR, "MEMORY", "WORK");
 const OBS_DIR = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY");
 const OBS_LOG = join(OBS_DIR, "worksweep.jsonl");

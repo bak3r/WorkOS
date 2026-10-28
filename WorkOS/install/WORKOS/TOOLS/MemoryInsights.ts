@@ -19,12 +19,12 @@
  * Exit 0 always (CLI semantics — "no activity" is not an error).
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 import { getDAName } from "../../hooks/lib/identity"
 
-const ROOT = pathResolve(homedir(), ".claude");
+const ROOT = getClaudeDir();
 const OBS = pathResolve(ROOT, "WORKOS/MEMORY/OBSERVABILITY");
 const PRINCIPAL_MEM = pathResolve(ROOT, "WORKOS/USER/PRINCIPAL/PRINCIPAL_MEMORY.md");
 const DA_MEM = pathResolve(ROOT, "WORKOS/USER/DIGITAL_ASSISTANT/DA_MEMORY.md");

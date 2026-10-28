@@ -18,9 +18,9 @@
  * `usage` blocks and are exact.
  */
 
+import { getClaudeDir, workosPath } from "../Paths";
 import { readFileSync, statSync } from "fs";
 import { globSync } from "fs";
-import { homedir } from "os";
 import { join } from "path";
 import { requireOptional } from "../lib/optional-dep";
 
@@ -110,11 +110,11 @@ function* readJsonl(path: string): IterableIterator<Record<string, unknown>> {
 }
 
 function mainLogs(): string[] {
-  return glob(join(homedir(), ".claude/projects/*/*.jsonl"));
+  return glob(join(getClaudeDir(), "projects/*/*.jsonl"));
 }
 
 function sideLogs(): string[] {
-  return glob(join(homedir(), ".claude/projects/*/*/subagents/*.jsonl"));
+  return glob(join(getClaudeDir(), "projects/*/*/subagents/*.jsonl"));
 }
 
 function fmtNum(n: number, w = 0): string {
@@ -233,7 +233,7 @@ interface ApiCostSnapshot {
 }
 
 function loadLatestApiCostSnapshot(): ApiCostSnapshot | null {
-  const path = join(homedir(), ".claude/WORKOS/MEMORY/OBSERVABILITY/anthropic-cost.jsonl");
+  const path = workosPath("MEMORY", "OBSERVABILITY", "anthropic-cost.jsonl");
   let raw: string;
   try {
     raw = readFileSync(path, "utf8");

@@ -15,9 +15,9 @@
  *   --run                      immediately dry-run the drafted case (dogfood)
  */
 
+import { workosPath } from '../../../WORKOS/TOOLS/Paths';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 import { requireOptional } from '../../../WORKOS/TOOLS/lib/optional-dep.ts';
 import { inference } from '../../../WORKOS/TOOLS/Inference.ts';
@@ -28,7 +28,7 @@ const { stringify: toYaml } = await requireOptional(() => import('yaml'), {
   pkg: 'yaml', feature: 'Evals case generation (GenerateCases)', installDir: join(import.meta.dir, '..', '..', '..'),
 });
 
-const DRAFTS_DIR = join(homedir(), '.claude', 'WORKOS', 'USER', 'CUSTOMIZATIONS', 'SKILLS', 'Evals', 'Suites', '_drafts');
+const DRAFTS_DIR = workosPath('USER', 'CUSTOMIZATIONS', 'SKILLS', 'Evals', 'Suites', '_drafts');
 
 interface DraftCase {
   id: string;

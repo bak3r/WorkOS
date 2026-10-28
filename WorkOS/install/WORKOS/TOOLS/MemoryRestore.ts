@@ -12,12 +12,12 @@
  * itself trip the curation guards — it's a recovery path, not a curation write.
  */
 
+import { getClaudeDir } from "./Paths";
 import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 import { parseMemoryContent } from "./MemoryWriter";
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const SNAPSHOT_DIR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-snapshots");
 const TARGETS: Record<string, string> = {
   principal: pathResolve(CLAUDE_ROOT, "WORKOS/USER/PRINCIPAL/PRINCIPAL_MEMORY.md"),

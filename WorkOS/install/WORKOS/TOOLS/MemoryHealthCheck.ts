@@ -21,12 +21,12 @@
  *   - CLI:  bun WORKOS/TOOLS/MemoryHealthCheck.ts
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync, appendFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parseMemoryContent, read as memoryRead, BEGIN_MARKER, END_MARKER } from "./MemoryWriter";
 import { assessCortexEvidence, collectCortexEvidence } from "./CortexHealth";
 import { atomicWriteJSON } from "./lib/atomic-write";
-import { homedir } from "node:os";
 
 // CLI script, not a library: the checks below run at module top level and end in
 // process.exit. Spawn it (MemoryHealthGate does); never import it.
@@ -34,8 +34,7 @@ if (!import.meta.main) {
   throw new Error("MemoryHealthCheck.ts is a CLI script with top-level side effects — spawn it via bun, never import it.");
 }
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE = process.env.CORTEX_HEALTH_ROOT || join(HOME, ".claude");
+const CLAUDE = process.env.CORTEX_HEALTH_ROOT || getClaudeDir();
 const HOOKS_DIR = join(CLAUDE, "hooks");
 const TOOLS_DIR = join(CLAUDE, "WORKOS/TOOLS");
 const OBS_DIR = join(CLAUDE, "WORKOS/MEMORY/OBSERVABILITY");

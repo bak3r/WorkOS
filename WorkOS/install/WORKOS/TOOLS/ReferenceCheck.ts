@@ -24,13 +24,14 @@
  *   2 — scan error (unreadable root, etc)
  */
 
+import { getClaudeDir } from './Paths';
 import { readFileSync, statSync, existsSync, readdirSync, realpathSync } from 'fs';
 import { join, resolve, dirname, relative, extname, sep } from 'path';
 import { execSync } from 'child_process';
 import { homedir } from "node:os";
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_DIR = join(HOME, '.claude');
+const CLAUDE_DIR = getClaudeDir();
 const WORKOS_DIR = join(CLAUDE_DIR, 'WORKOS');
 
 // ── Arg parsing (manual, zero deps) ──

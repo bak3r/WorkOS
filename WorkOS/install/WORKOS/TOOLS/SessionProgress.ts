@@ -9,9 +9,9 @@
  *   bun run ~/.claude/WORKOS/TOOLS/SessionProgress.ts <command> [options]
  */
 
+import { workosPath } from './Paths';
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { homedir } from "node:os";
 
 interface Decision {
   timestamp: string;
@@ -45,7 +45,7 @@ interface SessionProgress {
 }
 
 // Progress files are now in STATE/progress/ (consolidated from MEMORY/PROGRESS/)
-const PROGRESS_DIR = join(homedir(), '.claude', 'WORKOS', 'MEMORY', 'STATE', 'progress');
+const PROGRESS_DIR = workosPath('MEMORY', 'STATE', 'progress');
 
 function getProgressPath(project: string): string {
   return join(PROGRESS_DIR, `${project}-progress.json`);

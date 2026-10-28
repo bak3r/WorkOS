@@ -35,10 +35,10 @@
  * TRIGGER: Stop. Register in USER/CONFIG/settings.user.json Stop array.
  */
 
+import { getWorkosDir } from "./lib/paths";
 import { readHookInput, parseTranscriptFromInput } from "./lib/hook-io";
 import { appendFileSync, existsSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
-import { homedir } from "node:os";
 
 // Normalize env path vars Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -46,7 +46,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
   if (v && /^\$\{?HOME\}?(\/|$)/.test(v)) process.env[k] = v.replace(/^\$\{?HOME\}?/, process.env.HOME ?? "~");
 }
 
-const WORKOS_DIR = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const OBS_PATH = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY", "format-gate.jsonl");
 
 export interface FormatViolation {

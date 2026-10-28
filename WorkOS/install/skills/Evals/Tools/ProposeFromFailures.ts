@@ -15,9 +15,9 @@
  *     principle). The count skipped is printed, never silently dropped.
  */
 
+import { getClaudeDir } from '../../../WORKOS/TOOLS/Paths';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 import { requireOptional } from '../../../WORKOS/TOOLS/lib/optional-dep.ts';
 import { generate } from './GenerateCases.ts';
@@ -27,7 +27,7 @@ const { stringify: toYaml } = await requireOptional(() => import('yaml'), {
   pkg: 'yaml', feature: 'Evals regression-case proposals (ProposeFromFailures)', installDir: join(import.meta.dir, '..', '..', '..'),
 });
 
-const ROOT = join(homedir(), '.claude');
+const ROOT = getClaudeDir();
 const REFLECTIONS = join(ROOT, 'WORKOS/MEMORY/LEARNING/REFLECTIONS/algorithm-reflections.jsonl');
 const ASK_FIDELITY = join(ROOT, 'WORKOS/MEMORY/OBSERVABILITY/ask-fidelity.jsonl');
 const DRAFTS_DIR = join(ROOT, 'WORKOS/USER/CUSTOMIZATIONS/SKILLS/Evals/Suites/_drafts');

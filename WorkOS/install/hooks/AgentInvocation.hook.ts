@@ -58,8 +58,7 @@
 
 import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
-import { paiPath } from './lib/paths';
+import { paiPath, getClaudeDir } from './lib/paths';
 import { getISOTimestamp } from './lib/time';
 import { EFFORT_MODEL } from '../WORKOS/TOOLS/models';
 import { liveModel } from './ModelRungGuard.hook';
@@ -87,7 +86,7 @@ function levelForModel(model: string): string {
 function resolveDispatch(subagentType: string, inputModel?: string): { model: string; level: string } {
   if (inputModel) return { model: inputModel, level: levelForModel(inputModel) };
   try {
-    const fm = readFileSync(join(homedir(), '.claude', 'agents', `${subagentType}.md`), 'utf-8').slice(0, 4000);
+    const fm = readFileSync(join(getClaudeDir(), 'agents', `${subagentType}.md`), 'utf-8').slice(0, 4000);
     const m = fm.match(/^model:\s*(\S+)/m);
     if (m) return { model: m[1], level: `${levelForModel(m[1])}-pin` };
   } catch { /* no agent file — built-in type */ }

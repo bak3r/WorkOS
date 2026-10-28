@@ -30,12 +30,12 @@
  * Subagent skip: the per-turn surface is for the principal's primary session.
  */
 
+import { getClaudeDir } from "./lib/paths";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { resolve as pathResolve, dirname } from "node:path";
-import { homedir } from "node:os";
 import { isSubagentContext as isSubagent } from './lib/subagent';
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const WRITES_LOG = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-writes.jsonl");
 const CURSOR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-delta-cursor.json");
 const HEALTH_LOG = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-health.jsonl");

@@ -35,7 +35,7 @@ import {
   writeRegistry,
   applyAscent,
 } from '../../hooks/lib/isa-utils';
-import { paiPath } from '../../hooks/lib/paths';
+import { paiPath } from './Paths';
 
 const STATE_PATH = paiPath('MEMORY', 'STATE', 'work-reconcile.json');
 const DEBOUNCE_MS = 60_000;

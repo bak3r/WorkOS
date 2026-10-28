@@ -35,12 +35,13 @@
  *   bun MemoryTypes.ts test                # smoke test
  */
 
-import { resolve as pathResolve, join as pathJoin } from "node:path";
+import { getClaudeDir } from "./Paths";
+import { join as pathJoin } from "node:path";
 import { homedir } from "node:os";
 
 // ── Paths ──
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const WORKOS_DIR = pathJoin(CLAUDE_ROOT, "WORKOS");
 const KNOWLEDGE_DIR = pathJoin(WORKOS_DIR, "MEMORY", "KNOWLEDGE");
 

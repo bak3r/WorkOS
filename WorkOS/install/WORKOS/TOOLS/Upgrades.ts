@@ -20,10 +20,10 @@
  * (persist recommendations), WORKOS/TOOLS/CreateUpdate.ts (--upgrade-id).
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
-import { homedir } from "node:os";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -31,7 +31,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
   if (v && /^\$\{?HOME\}?(\/|$)/.test(v)) process.env[k] = v.replace(/^\$\{?HOME\}?/, process.env.HOME ?? "~");
 }
 
-const BASE_DIR = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const BASE_DIR = getWorkosDir();
 const UPGRADES_DIR = join(BASE_DIR, "MEMORY", "UPGRADES");
 const RECORDS_DIR = join(UPGRADES_DIR, "records");
 const STATE_FILE = join(UPGRADES_DIR, ".state.json");

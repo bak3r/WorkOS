@@ -11,9 +11,9 @@
  * No secret values are ever stored — credential references by env-var name only.
  */
 
+import { workosPath } from "../../../WORKOS/TOOLS/Paths";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, realpathSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
-import { homedir } from "node:os";
 
 type Status = "open" | "mitigating" | "accepted" | "closed";
 const STATUSES: Status[] = ["open", "mitigating", "accepted", "closed"];
@@ -62,7 +62,7 @@ export function scoreRisk(likelihood: number, impact: number): { score: number; 
 
 export function resolveDataDir(): string {
   const dir = resolve(
-    process.env.THREATMODEL_DATA_DIR ?? join(homedir(), ".claude", "WORKOS", "USER", "SECURITY", "THREATMODEL"),
+    process.env.THREATMODEL_DATA_DIR ?? workosPath("USER", "SECURITY", "THREATMODEL"),
   );
   // Structural code/data separation: never allow the register inside a skill tree.
   const probe = existsSync(dir) ? realpathSync(dir) : dir;

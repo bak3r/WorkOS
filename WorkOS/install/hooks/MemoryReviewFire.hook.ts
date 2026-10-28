@@ -38,13 +38,13 @@
  * Failure mode: any error logs to stderr and exits 0 (never block Stop).
  */
 
+import { getClaudeDir } from "./lib/paths";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { dirname, join, resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 import { isSubagentContext as isSubagent } from './lib/subagent';
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const STATE_PATH = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/review-state.json");
 const SESSION_STATE_DIR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/STATE/memory-review");
 const CONFIG_PATH = pathResolve(CLAUDE_ROOT, "WORKOS/USER/CONFIG/memory-review.json");

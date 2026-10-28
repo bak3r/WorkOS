@@ -15,12 +15,12 @@
  * fires log and on stderr.
  */
 
+import { getClaudeDir } from './Paths';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { homedir } from 'node:os';
 import { runSuite } from '../../skills/Evals/Tools/EvalRunner.ts';
 
-const CLAUDE_ROOT = join(homedir(), '.claude');
+const CLAUDE_ROOT = getClaudeDir();
 const RESULTS_DIR = join(CLAUDE_ROOT, 'WORKOS', 'MEMORY', 'STATE', 'Evals-Results');
 const LOCK = join(RESULTS_DIR, '.config-eval.lock');
 const LOG = join(CLAUDE_ROOT, 'WORKOS', 'MEMORY', 'OBSERVABILITY', 'config-eval-fires.jsonl');

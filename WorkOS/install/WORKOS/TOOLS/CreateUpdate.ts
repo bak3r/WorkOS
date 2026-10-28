@@ -16,14 +16,14 @@
  *   --stdin             Accept full input as JSON via stdin (for automation)
  */
 
+import { getWorkosDir } from "./Paths";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { parseArgs } from "util";
-import { homedir } from "node:os";
 
 // WORKOS_DIR already IS .../WORKOS — fallback must match UpdateIndex.ts, else the
 // two tools fork the registry in a bare environment (found 2026-07-19 Ledger unification).
-const WORKOS_DIR = process.env.WORKOS_DIR || `${homedir()}/.claude/WORKOS`;
+const WORKOS_DIR = getWorkosDir();
 const UPDATES_DIR = join(WORKOS_DIR, "MEMORY/SYSTEMUPDATES");
 const INDEX_PATH = join(UPDATES_DIR, "INDEX.md");
 

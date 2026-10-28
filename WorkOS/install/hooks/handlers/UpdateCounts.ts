@@ -21,8 +21,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
-import { getWorkosDir } from '../lib/paths';
-import { homedir } from "node:os";
+import { getWorkosDir, getClaudeDir } from '../lib/paths';
 
 /**
  * Refresh usage cache from Anthropic OAuth API.
@@ -43,7 +42,7 @@ async function refreshUsageCache(paiDir: string): Promise<void> {
         { encoding: 'utf-8', timeout: 3000 }
       ).trim();
     } else {
-      const credPath = join(homedir(), '.claude', '.credentials.json');
+      const credPath = join(getClaudeDir(), '.credentials.json');
       credJson = readFileSync(credPath, 'utf-8').trim();
     }
 

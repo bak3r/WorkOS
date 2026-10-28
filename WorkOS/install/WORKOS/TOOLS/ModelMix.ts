@@ -43,13 +43,12 @@
  * ============================================================================
  */
 
+import { getClaudeDir, getWorkosDir } from './Paths';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync, rmSync, openSync, readSync, closeSync } from 'fs';
 import { join, dirname } from 'path';
 import { EFFORT_MODEL, CURRENT, type EffortLevel, type ClaudeTier } from './models.ts';
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const PROJECTS_DIR = join(HOME, '.claude', 'projects');
+const PROJECTS_DIR = join(getClaudeDir(), 'projects');
 
 /**
  * Resolved per call, not at import: the statusline and the tests both set
@@ -57,7 +56,7 @@ const PROJECTS_DIR = join(HOME, '.claude', 'projects');
  * pinned every caller to whatever it was at import time.
  */
 const stateDir = () =>
-  join(process.env.WORKOS_DIR || join(HOME, '.claude', 'WORKOS'), 'MEMORY', 'STATE', 'model-mix');
+  join(getWorkosDir(), 'MEMORY', 'STATE', 'model-mix');
 
 /** Rungs in display order, low → max, matching the statusline ladder. */
 export const RUNGS: EffortLevel[] = ['low', 'medium', 'high', 'max'];

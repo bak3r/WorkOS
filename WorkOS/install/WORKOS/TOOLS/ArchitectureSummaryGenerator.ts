@@ -18,6 +18,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun ArchitectureSummaryGenerator.ts check
  */
 
+import { getClaudeDir, getWorkosDir } from "./Paths";
 import { parseArgs } from "util";
 import * as fs from "fs";
 import * as path from "path";
@@ -35,12 +36,12 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 // ============================================================================
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || path.join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const ARCH_SOURCE = path.join(WORKOS_DIR, "DOCUMENTATION", "WorkosSystemArchitecture.md");
 const SUMMARY_OUTPUT = path.join(WORKOS_DIR, "DOCUMENTATION", "ARCHITECTURE_SUMMARY.md");
 const ALGORITHM_DIR = path.join(WORKOS_DIR, "ALGORITHM");
 const MEMORY_SYSTEM_DOC = path.join(WORKOS_DIR, "DOCUMENTATION", "Memory", "MemorySystem.md");
-const CLAUDE_MD = path.join(HOME, ".claude", "CLAUDE.md");
+const CLAUDE_MD = path.join(getClaudeDir(), "CLAUDE.md");
 
 // ============================================================================
 // Version detection (source-of-truth lookups — no hardcoded versions)
@@ -274,7 +275,7 @@ function cmdCheck(): void {
 
   const sourceMtime = getMtime(ARCH_SOURCE);
   const summaryMtime = getMtime(SUMMARY_OUTPUT);
-  const claudeMdMtime = getMtime(path.join(HOME, ".claude", "CLAUDE.md"));
+  const claudeMdMtime = getMtime(path.join(getClaudeDir(), "CLAUDE.md"));
 
   if (sourceMtime > summaryMtime || claudeMdMtime > summaryMtime) {
     console.log("STALE: Source files are newer than summary");

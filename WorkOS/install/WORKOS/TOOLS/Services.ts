@@ -17,12 +17,13 @@
  *
  * ported from public PR #1705, @takanorinishida
  */
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 const HOME = homedir();
-const CLAUDE = join(HOME, ".claude");
+const CLAUDE = getClaudeDir();
 const WORKOS = join(CLAUDE, "WORKOS");
 const TOOLS = join(WORKOS, "TOOLS");
 const SYSTEMD_USER = join(HOME, ".config", "systemd", "user");

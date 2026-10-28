@@ -19,6 +19,7 @@
 import { existsSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { homedir } from "node:os";
+import { workosPath } from "./Paths";
 
 // Expand leading `~` (and `~/`) to the user's home directory. node:fs APIs do
 // not expand tildes, so any path returned from this loader must be absolute.
@@ -67,7 +68,7 @@ export interface WorkosConfig {
 // ─────────── Resolution ───────────
 
 const DEFAULT_HOME = process.env.HOME || homedir();
-const DEFAULT_CONFIG_PATH = resolve(DEFAULT_HOME, ".claude/WORKOS/USER/CONFIG/WORKOS_CONFIG.toml");
+const DEFAULT_CONFIG_PATH = workosPath("USER", "CONFIG", "WORKOS_CONFIG.toml");
 
 let cache: { config: WorkosConfig; mtime: number; path: string } | null = null;
 
@@ -115,7 +116,7 @@ export function paiUserDir(): string {
   try {
     return loadWorkosConfig().paths.userDir;
   } catch {
-    return resolve(DEFAULT_HOME, ".claude/WORKOS/USER");
+    return workosPath("USER");
   }
 }
 
@@ -168,7 +169,7 @@ function validateAndNormalize(raw: unknown, path: string): WorkosConfig {
     },
     paths: {
       userDir: expandHome(
-        root.paths?.userDir ?? root.paths?.user_dir ?? resolve(DEFAULT_HOME, ".claude/WORKOS/USER"),
+        root.paths?.userDir ?? root.paths?.user_dir ?? workosPath("USER"),
       ),
       projectsDir: expandHome(
         root.paths?.projectsDir ?? root.paths?.projects_dir ?? defaultProjectsDir(),

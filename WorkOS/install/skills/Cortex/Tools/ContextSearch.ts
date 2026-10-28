@@ -1,12 +1,13 @@
 #!/usr/bin/env bun
 /// <reference types="bun-types" />
 declare const Bun: any;
+import { getClaudeDir } from "../../../WORKOS/TOOLS/Paths";
 import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
 
 const HOME = homedir();
-const WORKOS_DIR = join(HOME, ".claude");
+const WORKOS_DIR = getClaudeDir();
 const STATE_DIR = join(WORKOS_DIR, "WORKOS", "MEMORY", "STATE");
 const WORK_DIR = join(WORKOS_DIR, "WORKOS", "MEMORY", "WORK");
 // Claude Code writes one transcript dir per working directory under
@@ -479,7 +480,7 @@ async function searchProjectIsas(tokens: string[], since: Date | null, until: Da
 async function searchJsonl(tokens: string[], since: Date | null, until: Date | null = null): Promise<Result[]> {
   if (tokens.length === 0 || !existsSync(PROJECTS_ROOT)) return [];
   const realDir = PROJECTS_ROOT;
-  if (!realDir.startsWith(join(HOME, ".claude", "projects"))) return [];
+  if (!realDir.startsWith(join(getClaudeDir(), "projects"))) return [];
   const pattern = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
   const out = await ripgrep(pattern, realDir, ["--glob", "*.jsonl", "-c"]);
   const byFile = new Map<string, { hits: number; path: string }>();

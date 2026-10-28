@@ -16,12 +16,12 @@
  *   bun KnowledgeLint.ts --dir Research # limit to one dir
  */
 
+import { workosPath } from "./Paths";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { resolve as pathResolve, join as pathJoin } from "node:path";
-import { homedir } from "node:os";
+import { join as pathJoin } from "node:path";
 import { parseNote, validate, DIR_TO_TYPE, ALL_DIRS, slugFromPath, SCHEMA_VERSION, type CanonicalType } from "./KnowledgeSchema";
 
-const KNOWLEDGE_DIR = pathResolve(homedir(), ".claude/WORKOS/MEMORY/KNOWLEDGE");
+const KNOWLEDGE_DIR = workosPath("MEMORY", "KNOWLEDGE");
 const DIRS = ALL_DIRS;
 
 function listNotes(dir: string): string[] {

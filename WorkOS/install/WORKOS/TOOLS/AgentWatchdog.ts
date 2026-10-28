@@ -24,9 +24,9 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   })
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, readFileSync, statSync } from "fs";
 import { join } from "path";
-import { homedir } from "node:os";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -35,7 +35,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 }
 
 
-const WORKOS_DIR = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const OBS_DIR = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY");
 const ACTIVITY_FILE = join(OBS_DIR, "tool-activity.jsonl");
 const STARTS_FILE = join(OBS_DIR, "subagent-starts.json");

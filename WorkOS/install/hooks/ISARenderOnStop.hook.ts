@@ -18,13 +18,13 @@
  * and never awaited.
  */
 
+import { workosPath } from './lib/paths';
 import { readFileSync, existsSync, unlinkSync } from 'fs';
 import { spawn } from 'child_process';
-import { homedir } from 'os';
 import { join, dirname } from 'path';
 
-const STATE_DIR = join(homedir(), '.claude/WORKOS/MEMORY/STATE/isa-render-debounce');
-const ISA_RENDER = join(homedir(), '.claude/WORKOS/TOOLS/ISARender.ts');
+const STATE_DIR = workosPath('MEMORY', 'STATE', 'isa-render-debounce');
+const ISA_RENDER = workosPath('TOOLS', 'ISARender.ts');
 
 /**
  * Has this ISA reached completion at least once? This is the real gate the
@@ -109,7 +109,7 @@ try { unlinkSync(stateFile); } catch {}
 if (rendered.length || skipped.length) {
   try {
     const { appendFileSync, mkdirSync } = require('fs');
-    const logDir = join(homedir(), '.claude/WORKOS/MEMORY/OBSERVABILITY');
+    const logDir = workosPath('MEMORY', 'OBSERVABILITY');
     mkdirSync(logDir, { recursive: true });
     appendFileSync(join(logDir, 'isa-render.jsonl'),
       JSON.stringify({

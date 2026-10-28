@@ -39,6 +39,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * ============================================================================
  */
 
+import { getClaudeDir, getWorkosDir, workosPath } from "./Paths";
 import { parseArgs } from "util";
 import * as fs from "fs";
 import * as path from "path";
@@ -56,7 +57,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 // ============================================================================
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || path.join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const KNOWLEDGE_DIR = path.join(WORKOS_DIR, "MEMORY", "KNOWLEDGE");
 const DOMAINS = ["People", "Companies", "Ideas", "Research"];
 
@@ -574,8 +575,8 @@ function formatResults(
 // dual-tier prefetch, no graph traversal on hot path).
 
 const MEMORY_FILES: ReadonlyArray<{ path: string; title: string }> = [
-  { path: path.join(HOME, ".claude", "WORKOS", "USER", "PRINCIPAL", "PRINCIPAL_MEMORY.md"), title: "Principal Memory" },
-  { path: path.join(HOME, ".claude", "WORKOS", "USER", "DIGITAL_ASSISTANT", "DA_MEMORY.md"), title: "DA Memory" },
+  { path: workosPath("USER", "PRINCIPAL", "PRINCIPAL_MEMORY.md"), title: "Principal Memory" },
+  { path: workosPath("USER", "DIGITAL_ASSISTANT", "DA_MEMORY.md"), title: "DA Memory" },
 ];
 
 const RELEVANT_CACHE_TTL_MS = 60_000;
@@ -758,7 +759,7 @@ function formatRelevantBlock(results: RelevantResultItem[]): string {
   if (results.length === 0) return "";
   const lines: string[] = ["## RELEVANT MEMORY"];
   for (const r of results) {
-    const shortPath = r.path.replace(HOME + "/.claude/", "");
+    const shortPath = r.path.replace(getClaudeDir() + "/", "");
     lines.push("");
     // A learning hit is labelled by class rather than by its (usually absent)
     // frontmatter type, so the injected block reads as a historical record

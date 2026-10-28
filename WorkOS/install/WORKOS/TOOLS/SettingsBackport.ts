@@ -45,13 +45,13 @@
  *   bun SettingsBackport.ts --dry-run  # report drift, write nothing
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import os from "node:os";
 import { mergeSettings, deepEqual, parseJsonFileOrThrow, MERGE_SNAPSHOT_PATH } from "./MergeSettings";
 import { atomicWriteText } from "./lib/atomic-write";
 
-const CLAUDE_DIR = path.join(os.homedir(), ".claude");
+const CLAUDE_DIR = getClaudeDir();
 const SYSTEM_PATH = path.join(CLAUDE_DIR, "settings.system.json");
 const USER_PATH = path.join(CLAUDE_DIR, "WORKOS", "USER", "CONFIG", "settings.user.json");
 const GENERATED_PATH = path.join(CLAUDE_DIR, "settings.json");

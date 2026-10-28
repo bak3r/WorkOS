@@ -35,6 +35,7 @@
  *   bun MemoryWriter.ts test    (runs built-in smoke test)
  */
 
+import { getClaudeDir } from "./Paths";
 import {
   appendFileSync,
   closeSync,
@@ -50,11 +51,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 
 // ── Constants ──
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 
 const ALLOWED_FILES = new Set<string>([
   pathResolve(CLAUDE_ROOT, "WORKOS/USER/PRINCIPAL/PRINCIPAL_MEMORY.md"),

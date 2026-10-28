@@ -22,12 +22,11 @@
  *   3  action required: detect-only migrations are pending; NOTHING was modified
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync, lstatSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? homedir();
-const CLAUDE_ROOT = join(HOME, ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 
 interface MigrationContext {
   claudeRoot: string;

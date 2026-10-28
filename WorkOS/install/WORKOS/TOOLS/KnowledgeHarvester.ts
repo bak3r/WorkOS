@@ -33,6 +33,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun KnowledgeHarvester.ts status
  */
 
+import { getClaudeDir, getWorkosDir } from "./Paths";
 import { parseArgs } from "util";
 import * as fs from "fs";
 import * as path from "path";
@@ -50,7 +51,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 // ============================================================================
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || path.join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const MEMORY_DIR = path.join(WORKOS_DIR, "MEMORY");
 const KNOWLEDGE_DIR = path.join(MEMORY_DIR, "KNOWLEDGE");
 const WORK_DIR = path.join(MEMORY_DIR, "WORK");
@@ -59,7 +60,7 @@ const RESEARCH_DIR = path.join(MEMORY_DIR, "RESEARCH");
 const HARVEST_QUEUE_DIR = path.join(KNOWLEDGE_DIR, "_harvest-queue");
 const ARCHIVE_DIR = path.join(KNOWLEDGE_DIR, "_archive");
 
-const PROJECTS_DIR = path.join(HOME, ".claude", "projects");
+const PROJECTS_DIR = path.join(getClaudeDir(), "projects");
 
 /**
  * Single-pass backlink index over KNOWLEDGE/ (public PR #1574, @asdf8675309).

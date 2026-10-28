@@ -28,6 +28,7 @@
  *
  * Exit codes: 0 decision made or list printed, 1 bad usage or refused decision.
  */
+import { getClaudeDir } from "./Paths";
 import {
   acceptProposal,
   editProposal,
@@ -38,10 +39,9 @@ import {
   type ProposalRow,
 } from "./lib/memory-proposals";
 
-const HOME = process.env.HOME ?? "";
 
 function shortFile(row: ProposalRow): string {
-  return row.target_file.replace(`${HOME}/.claude/`, "").replace(/^.*\/WORKOS\//, "WORKOS/");
+  return row.target_file.replace(`${getClaudeDir()}/`, "").replace(/^.*\/WORKOS\//, "WORKOS/");
 }
 
 function truncate(s: string, n: number): string {

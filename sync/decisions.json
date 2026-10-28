@@ -1,4 +1,18 @@
 {
+  "hooks/ComplexityRatchet.hook.ts": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "ccf43f9072d926da85996b5bef040191ac22bbd5",
+    "reason": "Principal decision 2026-10-28: keep.",
+    "at": "2026-10-28T10:21:01.979Z"
+  },
+  "hooks/ISACloseGate.hook.ts": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "53abfa5fa11070a430d8d5a501e32227a58b2038",
+    "reason": "Principal decision 2026-10-28: keep for now; revisit with the Phase 3 ISA gates.",
+    "at": "2026-10-28T10:21:06.686Z"
+  },
   "hooks/lib/data-classification.ts": {
     "as": "keep-local",
     "target": "v8.761.0",
@@ -12,5 +26,19 @@
     "localSha": "75eee698b2bae22b0239ee462cbac2dab71de0df",
     "reason": "Safety.hook.ts imports SECRET_VALUE_SHAPES from it for the MCP secret scan; WorkOS keeps Safety.hook, which upstream deleted.",
     "at": "2026-10-28T10:11:36.184Z"
+  },
+  "hooks/ModelRungGuard.hook.ts": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "f01da54d2c456cdc26f53cc9e6a33259247fe4e8",
+    "reason": "Principal decision 2026-10-28: keep for now; revisit with the Phase 3 ISA gates.",
+    "at": "2026-10-28T10:21:08.555Z"
+  },
+  "hooks/TaskGovernance.hook.ts": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "e1323a9292d035f9beacbf8ccc1e0a039dd3cc96",
+    "reason": "Principal decision 2026-10-28: keep.",
+    "at": "2026-10-28T10:21:04.210Z"
   }
 }

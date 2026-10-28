@@ -15,6 +15,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun ~/.claude/WORKOS/TOOLS/MigrateContextFreshness.ts --dry-run
  */
 
+import { getWorkosDir } from "./Paths";
 import { createHash } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { basename, dirname, join, relative } from "path";
@@ -34,7 +35,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const CLAUDE_DIR = dirname(WORKOS_DIR);
 const SEED_ISO = "2026-05-03T23:00:00-07:00";
 const BACKUP_TS = "2026-05-03-23-00-00";

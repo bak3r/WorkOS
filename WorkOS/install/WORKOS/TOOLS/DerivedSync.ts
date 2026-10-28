@@ -5,6 +5,7 @@
  * No-op runs are intentionally silent because the systemd .path watch can fire often.
  */
 
+import { getClaudeDir } from "./Paths";
 import { createHash } from "node:crypto";
 import {
   appendFileSync,
@@ -16,7 +17,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 
 type SpawnReadable = ReadableStream<Uint8Array> | null;
 type SpawnProcess = {
@@ -75,8 +75,7 @@ type RunSummary = {
   ts: string;
 };
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_DIR = join(HOME, ".claude");
+const CLAUDE_DIR = getClaudeDir();
 const WORKOS_DIR = join(CLAUDE_DIR, "WORKOS");
 const USER_DIR = join(WORKOS_DIR, "USER");
 const TOOLS_DIR = join(WORKOS_DIR, "TOOLS");

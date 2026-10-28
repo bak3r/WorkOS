@@ -30,12 +30,12 @@
  *   readPatchRegistry, appendPatchRegistry, buildReport
  */
 
+import { getWorkosDir } from "./Paths";
 import * as fs from "fs";
 import * as path from "path";
-import { homedir } from "os";
 
 // ── Paths (WORKOS_DIR override mirrors the hook/test convention) ────────────
-const WORKOS_DIR = process.env.WORKOS_DIR ?? path.join(homedir(), ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const MEMORY_DIR = path.join(WORKOS_DIR, "MEMORY");
 const OBS_DIR = path.join(MEMORY_DIR, "OBSERVABILITY");
 const FAILURES_DIR = path.join(MEMORY_DIR, "LEARNING", "FAILURES");

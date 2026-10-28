@@ -20,6 +20,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun ArchDecisionHarvest.ts --selftest
  */
 
+import { getWorkosDir } from "./Paths";
 import { parseArgs } from "util";
 import { spawnSync } from "child_process";
 import * as fs from "fs";
@@ -39,7 +40,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 // ============================================================================
 
 const HOME = homedir() || os.homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || path.join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const DEFAULT_WORK_DIR = path.join(WORKOS_DIR, "MEMORY", "WORK");
 const DEFAULT_ARCH_DOC = path.join(WORKOS_DIR, "DOCUMENTATION", "WorkosSystemArchitecture.md");
 const ARCH_DECISIONS_HEADING = "## Architecture Decisions";

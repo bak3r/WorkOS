@@ -16,6 +16,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *
  * Atomic write via temp-file + rename.
  */
+import { getWorkosDir } from "./Paths";
 import { writeFileSync, renameSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import { readContextFreshness } from "./TelosFreshness";
@@ -29,7 +30,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const CACHE_DIR = join(WORKOS_DIR, "USER", "CACHE");
 const CACHE_PATH = join(CACHE_DIR, "freshness.json");
 

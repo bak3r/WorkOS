@@ -17,11 +17,11 @@
  * - Creates SYSTEMUPDATES entry with AI-generated narrative
  */
 
+import { getWorkosDir, workosPath } from './Paths';
 import { spawn } from 'child_process';
 import { readFileSync, existsSync } from 'fs';
 import { join, basename, dirname } from 'path';
 import { inference } from './Inference';
-import { homedir } from "node:os";
 
 // ============================================================================
 // Types
@@ -107,9 +107,9 @@ interface UpdateData {
 // Constants
 // ============================================================================
 
-const WORKOS_DIR = homedir() + '/.claude/WORKOS';
+const WORKOS_DIR = getWorkosDir();
 // NOT under WORKOS_DIR — skills/ lives at the ~/.claude root, not under WORKOS/.
-const CREATE_UPDATE_SCRIPT = join(homedir(), '.claude/WORKOS/TOOLS/CreateUpdate.ts');
+const CREATE_UPDATE_SCRIPT = workosPath('TOOLS', 'CreateUpdate.ts');
 
 // Words that indicate generic/bad titles - reject these
 const GENERIC_TITLE_PATTERNS = [

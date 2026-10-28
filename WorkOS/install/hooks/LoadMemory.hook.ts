@@ -18,13 +18,13 @@
  * via env markers the harness sets on subagent processes.
  */
 
+import { getClaudeDir } from "./lib/paths";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 import { isSubagentContext as isSubagentInvocation } from './lib/subagent';
 import { parseMemoryContent } from "../WORKOS/TOOLS/MemoryWriter";
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const PRINCIPAL_MEMORY = pathResolve(CLAUDE_ROOT, "WORKOS/USER/PRINCIPAL/PRINCIPAL_MEMORY.md");
 const DA_MEMORY = pathResolve(CLAUDE_ROOT, "WORKOS/USER/DIGITAL_ASSISTANT/DA_MEMORY.md");
 

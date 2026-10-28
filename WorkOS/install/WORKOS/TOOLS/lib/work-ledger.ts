@@ -19,7 +19,7 @@
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { getWorkosDir } from "../../../hooks/lib/paths";
+import { getWorkosDir } from "../Paths";
 import { atomicWriteText } from "./atomic-write";
 
 export const ITEM_TYPES = [

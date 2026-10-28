@@ -36,12 +36,12 @@
  *   bun KnowledgeQuery.ts --status inbox --count
  */
 
+import { workosPath } from "./Paths";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { resolve as pathResolve, join as pathJoin } from "node:path";
-import { homedir } from "node:os";
+import { join as pathJoin } from "node:path";
 import { parseNote, slugFromPath, ALL_DIRS, type ParsedNote } from "./KnowledgeSchema";
 
-const KNOWLEDGE_DIR = pathResolve(homedir(), ".claude/WORKOS/MEMORY/KNOWLEDGE");
+const KNOWLEDGE_DIR = workosPath("MEMORY", "KNOWLEDGE");
 const DIRS = ALL_DIRS;
 
 interface Rec {

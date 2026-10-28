@@ -23,7 +23,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
 import { parseArgs } from 'util';
-import { homedir } from "node:os";
+import { getWorkosDir } from "./Paths";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -32,7 +32,9 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 }
 
 
-const BASE_DIR = process.env.WORKOS_DIR || join(homedir(), '.claude');
+// Was WORKOS_DIR || ~/.claude, which put MEMORY at ~/.claude/MEMORY when WORKOS_DIR was unset
+// (upstream fixed the same bug in FailureCapture, issue #1974).
+const BASE_DIR = getWorkosDir();
 const FRAMES_DIR = join(BASE_DIR, 'MEMORY', 'WISDOM', 'FRAMES');
 
 // ── Domain Keyword Map ──

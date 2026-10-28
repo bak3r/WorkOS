@@ -18,9 +18,9 @@
  * via `not-*` and negative cases. Read transcripts — every run persists them.
  */
 
+import { getClaudeDir } from '../../../WORKOS/TOOLS/Paths';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 import { evaluateDeterministic, isModelAssert, type Assertion, type AssertResult } from './Assertions.ts';
 import { judgeAssertion } from './Judge.ts';
@@ -28,7 +28,7 @@ import { inference, type InferenceLevel } from '../../../WORKOS/TOOLS/Inference.
 
 const parseYaml = (s: string): any => Bun.YAML.parse(s); // built-in; identical to the yaml package for suite files
 
-const CLAUDE_ROOT = join(homedir(), '.claude');
+const CLAUDE_ROOT = getClaudeDir();
 const RESULTS_DIR = join(CLAUDE_ROOT, 'WORKOS', 'MEMORY', 'STATE', 'Evals-Results');
 const USER_SUITES = join(CLAUDE_ROOT, 'WORKOS', 'USER', 'CUSTOMIZATIONS', 'SKILLS', 'Evals', 'Suites');
 const SKILL_SUITES = join(import.meta.dir, '..', 'Suites');

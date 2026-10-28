@@ -14,6 +14,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun ~/.claude/WORKOS/TOOLS/ContextAudit.ts --json
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { basename, dirname, join } from "path";
 import { CONTEXT_FRESHNESS_REGISTRY, parseFrontmatter, type ContextFile } from "./TelosFreshness";
@@ -28,7 +29,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const CLAUDE_DIR = dirname(WORKOS_DIR);
 // Stable, non-dated report location (public issue #1559, @tzioup, C5): the
 // previous path was a hardcoded dated WORK-session slug that this tool

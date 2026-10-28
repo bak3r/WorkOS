@@ -17,10 +17,10 @@
  * - Staleness detection via timestamp (Vex's TTL requirement)
  */
 
+import { getSettingsPath } from './Paths';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { paiUserDir } from './WorkosConfig';
-import { homedir } from "node:os";
 
 const TELOS_DIR = join(paiUserDir(), 'TELOS');
 const OUTPUT_PATH = join(TELOS_DIR, 'PRINCIPAL_TELOS.md');
@@ -589,7 +589,7 @@ function principalDisplayName(): string {
   }
   if (coreName) return coreName;
   try {
-    const settings = JSON.parse(readFileSync(join(homedir(), '.claude', 'settings.json'), 'utf-8'));
+    const settings = JSON.parse(readFileSync(getSettingsPath(), 'utf-8'));
     const name = settings?.principal?.name;
     if (typeof name === 'string' && name.trim() && !looksLikeToken(name)) return name.trim();
   } catch { /* no settings.json — fall through */ }

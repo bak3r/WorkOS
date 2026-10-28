@@ -19,18 +19,18 @@
  *   bun run SessionHarvester.ts --mine --recent 10 --dry-run
  */
 
+import { getClaudeDir } from "./Paths";
 import { parseArgs } from "util";
 import * as fs from "fs";
 import * as path from "path";
 import { getLearningCategory, isLearningCapture } from "../../hooks/lib/learning-utils";
 import { ingestCaptureEnvelope } from "./CaptureEnvelope";
-import { homedir } from "node:os";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const CLAUDE_DIR = path.join(homedir(), ".claude");
+const CLAUDE_DIR = getClaudeDir();
 // Derive the project slug dynamically from CLAUDE_DIR (works on macOS and Linux)
 // macOS: ${HOME}/.claude → ${HARNESS_USER_DIR}
 // Linux: ${HOME}/.claude → ${HARNESS_USER_DIR}

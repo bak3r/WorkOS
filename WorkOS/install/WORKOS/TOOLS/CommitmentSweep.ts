@@ -25,6 +25,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * Read-only over the ledger. Always exits 0; failures log but never propagate.
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, mkdirSync, appendFileSync } from "fs";
 import { join } from "path";
 import { loadWorkConfig } from "../../hooks/lib/work-config";
@@ -39,7 +40,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const OBS_DIR = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY");
 const OBS_LOG = join(OBS_DIR, "commitment-digest.jsonl");
 

@@ -15,14 +15,13 @@
  *   bun WORKOS/TOOLS/SyncIdentityToSettings.ts          # silent unless changed
  *   bun WORKOS/TOOLS/SyncIdentityToSettings.ts --verbose
  */
+import { getSettingsPath } from './Paths';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 import { paiUserDir } from './WorkosConfig';
 
-const HOME = homedir();
 const PRINCIPAL_PATH = join(paiUserDir(), 'PRINCIPAL/PRINCIPAL_IDENTITY.md');
-const SETTINGS_PATH = join(HOME, '.claude/settings.json');
+const SETTINGS_PATH = getSettingsPath();
 const VERBOSE = process.argv.includes('--verbose');
 
 function snakeToCamel(s: string): string {

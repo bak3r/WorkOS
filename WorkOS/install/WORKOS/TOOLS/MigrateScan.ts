@@ -26,6 +26,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun MigrateScan.ts --source X --dry-run      Preview without writing queue
  */
 
+import { getWorkosDir } from "./Paths";
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync, appendFileSync } from "fs";
 import { join, basename, dirname, extname } from "path";
 import { randomUUID } from "crypto";
@@ -40,7 +41,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const QUEUE_FILE = join(WORKOS_DIR, "MEMORY", "MIGRATION", "migration-proposals.jsonl");
 
 type Target =

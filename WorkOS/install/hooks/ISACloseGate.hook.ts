@@ -27,6 +27,7 @@
  * TRIGGER: Stop (evaluated inside StopGates.hook.ts, after VerificationGate)
  */
 
+import { getWorkosDir } from "./lib/paths";
 import { readHookInput, type HookInput } from "./lib/hook-io";
 import { splitIntoUnits, stripNoise, unitIsClaimable } from "./VerificationGate.hook";
 import { parseTurnEvents, spawnedAgent, type TxEvent } from "./lib/transcript-evidence";
@@ -34,9 +35,8 @@ import { findActiveSessionByUUID } from "./lib/isa-utils";
 import { appendFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { createHash } from "crypto";
-import { homedir } from "node:os";
 
-const WORKOS = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS = getWorkosDir();
 const OBS_PATH = join(WORKOS, "MEMORY", "OBSERVABILITY", "isa-close-gate.jsonl");
 const STATE_PATH = join(WORKOS, "MEMORY", "STATE", "isa-close-gate-blocked.json");
 const NUDGE_STATE_DIR = join(WORKOS, "MEMORY", "STATE", "isa-nudge");

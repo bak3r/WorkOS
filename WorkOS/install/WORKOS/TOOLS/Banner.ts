@@ -7,16 +7,15 @@
  * render all variants with --test.
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { spawnSync } from "child_process";
 // Bun's built-in YAML (bun >= 1.2.21): no npm package, so a deny-all sandbox
 // without node_modules still loads this file.
 const parseYaml = (s: string): any => Bun.YAML.parse(s);
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_DIR = join(HOME, ".claude");
+const CLAUDE_DIR = getClaudeDir();
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Terminal Width Detection

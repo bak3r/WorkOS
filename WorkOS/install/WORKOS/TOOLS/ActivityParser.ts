@@ -13,16 +13,16 @@
  *   bun run ActivityParser.ts --session abc-123
  */
 
+import { getClaudeDir } from "./Paths";
 import { parseArgs } from "util";
 import * as fs from "fs";
 import * as path from "path";
-import { homedir } from "node:os";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const CLAUDE_DIR = path.join(homedir(), ".claude");
+const CLAUDE_DIR = getClaudeDir();
 const MEMORY_DIR = path.join(CLAUDE_DIR, "WORKOS", "MEMORY");
 const USERNAME = process.env.USER || require("os").userInfo().username;
 const PROJECTS_DIR = path.join(CLAUDE_DIR, "projects", `-Users-${USERNAME}--claude`);  // Claude Code native storage

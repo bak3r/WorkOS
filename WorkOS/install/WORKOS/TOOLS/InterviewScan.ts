@@ -23,6 +23,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun InterviewScan.ts --file <path>   Deep-scan single file
  */
 
+import { getWorkosDir, getEnvPath } from "./Paths";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { readTelosFreshness, sectionSlug, legacyTelosFilePath, type SectionFreshness } from "./TelosFreshness";
@@ -37,7 +38,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const USER_DIR = join(WORKOS_DIR, "USER");
 const TELOS_DIR = join(USER_DIR, "TELOS");
 const TELOS_PATH = join(TELOS_DIR, "TELOS.md");
@@ -97,7 +98,7 @@ const REGISTRY: RegistryTarget[] = [
               "One-line role / what you do at work?",
               "Your team — its name, what it owns, and the systems you are responsible for?",
               "One-line focus — what you're working on right now?"] },
-  { phase: 0, path: join(HOME, ".claude", ".env"), name: ".env/credentials", category: "setup", leverage: 10,
+  { phase: 0, path: getEnvPath(), name: ".env/credentials", category: "setup", leverage: 10,
     prompts: ["Model access comes from the harness's own auth (e.g. Bedrock in the sandbox) — nothing to store here. Which optional skill keys do you use (APIFY_TOKEN, BRIGHTDATA_API_KEY)? Paste them here (will write to .env, won't echo back).",
               "GH_TOKEN — optional, only if you want the work pipeline. Skip if not using GitHub issues.",
               "Any other API tokens your work tooling needs stored?"] },

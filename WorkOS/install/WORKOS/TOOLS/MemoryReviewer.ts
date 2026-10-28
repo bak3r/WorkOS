@@ -30,6 +30,7 @@
  *   bun MemoryReviewer.ts test --live                (real inference smoke — costs subscription)
  */
 
+import { getClaudeDir, workosPath } from "./Paths";
 import {
   appendFileSync,
   existsSync,
@@ -40,7 +41,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename as pathBasename, dirname, join as pathJoin, resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 
 import { add as memoryAdd, sanitizeTypedItemForPersistence, type AddResult } from "./MemorySystem";
 import { read as memoryWriterRead } from "./MemoryWriter";
@@ -56,8 +56,8 @@ import {
 
 // ── Constants ──
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
-const HARNESS_PROJECTS_DIR = pathResolve(homedir(), ".claude", "projects");
+const CLAUDE_ROOT = getClaudeDir();
+const HARNESS_PROJECTS_DIR = pathResolve(getClaudeDir(), "projects");
 const RUNS_LOG_PATH = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/reviewer-runs.jsonl");
 const RUNS_DEBUG_DIR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/reviewer-runs");
 const REVIEW_CONFIG_PATH = pathResolve(CLAUDE_ROOT, "WORKOS/USER/CONFIG/memory-review.json");
@@ -817,7 +817,7 @@ async function smokeTest(): Promise<number> {
   const mockResponse = JSON.stringify({
     items: [
       { type: "memory", actor: "principal", content: "PREFERENCE: smoke E2E mock" },
-      { type: "proposal", target_file: pathJoin(homedir(), ".claude/WORKOS/USER/PRINCIPAL/PRINCIPAL_IDENTITY.md"), edit: "RULE: E2E mock", confidence: 0.5, rationale: "smoke" },
+      { type: "proposal", target_file: workosPath("USER", "PRINCIPAL", "PRINCIPAL_IDENTITY.md"), edit: "RULE: E2E mock", confidence: 0.5, rationale: "smoke" },
     ],
   });
 

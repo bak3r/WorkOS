@@ -44,11 +44,14 @@ import { createHash, randomBytes } from 'crypto';
 import { homedir } from "node:os";
 import { jiraGet } from './lib/work-context';
 import { NPM_DEPS, isInstalled } from './lib/optional-dep';
+import { getClaudeDir, getWorkosDir } from './Paths';
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CONFIG_ROOT = process.env.CLAUDE_CONFIG_DIR || join(HOME, '.claude');
-const WORKOS_DIR = (process.env.WORKOS_DIR || join(CONFIG_ROOT, 'WORKOS'))
-  .replace(/^\$HOME/, HOME).replace(/^~(?=\/)/, HOME);
+// Same resolver as the hooks, so Doctor inspects the tree they write to. The old local rule let
+// WORKOS_DIR (set in every session by the settings template) outrank CLAUDE_CONFIG_DIR, so an
+// isolated install's Doctor looked at ~/.claude/WORKOS while its hooks wrote elsewhere.
+const CONFIG_ROOT = getClaudeDir();
+const WORKOS_DIR = getWorkosDir();
 const STATE_DIR = join(WORKOS_DIR, 'MEMORY', 'STATE');
 const MANIFEST = join(STATE_DIR, 'capabilities.json');
 const SALT_FILE = join(STATE_DIR, '.capabilities-salt');

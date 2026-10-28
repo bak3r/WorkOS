@@ -40,9 +40,9 @@
  * principal's primary session, and a fleet of delegates would spam it.
  */
 
+import { getClaudeDir } from "./lib/paths";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve as pathResolve, dirname } from "node:path";
-import { homedir } from "node:os";
 /** The line is for the principal's primary session. Subagents write plenty of
  *  system files (a delegate editing a skill, a fork editing an ISA) and would
  *  each emit their own line into their own context, which helps nobody. */
@@ -54,7 +54,7 @@ import {
   type ChangeEntry,
 } from "./lib/system-surfaces";
 
-const CLAUDE_ROOT = pathResolve(process.env.HOME ?? homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const LEDGER_DIR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/STATE");
 
 interface LedgerEntry extends ChangeEntry {
