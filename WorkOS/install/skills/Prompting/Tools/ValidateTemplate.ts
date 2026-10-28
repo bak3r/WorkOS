@@ -9,19 +9,18 @@
  *
  * Examples:
  *   bun run ValidateTemplate.ts --template Primitives/Roster.hbs
- *   bun run ValidateTemplate.ts -t Evals/Judge.hbs -d Data/JudgeConfig.yaml --strict
+ *   bun run ValidateTemplate.ts -t Primitives/Gate.hbs -d Data/ValidationGates.yaml
  */
 
 import { requireOptional } from '../../../WORKOS/TOOLS/lib/optional-dep.ts';
-import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname, basename } from 'path';
-import { parseArgs } from 'util';
-
 // handlebars is an npm dependency (package.json beside this file); YAML uses Bun's built-in parser.
 const { default: Handlebars } = await requireOptional(() => import('handlebars'), {
   pkg: 'handlebars', feature: 'Prompting template validation (ValidateTemplate)', installDir: import.meta.dir,
 });
 const parseYaml = (s: string): any => Bun.YAML.parse(s);
+import { readFileSync, existsSync } from 'fs';
+import { resolve, dirname, basename } from 'path';
+import { parseArgs } from 'util';
 
 // ============================================================================
 // Types
@@ -46,10 +45,15 @@ interface ValidateOptions {
 // Validator
 // ============================================================================
 
-function resolveTemplatePath(path: string): string {
+/** Absolute paths as given; relative paths under Templates/ first, then the current directory (same rule as RenderTemplate). */
+export function resolveTemplatePath(path: string): string {
   if (path.startsWith('/')) return path;
-  const templatesDir = dirname(dirname(import.meta.path));
-  return resolve(templatesDir, path);
+  const base = dirname(dirname(import.meta.path));
+  const templatesDir = basename(base) === 'Templates' ? base : resolve(base, 'Templates');
+  const underTemplates = resolve(templatesDir, path);
+  if (existsSync(underTemplates)) return underTemplates;
+  const underCwd = resolve(process.cwd(), path);
+  return existsSync(underCwd) ? underCwd : underTemplates;
 }
 
 function extractVariables(source: string): string[] {
@@ -216,7 +220,9 @@ export function validateTemplate(options: ValidateOptions): ValidationResult {
   if (options.dataPath) {
     const dataFullPath = resolveTemplatePath(options.dataPath);
     if (!existsSync(dataFullPath)) {
-      result.warnings.push(`Data file not found: ${dataFullPath}`);
+      // A data file the caller named and that is not there means no variable was checked; that is a failure, not a hint.
+      result.valid = false;
+      result.errors.push(`Data file not found: ${dataFullPath} (no variables were checked)`);
     } else {
       const dataSource = readFileSync(dataFullPath, 'utf-8');
       const data = options.dataPath.endsWith('.json')
@@ -268,7 +274,7 @@ Options:
 
 Examples:
   bun run ValidateTemplate.ts -t Primitives/Roster.hbs
-  bun run ValidateTemplate.ts -t Evals/Judge.hbs -d Data/JudgeConfig.yaml --strict
+  bun run ValidateTemplate.ts -t Primitives/Gate.hbs -d Data/ValidationGates.yaml
 `);
     process.exit(values.help ? 0 : 1);
   }

@@ -189,6 +189,22 @@ Exits 1 on a usage error, 2 when the record cannot be read or written. No comman
 
 ---
 
+## Skill checks - IntentLint, IntentPreserve, SkillContents, SkillCoverage, SkillHygieneGate
+
+**Location:** `~/.claude/WORKOS/TOOLS/`. The code checks `Skill("CreateSkill")` runs on every skill it touches. Ported from upstream LifeOS 8.761.0.
+
+| Tool | What it checks | Run |
+|------|----------------|-----|
+| `IntentLint.ts` | the intent standard: Ideal State and Anti-criteria first, routing reaches every file, contents lines, the short-description cap | `bun WORKOS/TOOLS/IntentLint.ts skills/<Skill> [--strict]` |
+| `IntentPreserve.ts` | nothing load-bearing (code spans, guard lines, fenced commands) was lost against a git revision | `bun WORKOS/TOOLS/IntentPreserve.ts --base HEAD skills/<Skill>` |
+| `SkillContents.ts` | writes or checks the `**Contents:**` line of long files | `bun WORKOS/TOOLS/SkillContents.ts --help` |
+| `SkillCoverage.ts` | whether an existing skill already covers a need, before a new one is made | `bun WORKOS/TOOLS/SkillCoverage.ts "<need>"` |
+| `SkillHygieneGate.ts` | the skills tree is publishable-clean: no identity strings, home paths or vendored deps, and only the permitted frontmatter keys | `bun WORKOS/TOOLS/SkillHygieneGate.ts [--skill <Name>] [--root <dir>] [--no-deny-list]` |
+
+`--root` points the hygiene gate at a copy of the tree, such as `WorkOS/install` in the source repository. Without `WORKOS/USER/SECURITY/DENY_LIST.txt` only the generic checks run, and the gate exits 2 unless `--no-deny-list` says that is expected. Supporting modules: `lib/IntentSections.ts`, `lib/SkillCatalog.ts` (the short-description cap), and `lib/Boundary.ts` (path confinement only).
+
+---
+
 ## MemoryRetriever.ts - Compressed Knowledge Retrieval
 
 **Location:** `~/.claude/WORKOS/TOOLS/MemoryRetriever.ts`
