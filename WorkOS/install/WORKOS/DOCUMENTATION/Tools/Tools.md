@@ -189,6 +189,14 @@ Exits 1 on a usage error, 2 when the record cannot be read or written. No comman
 
 ---
 
+## Errata.ts - The Complaint Ledger (Errata-lite)
+
+**Location:** `~/.claude/WORKOS/ERRATA/Errata.ts`, with `Schema.ts`, `Store.ts` and `Enrich.ts`. The front door is `Skill("Errata")` and `/er`.
+
+One JSON line per complaint, bug, correction, feature request or praise in `WORKOS/USER/ERRATA/errata-YYYY-MM.jsonl`, the principal's words verbatim, corrections and enrichments appended as patches. `record`, `list`, `show`, `stats`, `enrich` (Claude low tier), and the three queries other tools read: `skills` and `impact` (complaints per Skill-tool call, from `WORKOS/MEMORY/SKILLS/execution.jsonl`; HillClimb survey and verify) and `misses` (false passes: a complaint against a file whose Proof receipt said presentable). `ERRATA_DIR`, `ERRATA_STATE_DIR` and `ERRATA_EXECUTION_FILE` point it at a scratch ledger. Ported from upstream LifeOS 8.761.0's ledger; capture hooks, trained triage and mining are not ported.
+
+---
+
 ## Skill checks - IntentLint, IntentPreserve, SkillContents, SkillCoverage, SkillHygieneGate
 
 **Location:** `~/.claude/WORKOS/TOOLS/`. The code checks `Skill("CreateSkill")` runs on every skill it touches. Ported from upstream LifeOS 8.761.0.

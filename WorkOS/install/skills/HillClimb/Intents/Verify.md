@@ -7,7 +7,7 @@ Check whether a landed climb actually made things better where it counts. For a 
 - For a skill climb, Errata's before and after complaint rate around the climb's close date is reported, with the windows and output counts behind it. The verdict is `improved`, `no-change`, `worse` or `insufficient-data`.
 - For a rule climb, the rule's break count in the v4 report after the change is compared with the one before.
 - For eval, ISA and metric climbs, the climb's own measurement is re-run on today's tree and compared with the closed result. A regression is a new hill.
-- Without Errata (the WorkOS default), a skill or rule climb has no complaint record: `verify` exits 2, the verdict is `insufficient-data` with "no Errata" as the reason, the climb's own measurement is re-run on today's tree as for an eval climb, and the climb and its Upgrades record stay unverified.
+- In WorkOS a skill's complaint rate is complaints filed with `--skill` per Skill-tool call (`Errata.ts impact`); a rule climb has no break count (no v4 report), so it is verified by re-running its own measurement. Either way, `insufficient-data` re-runs the climb's measurement on today's tree and leaves the climb and its Upgrades record unverified.
 - `improved` marks the climb verified and its Upgrades record verified. `worse` opens a new climb on the same target with the regression as its first miss. `insufficient-data` says how many more outputs it needs.
 - Applied Upgrades from other producers that the survey flagged as never verified get the same treatment when they name a skill.
 

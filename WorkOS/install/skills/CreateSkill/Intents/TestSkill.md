@@ -8,7 +8,7 @@ A measured answer to "does this intent produce what its own Ideal State says?", 
 
 - Every `## Ideal State` and `## Anti-criteria` bullet of the intent under test is checked by at least one case, and the report gives pass or fail for each bullet by its text. A bullet no case could check is listed as unchecked with the reason, never dropped.
 - The suite's rubric came from those bullets through Assay's `IntentRubric` tool: a deterministic assert wherever a bullet is countable or matchable, a judged assert only where code cannot reach it.
-- Cases come from real usage first. Every case that could be drawn from the run ledger, an Errata complaint (where Errata is installed) or a recorded principal catch was drawn from it, and each invented case is marked invented with the reason no real one existed.
+- Cases come from real usage first. Every case that could be drawn from the run ledger, an Errata complaint or a recorded principal catch was drawn from it, and each invented case is marked invented with the reason no real one existed.
 - The suite is balanced: at least one should-not case (`negative: true`), drawn where possible from an anti-criterion, where the forbidden output is the tempting one.
 - The intent's contribution is a measured delta. The same cases ran with the intent and without it, and the report gives Assay Compare's paired difference with its 95% CI, never two independent scores side by side.
 - The suite sits in an Assay suite root, parses and runs (`EvalRunner -s <name> -t 1` completes), and its name is ready to record in the target skill's `evals.suites` frontmatter.

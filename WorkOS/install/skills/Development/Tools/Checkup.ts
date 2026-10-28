@@ -73,7 +73,7 @@ export interface Bundle {
   production: { monitor?: { app: string; status?: string; failing?: string[]; [k: string]: unknown } };
   signals: { vigil?: unknown[]; errata?: unknown[]; achilles?: string[] };
   unavailable: { source: string; reason: string }[];
-  /** Sources this install does not ship (WorkOS has no Bunker, Vigil, Errata or Achilles): absent by design, not a failure. */
+  /** Sources this install does not ship (WorkOS has no Bunker, Vigil or Achilles): absent by design, not a failure. */
   notInstalled: string[];
 }
 

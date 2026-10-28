@@ -9,7 +9,7 @@ A full health check of an app against its ISA. Checkup joins what the repo knows
 - The criteria results come from Test's tool contract (`Intents/Test.md`), run at the depth the Inputs table gives for the principal's words; Checkup never re-implements a criterion check.
 - Every criterion that is red (failing under Test, failing in the project's pipeline, or open on a deployed app) carries exactly one cause from Output format § Causes, with the evidence that decided it.
 - Each cause has its repair in the ISA: a broken row is fixed and re-run, a criterion with no executable eval gets one at the cheapest honest Assay tier and is run, a criterion that passes but was never ticked is ticked with an evidence stub, and an obsolete criterion is tombstoned with a Decisions row saying why.
-- Every recent signal (a failed pipeline job, a bug ticket, a review comment on a merge request; upstream also Vigil, Errata and Achilles) that no criterion covers becomes a new criterion with a Test Strategy row, or is dispositioned in the report as noise or out of scope with a reason.
+- Every recent signal (a failed pipeline job, a bug ticket, a review comment on a merge request, an Errata complaint naming the app; upstream also Vigil and Achilles) that no criterion covers becomes a new criterion with a Test Strategy row, or is dispositioned in the report as noise or out of scope with a reason.
 - A complaint about something a passing criterion claims works is treated as a missed check: the criterion's row is tightened or a new row added until it fails on the defect the principal saw, and `bun WORKOS/TOOLS/IsaLadder.ts drift <isa>` ran.
 - The ISA meets the current standard after the run: `IsaCheck.ts bar` and `ISAGate.ts` show no finding the run could fix within its scope, and the remaining count is in the report.
 - Criteria whose code is wrong (cause `code`) are listed in the report as Modify work, each with its failing evidence; they are fixed in the same run only when the principal asked for fixes.
@@ -46,7 +46,7 @@ The signal window defaults to 14 days; the principal's own window ("since the la
 ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 bun "$ROOT/skills/Development/Tools/Checkup.ts" <repo> [--isa <path>] [--since 14d] [--name <alias>]... [--json]
 #   one read-only bundle: ISA standard (IsaCheck bar, write-probes, ISAGate), code (git, Inventory sync),
-#   and, where installed (never in WorkOS), the Bunker monitor and Vigil, Errata and Achilles signals
+#   Errata complaints naming the app, and, where installed (never in WorkOS), the Bunker monitor, Vigil and Achilles
 #   --name adds an alias when the app is adopted or logged under another name; exit 0 gathered, 2 bad input
 bun "$ROOT/WORKOS/TOOLS/IsaLadder.ts" drift <isa>                         # when a complaint contradicts a passing criterion
 bun "$ROOT/skills/Development/Tools/IsaCheck.ts" conform <isa> [--json]   # does the ISA use the latest template; names what is missing

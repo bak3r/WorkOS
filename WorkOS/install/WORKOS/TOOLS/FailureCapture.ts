@@ -114,7 +114,7 @@ const SECRET_SHAPES: RegExp[] = [
 /**
  * Apply every secret shape, replacing matches with [REDACTED].
  */
-function redactSecrets(text: string): string {
+export function redactSecrets(text: string): string {
   if (!text) return text;
   let out = text;
   for (const re of SECRET_SHAPES) out = out.replace(re, '[REDACTED]');

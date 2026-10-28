@@ -29,7 +29,7 @@ A skill changed so its intent meets its Ideal State, starting from the bullet th
 ## Inputs
 
 - The TestSkill report for the intent: per-bullet results, the user's verdict, and the run's transcripts at `MEMORY/STATE/Evals-Results/<suite>/<run_id>/run.json`.
-- Principal feedback in the conversation, Errata entries about the skill (where Errata is installed), Proof receipts, and standing checks added with `Proof.ts miss --skill <Skill>`.
+- Principal feedback in the conversation, Errata entries about the skill (`Errata.ts list --skill <Skill>`), Proof receipts, and standing checks added with `Proof.ts miss --skill <Skill>`.
 - Transcripts of real runs, found from `WORKOS/MEMORY/SKILLS/execution.jsonl` by `session_id` and `run_id`. They show where the agent wasted time or went wrong.
 - The target skill's SKILL.md and the intent files the feedback touches.
 
