@@ -1,53 +1,51 @@
 ---
 name: DetectAI
-version: 1.1.2
-description: "Detects AI-generated writing three ways — a heuristic audit against a catalog of known AI patterns, deterministic statistical signals (n-gram entropy, burstiness, repetition, stylometry — features never verdicts), and a keyless scan for watermark and steganography signatures (invisible characters, homoglyphs, bidi, odd whitespace) in the bytes. USE WHEN detect AI writing, is this AI, AI detection, AI detector, did an AI write this, does this sound like AI, scan for AI tells, flag AI patterns, AI-isms, statistical AI signals, burstiness, text entropy, is this watermarked, detect watermark, steganography, zero-width chars, hidden characters, invisible unicode, compare drafts for AI-ness. NOT FOR rewriting prose to strip AI patterns (use a voice/authoring skill), plagiarism detection, detecting AI-generated images/video/code, or judging whether writing is any good."
+evals:
+  deterministic:
+    - command: "printf 'ab\\342\\200\\213cd' | bun WORKOS/TOOLS/WatermarkScan.ts --json | bun -e 'const j = JSON.parse(await Bun.stdin.text()); const hit = j.classes.flatMap(c => c.sample).some(x => x.codepoint === \"U+200B\" && x.index === 2); process.exit(hit ? 0 : 1)'"
+      falsifier: "WatermarkScan.ts --json, given a fixture with U+200B at offset 2, reports no hit with that codepoint and offset"
+  manual:
+    reason: "an AI-writing assessment requires a reviewer to judge whether reported signals support the conclusion for the supplied prose"
+    falsifier: "the reviewer finds the verdict overstates the evidence or fails to distinguish heuristic signals from proof"
+metadata:
+  short-description: "Detect AI writing patterns, statistical signals and hidden watermark characters, all offline. Excludes rewriting, plagiarism, and image detection."
+version: 1.2.1
+description: "Detects AI-generated writing offline: heuristic audit against known AI patterns, statistical signals (entropy, burstiness), and a keyless scan for watermark or steganography signatures (invisible characters, homoglyphs, bidi). USE WHEN detect AI writing, is this AI, AI detection, AI detector, did an AI write this, does this sound like AI, scan for AI tells, AI-isms, burstiness, text entropy, is this watermarked, hidden characters, zero-width chars. NOT FOR rewriting prose (a writing skill), plagiarism, judging quality, detecting AI images or code."
 ---
 
 # DetectAI
 
-## What It Does
+Answers two questions, *how much does this read as machine-generated?* and *does it carry an embedded mark?*, with three independent measures: a heuristic audit against a severity-tiered pattern catalog, which explains why each flag fired; deterministic statistical signals (`WORKOS/TOOLS/StatSignals.ts`), each labeled with its reliability; and a keyless watermark scan (`WORKOS/TOOLS/WatermarkScan.ts`) for covert channels in the bytes. All three are free, offline and need no key. Upstream LifeOS adds a fourth, the paid Pangram API score; WorkOS leaves it out because the sandbox has no web egress. The measures disagree often, and the disagreement is the useful part: text can clear every pattern on the list and still show flat rhythm and low entropy, which means the tells are structural rather than lexical, and a watermark hit is bytes-level proof whatever the other measures say.
 
-Answers two questions — *how much does this read as machine-generated?* and *does it carry an embedded mark?* — with three independent measures:
+## Ideal State
 
-- **Heuristic audit.** Flags known AI tells (inflated vocabulary, the "not X, it's Y" tic, recycled transitions, uniform rhythm) against a severity-tiered pattern catalog. Free, instant, and it explains *why* each flag fired.
-- **Statistical signals.** A deterministic pass (`WORKOS/TOOLS/StatSignals.ts`) measuring the keyless distributional tells the research literature rates real: n-gram entropy, type-token ratio, repetition structure — plus the weak-alone folklore tier (burstiness, paragraph uniformity, function-word stylometry), each labeled with its reliability. Features, never verdicts (arXiv:2310.15264: paraphrase degrades every keyless statistic). Free, no key.
-- **Watermark scan.** A keyless, deterministic pass for character-level covert channels — invisible chars, variation-selector/Tags-block steganography, homoglyphs, bidi, odd whitespace. Catches embedded marks that live in the bytes; by design it *cannot* read sampling-time statistical watermarks (SynthID, Kirchenbauer, Anthropic's announced mark), which are key-gated. Free, no key.
+- Every answer rests on measures that actually ran (the pattern catalog, `StatSignals.ts`, `WatermarkScan.ts`), and the report names which ran and which did not.
+- A plain "is this AI?" gets the heuristic audit and the statistical signals side by side, and where they disagree the report says what the gap means.
+- No report treats one signal as proof of authorship: signals carry their length and baseline caveats, and a clean watermark scan is never read as "human-written".
+- The text under review is reported on, never rewritten.
 
-The measures disagree often, and that disagreement is the useful part. Text can clear every pattern on the list and still show flat rhythm and low entropy, which tells you the tells are structural, not lexical — and a watermark hit is bytes-level proof regardless of what the other two say.
+## Intent Routing
 
-## The Problem
+| Intent | Trigger | File |
+|--------|---------|------|
+| **Detect** | "is this AI", "scan for AI tells", "flag AI patterns", "does this sound like AI", "audit this for AI-isms", "statistical signals", "burstiness", "entropy", "compare these drafts" | `Intents/Detect.md` |
+| **Watermark** | "is this watermarked", "detect a watermark", "scan for hidden/invisible characters", "steganography", "zero-width chars" | `Intents/Watermark.md` |
 
-"Does this sound like AI?" gets answered by vibes, and vibes are wrong in both directions. Heuristic word-lists flag legitimate writing and miss AI text that avoided the obvious words. Distributional statistics catch structure the word list misses, but no keyless statistic is a verdict on its own.
+"Is this watermarked?" routes to Watermark, which answers a different question: whether a covert channel is embedded in the bytes, not whether the prose reads as AI. For "is this AI and is it marked?", run Detect plus Watermark.
 
-This skill runs the measures side by side, and compares against known-human writing so the numbers have something to be read against.
+## Data & Config
 
-## Workflow Routing
-
-| Workflow | Trigger | File |
-|----------|---------|------|
-| **Detect** | "scan for AI tells", "flag AI patterns", "does this sound like AI", "audit this for AI-isms", "statistical signals", "burstiness", "entropy" — heuristic + deterministic statistical pass, no key needed | `Workflows/Detect.md` |
-| **Watermark** | "is this watermarked", "detect a watermark", "scan for hidden/invisible characters", "steganography", "zero-width chars" — keyless byte-level signature scan, no key needed | `Workflows/Watermark.md` |
-
-Asked simply "is this AI?", run Detect and report the heuristic flags and statistical signals side by side. "Is this watermarked?" routes to Watermark, which answers a different question: whether a covert channel is embedded in the bytes, not whether the prose reads as AI.
+No setup and no key. Both tools ship in `WORKOS/TOOLS/`.
 
 ## Gotchas
 
-- **Short samples are unreliable.** Every measure is weakest under ~5 sentences; StatSignals flags itself unreliable under ~100 words. Audit passages of a few hundred words or don't bother.
+- **Short samples are unreliable.** Every measure is weakest under about 5 sentences; StatSignals flags itself unreliable under about 100 words. Audit passages of a few hundred words or say the sample is too short.
 - **A signal without a baseline says little.** Run known-human writing of the same genre and length through the same pass. The A-vs-B comparison is the trustworthy part.
-- **It measures detectability, not quality.** Reading human does not mean reading well.
-- **No keyless measure is ground truth.** Report findings as signals, never a verdict — and never accuse a person of AI authorship on them.
+- **No keyless measure is ground truth.** Report findings as signals, never a verdict, and never accuse a person of AI authorship on them.
 - **Never degrade writing to beat a detector.** Injected typos, broken sentences, and "humanizer" laundering damage the prose and don't fix the underlying problem. If text must read human, the fix is a human in the loop.
 
 ## Examples
 
-- "Scan this post for AI tells, don't change it" → **Detect**: tiered P0/P1/P2 flag report, each marked clear-problem vs judgment-call, no edits.
-- "Is this AI generated?" → **Detect**: heuristic flags plus statistical signals, with the length caveat stated if the sample is short.
-- "Which of these three drafts reads most human?" → **Detect** on each draft, ranked side by side, relative comparison foregrounded over absolute numbers.
-- "Did my rewrite actually help?" → **Detect** before and after, with known-human passages run through the same pass as calibration.
-
-## Execution Log
-
-```bash
-echo '{"ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","skill":"DetectAI","workflow":"WORKFLOW_USED","input":"8_WORD_SUMMARY","status":"ok|error","duration_s":SECONDS}' >> ~/.claude/WORKOS/MEMORY/SKILLS/execution.jsonl
-```
+- "Scan this post for AI tells, don't change it" → **Detect**: tiered P0/P1/P2 flag report, each marked clear-problem vs judgment-call, plus the StatSignals features, no edits.
+- "Which of these three drafts reads most human?" → **Detect** on each draft and on a known-human passage of the same length, compared side by side.
+- "Is there anything hidden in this pasted text?" → **Watermark**: byte-level classes found, with codepoints and offsets.
