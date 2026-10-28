@@ -569,6 +569,16 @@ Probes the external tools WorkOS doctrine assumes but the core install does not 
 
 Five states per capability: `live` / `broken` / `declined` / `stale` / `off`. `off` is an optional capability with no local configuration — the read-only work context (`glab`, `jira`) is off until `GITLAB_HOST`/glab or `JIRA_URL` exist; `--network` adds Jira's `GET /rest/api/3/myself`. The manifest is a **TTL'd cache, never truth** — it carries a salted integrity hash and readers re-verify doctrine-critical capabilities live at point-of-use. `declined` is a first-class permanent, silent opt-out. Diagnostic register only — no scores, no percentages.
 
+**What "live" means (Doctor 1.0.10 rules, ported from upstream LifeOS 8.761.0):**
+- **A binary is probed, not just found.** `rg`, `magick`, `ffmpeg` (`-version`), `yt-dlp`, `fabric`, `jq` and `glab` are run with `--version` under a 3 s timeout, so a wedged or non-runnable binary reads `broken` with the reason. `yt-dlp` is date-versioned and reads `broken` when it is over 180 days old. A `fabric-ai` binary with no `fabric` is reported (callers exec `fabric`), not hidden.
+- **Unconfigured optional capabilities read `off`, never `broken`.** Optional ones (Interceptor with no browser, ImageMagick, ffmpeg, yt-dlp, fabric, `glab`, Jira, npm packages) are re-probed every run, so they turn live once set up. A present-but-misconfigured one is still `broken`.
+- **The orphan-memory search is bounded.** The shadow-`$HOME` scan looks only under the config root, `~/Projects`, `~/LocalProjects`, `~/code`, `~/Developer`, `~/src` and the `~/...` paths named in `USER/PROJECTS.md` — never all of `$HOME`; on macOS it also skips the privacy-protected folders (Desktop, Documents, Downloads, Movies, Pictures, Music) and prints the `find` command to run by hand.
+- **A check that could not finish is unknown, never a pass.** An incomplete shadow-`$HOME` search, an identity scan that cannot load `InstallEngine.ts`, an unreadable `settings.json` or one with no hook commands, an unresolvable `$VAR` in a hook command, and a missing, unreadable or integrity-less manifest all fail closed: the row is `broken` with `UNKNOWN` (or `unknown`) in the detail, `--verify` exits 2 with `INTEGRITY UNKNOWN`, and `--statusline` shows a warning. Doctor has no separate `unknown` state; the statusline and `AlgorithmNudge` read only `broken`.
+- **Smaller:** a probe may name its own fix command; an offline pass cannot clear a still-fresh network failure (`[network verdict kept]`); a hook command run through an interpreter needs only the file and exec bit, not a `#!` line; native binaries (ELF, Mach-O) need no shebang; more Chrome/Chromium paths are recognised (`google-chrome-stable`, `/opt/google/chrome/chrome`, `chromium-browser`, macOS `Chromium.app`).
+- **Not ported (the capability does not exist here):** Cloudflare, voice, codex, the `userdata-mounts` check, Windows probing, and the scaffold-identity check (needs `isScaffoldSentinel`, which WorkOS identity code does not have).
+
+`--reconcile` is unchanged: it compares the hook files on disk with what `settings.json` registers (following dispatcher imports) and ignores files listed in `hooks/retired.json`.
+
 **Usage:**
 ```bash
 # Probe (offline checks), human table
