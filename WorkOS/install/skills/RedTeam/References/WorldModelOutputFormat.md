@@ -1,6 +1,8 @@
 # TestIdea Output Format
 
-When the TestIdea workflow completes, present results in this format.
+**Contents:** Header · Executive Verdict · Per-Horizon Analysis · Synthesis Section (Standard and Deep tiers only) · Council Debate Summary (Deep tier only) · Footer · Tier-Specific Inclusion
+
+When the TestIdea intent completes, present results in this format.
 
 ## Header
 
