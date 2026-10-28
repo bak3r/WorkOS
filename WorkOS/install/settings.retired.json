@@ -1,0 +1,14 @@
+{
+  "$note": "Permission rules earlier WorkOS releases shipped and this one no longer does. Over an existing settings.json, InstallSettings lists the ones present under permissionRulesToRetire in its dry run and removes them only on --apply, so the developer sees and approves the removal. Only exact matches are removed. Never list a rule settings.system.json still ships.",
+  "permissions": {
+    "allow": [
+      { "rule": "Bash(env)", "since": "1.1.0", "reason": "Prints every environment variable, including tokens, with no prompt." },
+      { "rule": "Bash(env:*)", "since": "1.1.0", "reason": "Runs any command with a changed environment, or prints all of it, with no prompt." },
+      { "rule": "Bash(curl:*)", "since": "1.1.0", "reason": "Any HTTP request, including uploads, with no prompt. Upstream LifeOS dropped it too." },
+      { "rule": "Bash(ssh:*)", "since": "1.1.0", "reason": "Remote shell on any host with no prompt. Upstream LifeOS dropped it too." },
+      { "rule": "Bash(scp:*)", "since": "1.1.0", "reason": "Copies files to or from any host with no prompt. Upstream LifeOS dropped it too." },
+      { "rule": "Bash(rsync:*)", "since": "1.1.0", "reason": "Copies or deletes files locally or remotely with no prompt. Upstream LifeOS dropped it too." },
+      { "rule": "Bash(git push:*)", "since": "1.1.0", "reason": "Publishes commits with no prompt; a push is outward-facing. Upstream LifeOS dropped it too." }
+    ]
+  }
+}

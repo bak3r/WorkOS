@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { templateLine } from "./data/GenerateManifest";
 import { inventory, matchTemplate, loadLifeosManifests } from "./lib/inventory";
-import { planSettingsMerge } from "./lib/settings-merge";
+import { planSettingsMerge, retirePermissions } from "./lib/settings-merge";
 import { BLOCK_BEGIN, BLOCK_END, blockState, buildBlock, fixLifeosPaths, removeBlock, unifiedDiff, upsertBlock } from "./lib/claude-md";
 import { Ledger, readManifest, startRun } from "./lib/ledger";
 import { executeRollback, planRollback } from "./Rollback";
@@ -276,5 +276,21 @@ describe("hook retirement", () => {
     expect(retireHooks(settings() as never, [], "/cfg").merged).toEqual(settings() as never);
     const near = { PreToolUse: [{ matcher: "Bash", hooks: [cmd("$HOME/.claude/hooks/PreToolGuard.hook.ts.bak"), cmd("$HOME/.claude/hooks/XPreToolGuard.hook.ts")] }] };
     expect(retireHooks(near as never, ["PreToolGuard.hook.ts"], "/cfg").removed).toEqual([]);
+  });
+});
+
+describe("permission retirement", () => {
+  test("removes exact retired rules only, from the listed kinds, and reports them", () => {
+    const current = { permissions: { allow: ["Bash(env)", "Bash(env:*)", "Bash(envsubst:*)", "Bash(ls:*)", "Bash(git push:*)"], deny: ["Bash(env)"] }, model: "opus" };
+    const { merged, removed } = retirePermissions(current, { allow: ["Bash(env)", "Bash(env:*)", "Bash(git push:*)"] });
+    expect((merged.permissions as { allow: string[] }).allow).toEqual(["Bash(envsubst:*)", "Bash(ls:*)"]);
+    expect((merged.permissions as { deny: string[] }).deny).toEqual(["Bash(env)"]); // deny not listed: untouched
+    expect(removed).toEqual({ allow: ["Bash(env)", "Bash(env:*)", "Bash(git push:*)"], deny: [], ask: [] });
+    expect(current.permissions.allow).toHaveLength(5); // pure
+    expect(merged.model).toBe("opus");
+  });
+
+  test("is a no-op without a permissions object", () => {
+    expect(retirePermissions({ model: "x" }, { allow: ["Bash(env)"] }).removed.allow).toEqual([]);
   });
 });
