@@ -122,7 +122,9 @@ async function readStdin(): Promise<string> {
   // corpus, or trivial prompt) injects nothing.
   if (prompt.trim().length > 0) {
     try {
-      const ground = getRelevantContext(prompt, { topK: 5, threshold: 0.20 });
+      // allowStaleIndex (MemoryRetriever 1.5.1): the prompt never waits on a freshness walk or a
+      // rebuild; the async Stop hook MemoryIndexRefresh refreshes the index after the turn.
+      const ground = getRelevantContext(prompt, { topK: 5, threshold: 0.20, allowStaleIndex: true });
       if (ground.markdownBlock) {
         process.stdout.write(`<workos-ground>\n${ground.markdownBlock}\n</workos-ground>\n`);
       }

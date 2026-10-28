@@ -26,6 +26,10 @@ import { getDAName } from "../../hooks/lib/identity"
 
 const ROOT = getClaudeDir();
 const OBS = pathResolve(ROOT, "WORKOS/MEMORY/OBSERVABILITY");
+// Memory writes are rows of the Cortex ledger (Cortex 8.4.0); OBSERVABILITY/memory-writes.jsonl is retired.
+// Only an accepted memory/set changes a file's size; a row with no kind is a legacy memory-writes.jsonl row.
+const CORTEX_EVENTS = pathResolve(ROOT, "WORKOS/MEMORY/LEDGER/cortex-events.jsonl");
+const WRITE_KIND = "memory/set";
 const PRINCIPAL_MEM = pathResolve(ROOT, "WORKOS/USER/PRINCIPAL/PRINCIPAL_MEMORY.md");
 const DA_MEM = pathResolve(ROOT, "WORKOS/USER/DIGITAL_ASSISTANT/DA_MEMORY.md");
 
@@ -108,7 +112,8 @@ function main(): void {
   const now = Date.now();
   const sinceMs = now - days * 86400 * 1000;
 
-  const memoryWrites = readJsonlSince<any>(pathResolve(OBS, "memory-writes.jsonl"), sinceMs);
+  const memoryWrites = readJsonlSince<any>(CORTEX_EVENTS, sinceMs)
+    .filter((w) => (w.kind === undefined || w.kind === WRITE_KIND) && w.rejected !== true);
   const reviewerRuns = readJsonlSince<any>(pathResolve(OBS, "reviewer-runs.jsonl"), sinceMs);
   const proposals = readJsonlSince<any>(pathResolve(OBS, "pending-proposals.jsonl"), sinceMs);
   const healthRows = readJsonlSince<any>(pathResolve(OBS, "memory-health.jsonl"), sinceMs);

@@ -102,6 +102,14 @@ export interface MemoryItem {
   content?: string;
   /** Full desired entry list — used by op:"set" (REPLACES the file). */
   entries?: string[];
+  /**
+   * Declares this op:"set" a DELIBERATE consolidation (merge related entries,
+   * drop the stalest), which is the one case allowed to net-drop entries past
+   * MemoryWriter's erosion guard. Honored only at/above CONSOLIDATE_THRESHOLD
+   * occupancy — below that it is ignored, so it can never become a general
+   * erosion bypass (public issue #1905, @ksjayeshks; ported from LifeOS 8.761.0).
+   */
+  consolidate?: boolean;
   /** How this fact is known. Defaults to "explicit" when absent. */
   provenance?: Provenance;
   confidence?: number;

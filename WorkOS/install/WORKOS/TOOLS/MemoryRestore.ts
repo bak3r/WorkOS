@@ -10,12 +10,15 @@
  *
  * Restore is a raw byte copy (frontmatter + entries + markers), so it cannot
  * itself trip the curation guards — it's a recovery path, not a curation write.
+ * It goes through MemoryWriter.restoreContent, which records a memory/restore
+ * event in the Cortex ledger before writing (fail-closed), so a restore is never
+ * mistaken for an out-of-band edit by the next curation write.
  */
 
 import { getClaudeDir } from "./Paths";
-import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
-import { parseMemoryContent } from "./MemoryWriter";
+import { parseMemoryContent, restoreContent } from "./MemoryWriter";
 
 const CLAUDE_ROOT = getClaudeDir();
 const SNAPSHOT_DIR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-snapshots");
@@ -59,7 +62,8 @@ function main(): void {
     if (!existsSync(src)) { console.error(`Snapshot not found: ${arg}`); process.exit(1); }
     const which = arg.startsWith("PRINCIPAL_MEMORY") ? "principal" : "da";
     const content = readFileSync(src, "utf8");
-    writeFileSync(TARGETS[which], content, "utf8");
+    const r = restoreContent(TARGETS[which], content, { updatedBy: "MemoryRestore", snapshotRef: arg });
+    if (!r.ok) { console.error(`Restore refused: ${r.code} — ${r.message}`); process.exit(1); }
     console.log(`Restored ${which} from ${arg} (${countEntries(content)} entries).`);
     return;
   }
@@ -69,7 +73,8 @@ function main(): void {
     if (snaps.length === 0) { console.error(`No snapshots for ${arg}`); process.exit(1); }
     const latest = snaps[snaps.length - 1];
     const content = readFileSync(pathResolve(SNAPSHOT_DIR, latest), "utf8");
-    writeFileSync(TARGETS[arg], content, "utf8");
+    const r = restoreContent(TARGETS[arg], content, { updatedBy: "MemoryRestore", snapshotRef: latest });
+    if (!r.ok) { console.error(`Restore refused: ${r.code} — ${r.message}`); process.exit(1); }
     console.log(`Restored ${arg} from latest snapshot ${latest} (${countEntries(content)} entries).`);
     return;
   }

@@ -443,6 +443,16 @@
             "async": true
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/MemoryIndexRefresh.hook.ts",
+            "timeout": 60,
+            "async": true
+          }
+        ]
       }
     ],
     "StopFailure": [

@@ -4,7 +4,7 @@
 
 This document is the authoritative reference for WorkOS's hook system. When modifying any hook, update both the hook's inline documentation AND this README.
 
-*Last updated: 2026-10-28 — WorkOS 1.1.0: registry regenerated against `hooks/hooks.json` (46 hook files on disk, all `.hook.ts`; 37 distinct hook files registered, 9 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
+*Last updated: 2026-10-28 — WorkOS 1.1.0: registry regenerated against `hooks/hooks.json` (47 hook files on disk, all `.hook.ts`; 38 distinct hook files registered, 9 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
 
 ---
 
@@ -154,7 +154,7 @@ interface StopPayload extends BasePayload {
 
 ## Hook Registry
 
-> **Census (2026-10-28).** 46 hook files exist on disk (all `.hook.ts`, no `.sh`); **37 distinct hook files are registered in `hooks/hooks.json`**, across 63 hook commands (60 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 9 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
+> **Census (2026-10-28).** 47 hook files exist on disk (all `.hook.ts`, no `.sh`); **38 distinct hook files are registered in `hooks/hooks.json`**, across 64 hook commands (61 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 9 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
 >
 > WorkOS registers hooks **bare** — the path alone, no `bun` prefix — relying on the `#!/usr/bin/env bun` shebang plus the executable bit. `HookHealer` is the one deliberate exception (it carries an explicit `bun` prefix so it can still repair a cleared exec bit on everything else).
 
@@ -166,7 +166,7 @@ interface StopPayload extends BasePayload {
 | `KittyEnvPersist.hook.ts` | Persist Kitty env vars + tab reset | No | None |
 | `LoadContext.hook.ts` | Inject dynamic context (identity, work, projects) | Yes (stdout) | `settings.json`, `MEMORY/` |
 | (inline) `WORKOS/TOOLS/FreshnessCache.ts` | Statusline freshness cache (`--quiet`) | No | None (timeout 5, async) |
-| `MaintenanceJobs.hook.ts` | Throttled background jobs (no cron/daemon/systemd), each on its own interval and stamp: memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 20 h), `ProposalGC.ts --auto` (20 h), `WorkSweep.ts` (1 h), `CommitmentSweep.ts` (20 h). When any job is due and no worker holds the lock, spawns itself detached with `--run` to execute the due jobs. Never blocks session start; skips subagents; exits 0 on every path | No | `WORKOS/TOOLS/SessionHarvester.ts`, `LearningPatternSynthesis.ts`, `ProposalGC.ts`, `WorkSweep.ts`, `CommitmentSweep.ts`; writes `MEMORY/STATE/maintenance-jobs.{json,lock}`, `MEMORY/OBSERVABILITY/maintenance-jobs.log` (timeout 5) |
+| `MaintenanceJobs.hook.ts` | Throttled background jobs (no cron/daemon/systemd), each on its own interval and stamp: memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 20 h), `ProposalGC.ts --auto` (20 h), `WorkSweep.ts` (1 h), `CommitmentSweep.ts` (20 h), observability prune (20 h, in-process: archives `MEMORY/OBSERVABILITY` logs with no write in 30 days to `ARCHIVE/*.gz`, never deletes, never rewrites a live file). When any job is due and no worker holds the lock, spawns itself detached with `--run` to execute the due jobs. Never blocks session start; skips subagents; exits 0 on every path | No | `WORKOS/TOOLS/SessionHarvester.ts`, `LearningPatternSynthesis.ts`, `ProposalGC.ts`, `WorkSweep.ts`, `CommitmentSweep.ts`; writes `MEMORY/STATE/maintenance-jobs.{json,lock}`, `MEMORY/OBSERVABILITY/maintenance-jobs.log` (timeout 5) |
 | (inline) `SettingsBackport.ts` + `MergeSettings.ts` | Merge `settings.system.json` + `USER/CONFIG/settings.user.json` → `settings.json` | No | System/user settings split (timeout 15, async) |
 
 ### UserPromptSubmit Hooks (in fire order)
@@ -230,6 +230,7 @@ interface StopPayload extends BasePayload {
 | `ISARenderOnStop.hook.ts` | Re-render ISAs edited during the turn, from the per-session state file `ISASync` writes | No | `MEMORY/WORK/`, ISA renderer |
 | `StopGates.hook.ts` | The ONE Stop-event gate hook — dispatches `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` in that order; first block wins | Yes (decision) | `lib/hook-io.ts` |
 | `MemoryReviewFire.hook.ts` | Owns the whole memory-review cadence | No | `USER/CONFIG/memory-review.json`, `MEMORY/` |
+| `MemoryIndexRefresh.hook.ts` | Rebuild the persisted BM25 memory index when it is stale (own Stop block, async, timeout 60) | No | `WORKOS/TOOLS/MemoryRetriever.ts` |
 | `MemoryHealthGate.hook.ts` | Autonomic-memory health check; never fails the Stop chain | No | `MEMORY/OBSERVABILITY/memory-health.jsonl` (timeout 15) |
 
 ### StopFailure Hooks

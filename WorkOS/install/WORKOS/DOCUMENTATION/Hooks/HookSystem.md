@@ -19,7 +19,7 @@ version: 1.4.3
 **Configuration:** `~/.claude/settings.json` (GENERATED — merged from `settings.system.json` + `WORKOS/USER/CONFIG/settings.user.json` by `MergeSettings.ts`; for events the user file defines as a plain array — UserPromptSubmit, PostToolUse, PreToolUse, Stop, SessionEnd — the user array REPLACES the system array, so `settings.json` is the only registration truth. `settings.user.json` does not exist on a fresh install — `MergeSettings` no-ops cleanly until you create it to carry user-side overrides)
 **Status:** Active — hook counts below are hand-maintained (the `UpdateCounts.ts` count-cache write was removed 2026-05-06; statusline/Banner read live via `GetCounts.ts`)
 
-> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-28, 1.1.0).** 37 distinct hook files are registered in `hooks/hooks.json` across 63 hook commands; **46 hook files exist on disk (all `.hook.ts`, no `.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 9 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`DestructiveGuard` and `PublicPushGate` are registered directly on PreToolUse. `LoopDetector` is registered on PostToolUseFailure and runs on PostToolUse through `PostToolObserver`.) WorkOS 1.1.0 retired `PreToolGuard`, the guards it dispatched, `ContextReduction.hook.sh` and `ConfigEvalFire`; `hooks/retired.json` lists each with its reason. The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
+> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-28, 1.1.0).** 38 distinct hook files are registered in `hooks/hooks.json` across 64 hook commands; **47 hook files exist on disk (all `.hook.ts`, no `.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 9 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`DestructiveGuard` and `PublicPushGate` are registered directly on PreToolUse. `LoopDetector` is registered on PostToolUseFailure and runs on PostToolUse through `PostToolObserver`.) WorkOS 1.1.0 retired `PreToolGuard`, the guards it dispatched, `ContextReduction.hook.sh` and `ConfigEvalFire`; `hooks/retired.json` lists each with its reason. The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
 
 ---
 
@@ -75,7 +75,7 @@ Claude Code supports the following hook events:
 - `HookHealer.hook.ts` - Self-heals the registered-script exec-bit class: sweeps every script a settings hook execs directly, `chmod +x` on a missing exec bit, warns on a missing file/shebang. Registered via `bun <path>` so it is immune to losing its own exec bit. Writes `MEMORY/OBSERVABILITY/hook-healer.jsonl`.
 - `KittyEnvPersist.hook.ts` - Persists Kitty terminal env vars both to the shared `MEMORY/STATE/kitty-env.json` and to a per-session `MEMORY/STATE/kitty-sessions/{sessionId}.json` (required by out-of-process consumers), then resets tab title to clean state
 - `LoadContext.hook.ts` - Injects dynamic context (relationship, learning, work summary) as `<system-reminder>` at session start
-- `MaintenanceJobs.hook.ts` *(timeout 5)* - Throttled background maintenance that re-homes the recurring jobs, without cron or any OS scheduler (Docker Sandboxes guarantee no systemd). Each job has its own interval and its own stamp: `memory-consolidation` (20 h — `SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 10 min timeout), `proposal-gc` (20 h — `ProposalGC.ts --auto`), `worksweep` (1 h — `WorkSweep.ts`), `commitment-sweep` (20 h — `CommitmentSweep.ts`). Default (SessionStart) mode: if any job is due and no worker holds the lock, spawn itself detached/unref'd with `--run` and exit immediately (never blocks session start; skips subagents; exits 0 on every path). `--run` worker: take the one exclusive-create lock (a lock older than 2 h is treated as a crashed worker and reclaimed), run only the due jobs with per-job timeouts, stamping each job when it starts, appending output to the log. A failing job is retried once per its interval, not on every session start. State: `MEMORY/STATE/maintenance-jobs.json` (`{ jobs: { <name>: { last_start, last_end, exit } } }`) + `.lock`; log: `MEMORY/OBSERVABILITY/maintenance-jobs.log`.
+- `MaintenanceJobs.hook.ts` *(timeout 5)* - Throttled background maintenance that re-homes the recurring jobs, without cron or any OS scheduler (Docker Sandboxes guarantee no systemd). Each job has its own interval and its own stamp: `memory-consolidation` (20 h — `SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 10 min timeout), `proposal-gc` (20 h — `ProposalGC.ts --auto`), `worksweep` (1 h — `WorkSweep.ts`), `commitment-sweep` (20 h — `CommitmentSweep.ts`), `observability-prune` (20 h — runs in the worker itself, not as a script). **observability-prune** is the local stand-in for upstream's nightly `observability-prune` workflow (`ObservabilityPrune.ts`), which archives every row older than 30 days out of the logs by rewriting them. This job keeps the 30-day window but never rewrites a file: a top-level `*.jsonl` / `*.log` (or numbered rotation such as `*.jsonl.1`) in `MEMORY/OBSERVABILITY` whose last write is more than 30 days old holds no newer row, so the whole file moves to `OBSERVABILITY/ARCHIVE/<name>.until-<date>.gz` (renamed first so a racing writer just starts a fresh file, gzipped, read back and size-checked, then the original is unlinked; nothing is deleted). A file still being written is never touched; if its first row is already past the window the run only reports it. Symlinks, subdirectories and everything outside `MEMORY/OBSERVABILITY` are never touched, and a symlinked `ARCHIVE` aborts the run. Differences from upstream: no row-level trimming of live logs (so a busy log such as `tool-activity.jsonl` grows until it goes quiet; `CortexHealth` still flags it past its byte cap), no 1 MB floor, and no `bunker-runs` 7-day rule (no Bunker here). Manual run, dry unless `--apply`: `bun hooks/MaintenanceJobs.hook.ts --prune-observability [--apply] [--days=N]`. Default (SessionStart) mode: if any job is due and no worker holds the lock, spawn itself detached/unref'd with `--run` and exit immediately (never blocks session start; skips subagents; exits 0 on every path). `--run` worker: take the one exclusive-create lock (a lock older than 2 h is treated as a crashed worker and reclaimed), run only the due jobs with per-job timeouts, stamping each job when it starts, appending output to the log. A failing job is retried once per its interval, not on every session start. State: `MEMORY/STATE/maintenance-jobs.json` (`{ jobs: { <name>: { last_start, last_end, exit } } }`) + `.lock`; log: `MEMORY/OBSERVABILITY/maintenance-jobs.log`.
 - `FreshnessCache.ts` *(a `WORKOS/TOOLS/` script, not a `hooks/` file)* - Warms the `pai-freshness-v1` staleness cache (async)
 - `SettingsBackport.ts` + `MergeSettings.ts` *(TOOLS, not hooks)* - Backport source-vs-generated drift, then regenerate `settings.json` from `settings.system.json` + `settings.user.json` (async). This is why `settings.json` is a generated artifact.
 
@@ -1302,8 +1302,8 @@ HOOK LIFECYCLE:
 7. Claude Code continues
 
 HOOKS BY EVENT (11 events wired in hooks/hooks.json; regenerated 2026-10-28.
-37 distinct hook files registered, all .hook.ts;
-46 hook files on disk [all .hook.ts] — the 9 unregistered .hook.ts are
+38 distinct hook files registered, all .hook.ts;
+47 hook files on disk [all .hook.ts] — the 9 unregistered .hook.ts are
 imported as run()/check() modules by dispatchers, noted [via X] below):
 
 SESSION START (4 hooks + 2 TOOLS):
@@ -1311,7 +1311,7 @@ SESSION START (4 hooks + 2 TOOLS):
   KittyEnvPersist.hook.ts        Persist Kitty env vars + tab reset
   LoadContext.hook.ts            Dynamic context injection (relationship, learning, work)
   bun FreshnessCache.ts          (TOOL) warm pai-freshness cache [timeout 5, async]
-  MaintenanceJobs.hook.ts        Per-job throttled detached jobs: memory consolidation + ProposalGC (20 h), WorkSweep (1 h), CommitmentSweep (20 h) [timeout 5]
+  MaintenanceJobs.hook.ts        Per-job throttled detached jobs: memory consolidation + ProposalGC (20 h), WorkSweep (1 h), CommitmentSweep (20 h), observability-prune (20 h) [timeout 5]
   bun SettingsBackport.ts; MergeSettings.ts  (TOOLS) regenerate settings.json [timeout 15, async]
 
 USER PROMPT SUBMIT (9 hooks, in fire order):
@@ -1350,13 +1350,14 @@ POST TOOL USE FAILURE (3 hooks, in fire order):
   AlgorithmNudge.hook.ts         probe-failed + broken-capability nudge [timeout 5]
   LoopDetector.hook.ts           Repeat-failure / hammering detection [timeout 5]
 
-STOP (6 hooks across 2 blocks, in fire order):
+STOP (7 hooks across 3 blocks, in fire order):
   LastResponseCache.hook.ts      Cache response for SatisfactionCapture + DriftReminder bridge
   TabState.hook.ts               Tab title/color reset after response (formerly ResponseTabReset)
   ISARenderOnStop.hook.ts        Re-render completed ISAs (only if ISA.html already exists)
   StopGates.hook.ts              ONE gate hook: FormatGate, VerificationGate, ISACloseGate, ISAFoldGate, ISAGate .run [via X] in order; FIRST block wins
   MemoryReviewFire.hook.ts       Owns the WHOLE memory-review cadence: tick at Stop, fire MemoryReviewer.ts
                                  detached (env-scrubbed) at turn_threshold ∧ min_minutes_between. pending_review always false now.
+  MemoryIndexRefresh.hook.ts     Own block, async (timeout 60): rebuilds the persisted BM25 memory index when stale
   MemoryHealthGate.hook.ts       Autonomic-memory health assertions → memory-health.jsonl
                                  [separate block; timeout 15, async] — also registered at SessionEnd
 
@@ -1416,7 +1417,7 @@ KEY FILES:
 ~/.claude/settings.system.json       System-side hook/permission source (SYSTEM)
 ~/.claude/WORKOS/USER/CONFIG/settings.user.json  User-side source (USER); its plain-array events REPLACE the system array
 ~/.claude/WORKOS/TOOLS/MergeSettings.ts  Merges system + user → settings.json (runs async at SessionStart)
-~/.claude/hooks/                     Hook scripts (46 .hook.ts files; 37 distinct hook files registered)
+~/.claude/hooks/                     Hook scripts (47 .hook.ts files; 38 distinct hook files registered)
 ~/.claude/hooks/handlers/            Handler modules (8 files)
 ~/.claude/hooks/lib/                 Shared libraries (30 .ts files plus 1 test)
 ~/.claude/hooks/lib/learning-utils.ts Learning categorization

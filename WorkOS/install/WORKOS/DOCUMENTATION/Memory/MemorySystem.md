@@ -1,8 +1,8 @@
 ---
-last_updated: 2026-08-02T00:00:00Z
+last_updated: 2026-10-28T00:00:00Z
 last_updated_by: da
 convention: pai-freshness-v1
-version: 2.1.5
+version: 2.2.0
 status: named-and-documented
 ---
 
@@ -21,7 +21,7 @@ This is not a narrow event log or a preferences store. This is WorkOS's comprehe
 
 WorkOS MEMORY is the system of record. Claude Code's built-in auto-memory (`~/.claude/projects/<project>/memory/`) is disabled by design (`autoMemoryEnabled: false` in shipped settings, plus deny rules on that path) — see "Claude Code Auto-Memory & Auto-Dream" below.
 
-**Version:** 8.3.0 (Named Cortex, 2026-08-01; preserves 8.2 proposal subtypes + 8.1 inventory + drift + autonomic loop + health gate)
+**Version:** 8.4.0 (Cortex Ledger, ported from LifeOS 8.761.0 on 2026-10-28 — log-plus-projection for hot-layer memory; preserves 8.3 naming + 8.2 proposal subtypes + 8.1 inventory + drift + autonomic loop + health gate)
 **Location:** `~/.claude/WORKOS/MEMORY/`
 
 ---
@@ -145,13 +145,17 @@ Defined in `WORKOS/TOOLS/MutationTier.ts` — code-only allowlist, default-deny 
 ### Components
 
 - **`WORKOS/TOOLS/MemoryTypes.ts`** — type registry. Resolvers for storage path per item.
-- **`WORKOS/TOOLS/MemoryWriter.ts`** — set-overwrite primitive for Tier A memory files. Atomic rename, lock sidecar, prefix soft-convention, dedupe, cap enforcement.
+- **`WORKOS/TOOLS/MemoryWriter.ts`** — set-overwrite primitive for Tier A memory files. Atomic rename, lock sidecar, prefix soft-convention, dedupe, cap enforcement, instruction-shape refusal (`InjectionShapes.ts`), the shrink / erosion / stale-base guards, and the event-first Cortex Ledger append (see *The Cortex Ledger* below).
+- **`WORKOS/TOOLS/CortexLedger.ts`** (+ `lib/CortexLedgerCore.ts`, `lib/LedgerCore.ts`) — the ledger CLI and its core: append, chain verification, fold, adopt, checkpoint, compact, redact, provenance.
+- **`WORKOS/TOOLS/MemoryEntryMeta.ts`** — per-entry age and durability sidecar for the reviewer prompt (see *Entry age and durability*).
+- **`WORKOS/TOOLS/ParkedReplay.ts`** — replays reviewer memory writes that ledger drift refused, as additions only.
 - **`WORKOS/TOOLS/MemorySystem.ts`** — the single public API. `add(item)` routes by type; `find(query, options)` returns BM25 top-K.
 - **`WORKOS/TOOLS/MemoryRetriever.ts`** — BM25 retriever over the typed-item corpus: KNOWLEDGE notes, the `LEARNING/` tree, and the two hot-layer memory files. Pure-function, no LLM call. Every hit carries a `noteClass` (`knowledge` / `learning` / `memory`) and learning notes score at 0.7x so historical records never outrank curated knowledge on an equal match (public issue #1776, @umair-a11y). The CLI searches all of LEARNING (~12k notes); the per-turn hot path takes a recency-bounded slice (`HOT_PATH_LEARNING_LIMIT`, currently 500) because LEARNING is ~8x the KNOWLEDGE corpus and grows monotonically — measured ~207ms per call against ~138ms for KNOWLEDGE alone.
 - **`WORKOS/TOOLS/MemoryReviewer.ts`** — the autonomic centerpiece. Single-pass orchestrator: locate most-recent harness transcript, extract last N exchanges, call `Inference.ts` (Sonnet, env-scrubbed so it inherits the harness auth, `--tools ""`), parse `{items:[...]}` JSON, route each typed item through `MemorySystem.add()`.
 - **`WORKOS/TOOLS/MutationTier.ts`** — tier classifier. Pure function, no config file (code-only allowlist).
 - **`WORKOS/TOOLS/MemoryStatus.ts`** — read-only memory-status viewer for terminal use.
 - **`hooks/MemoryReviewFire.hook.ts`** — Stop handler, v2 (2026-07-11: tick + decide + fire in one pass; absorbed the MemoryReviewTrigger cadence gate). Increments turn count, sets `pending_review=true` when cadence gates fire.
+- **`hooks/MemoryIndexRefresh.hook.ts`** — async Stop hook (`async: true`, 60 s timeout) that refreshes the retriever's persisted index after each turn, so the per-prompt retrieval never waits on a rebuild.
 - **Per-turn context injection** (`hooks/MemoryTurnStart.hook.ts`, `WORKOS/TOOLS/MemoryRetriever.ts`) — adds `## PRINCIPAL MEMORY` and `## DA MEMORY` blocks to the per-turn WorkOS CONTEXT injection (mtime-cached 60s).
 - **`WORKOS/TOOLS/lib/memory-proposals.ts`** — proposal queue API; surfaces Tier-C proposals on the inline 🧠 MEMORY line, and owns the four decision writers (accept / reject / edit / applied-elsewhere) plus `TERMINAL_STATUSES`. High-confidence (≥ 0.70) proposals still auto-apply; everything below the threshold is resolved by a human through `bun WORKOS/TOOLS/ProposalDecide.ts`.
 
@@ -159,21 +163,32 @@ Defined in `WORKOS/TOOLS/MutationTier.ts` — code-only allowlist, default-deny 
 
 Cadence state is **per session** at `MEMORY/STATE/memory-review/<session_id>.json`, so concurrent sessions cannot reset or starve each other's turn counter (public issue #1711, @jacobo-ortiz). `MEMORY/OBSERVABILITY/review-state.json` is still written every Stop as a mirror for the statusline, `MemoryStatus.ts`, and `MemoryHealthCheck.ts`; its `last_review_at` is the load-bearing global clock, its turn count is display-only. Stale per-session files are pruned after 7 days. Trigger conditions are AND-gated; defaults in `USER/CONFIG/memory-review.json`:
 
-- `turn_count >= 8` — **per session** (has this conversation moved enough to be worth reviewing?) AND
-- `minutes_since_last_review >= 30` — **global across sessions** (the inference-volume guard; a per-session cap would let N sessions run N reviews per window) AND
+- `turn_count >= 8` — **per session** (has this conversation moved enough to be worth reviewing?) — OR `hours_since_last_review >= max_hours_since_review` (default 24) with at least one turn in this session (the time-based safety net: many short sessions never reach the per-session turn threshold, so the reviewer could starve indefinitely — public issue #1893, @waveman2020-sudo) AND
+- `minutes_since_last_review >= 30` — **global across sessions** (the inference-volume guard; a per-session cap would let N sessions run N reviews per window, and it still gates the safety net so staleness can never produce a burst) AND
 - `idle_minutes >= 2`
 
-When all three hold, the next Stop hook spawns the reviewer subprocess. New UserPromptSubmit before Stop cancels (debounce — Honcho's dream-scheduler pattern, vendored).
+When all three hold, the next Stop hook spawns the reviewer subprocess. New UserPromptSubmit before Stop cancels (debounce — Honcho's dream-scheduler pattern, vendored). The reviewer stamps `last_review_at` itself when a run completes (public PR #2032), and the hook merges rather than clobbers that stamp.
+
+**Auto-apply thresholds.** `confidence_threshold` (default 0.70) is the single threshold; `confidence_threshold_by_kind` maps a proposal kind to its own threshold, or to `null` to never auto-apply that kind. The shipped template sets `identity` and `operational-rule` to `null` (they load into every session, so they wait for the principal; GHSA-xjxj-cqpp-gf82). A malformed config disables auto-apply rather than restoring the default. Existing installs keep their own `USER/CONFIG/memory-review.json` and get per-kind queueing only once they add the map.
+
+**Failed items are kept.** An item whose `MemorySystem.add` fails is parked with its full payload in `MEMORY/OBSERVABILITY/reviewer-failed-items.jsonl` (public issue #1904). Memory writes that the ledger refused for drift (`EDRIFT`) are replayed by `ParkedReplay.ts` at the start of the next reviewer run and after `CortexLedger.ts adopt`: additions only, newest first up to the cap, never an entry the ledger once held and dropped, each item once. The first replay on an install seeds a floor, so refusals from before it are never replayed.
+
+### Entry age and durability (Cortex 8.4.0)
+
+The hot-layer files carry only a file-level `last_updated`. `WORKOS/TOOLS/MemoryEntryMeta.ts` keeps per-entry `first_seen` / `last_seen` / `survivals` in `MEMORY/STATE/memory-entry-meta.json`, computed by `MemoryWriter.setEntries` from the delta it already has in-lock, and the reviewer prompt renders each entry as `⟨since DATE · survived N⟩` at render time only. The model never authors a date; a failed metadata write never fails a memory write; an echoed annotation is stripped at the write chokepoint; the store is disposable (`bun WORKOS/TOOLS/MemoryEntryMeta.ts backfill` rebuilds it from the ledger's `memory/set` rows, and ages are floored at the ledger's first event).
 
 ### Per-turn retrieval
 
-The per-turn hook (`MemoryTurnStart.hook.ts`) calls `getRelevantContext(query)` (in `MemoryRetriever.ts`); the BM25 top-K (default 5, score threshold 0.20) renders as a `## RELEVANT MEMORY` block injected after the hot-layer memory files and before `PRINCIPAL_TELOS`. Below-threshold returns empty (no header noise). Cache TTL 60s by query-hash. Graph traversal (`KnowledgeGraph.ts`) stays available as a separate explicit call — not on the hot path.
+The per-turn hook (`MemoryTurnStart.hook.ts`) calls `getRelevantContext(query, { allowStaleIndex: true })` (in `MemoryRetriever.ts`); the BM25 top-K (default 5, score threshold 0.20) renders as a `## RELEVANT MEMORY` block injected after the hot-layer memory files and before `PRINCIPAL_TELOS`. Below-threshold returns empty (no header noise). Cache TTL 60s by query-hash. Graph traversal (`KnowledgeGraph.ts`) stays available as a separate explicit call — not on the hot path.
+
+**Persisted index (MemoryRetriever 1.5.1).** The BM25 index lives in `MEMORY/STATE/retriever-index.json` plus shard postings, with a generation file (`retriever-index-generation.json`) that writers bump (`bumpMemoryGeneration`: MemoryWriter, MemorySystem, SessionHarvester) and a rebuild lock. `allowStaleIndex` serves the last good index with no freshness walk; `hooks/MemoryIndexRefresh.hook.ts` (async Stop) walks and rebuilds after the turn, and every other caller rebuilds a stale index before it scores. `CORTEX_MEMORY_ROOT` isolates the memory root (and the index) for tests. Untagged entries no longer score, and all six KNOWLEDGE note types are indexed.
 
 ### Observability
 
 | Stream | Path | Written by |
 |---|---|---|
-| Memory-file writes | `MEMORY/OBSERVABILITY/memory-writes.jsonl` | MemoryWriter |
+| Memory-file writes — THE LEDGER (`memory/set`, `memory/rejected`, `memory/adopt`, `memory/restore`, `checkpoint`, `memory/redact`) | `MEMORY/LEDGER/cortex-events.jsonl` (the old `OBSERVABILITY/memory-writes.jsonl` is frozen history from before the port; nothing writes it) | MemoryWriter (event-first), CortexLedger.ts |
+| Failed-item payloads (replayable) | `MEMORY/OBSERVABILITY/reviewer-failed-items.jsonl` | MemoryReviewer dispatch |
 | Reviewer runs | `MEMORY/OBSERVABILITY/reviewer-runs.jsonl` | MemoryReviewer |
 | Reviewer-fire events | `MEMORY/OBSERVABILITY/reviewer-fires.jsonl` | MemoryReviewFire hook |
 | Tier-B append audit | `MEMORY/OBSERVABILITY/tier-b-writes.jsonl` | MemorySystem.add |
@@ -203,7 +218,21 @@ The reviewer runs in **curation mode**: it reads the file's CURRENT entries (`re
 
 ### Data-loss guard (in-lock)
 
-set-overwrite has a whole-file blast radius. `MemoryWriter.setEntries` computes a **catastrophic-shrink guard IN-LOCK** (against the just-read prior state, race-free): it blocks a result that is near-empty (`< 3` entries) OR a mass deletion (`>50%` dropped) **with zero additions**, while ALLOWING honest large consolidation (many drops accompanied by additions). `ESUSPECT_SHRINK` is the error; `allowDrastic` opts out for legitimate restores. (This guard exists because a cross-vendor audit wiped the live file with an empty `op:"set"` — it's now structurally impossible.) A second in-lock guard catches **slow erosion** (public issue #1761, @jacobo-ortiz): a single write that net-drops 2+ entries returns `ESUSPECT_EROSION` and logs the full delta to the write-log — re-transcription bleed passed the catastrophic checks every time (each write ~10% smaller, each carrying additions) until 12 durable rules died in 48h on a reporter's install. Deliberate consolidation passes with `allowDrastic: true`.
+set-overwrite has a whole-file blast radius. `MemoryWriter.setEntries` computes a **catastrophic-shrink guard IN-LOCK** (against the just-read prior state, race-free): it blocks a result that is near-empty (`< 3` entries) OR a mass deletion (`>50%` dropped) **with zero additions**, while ALLOWING honest large consolidation (many drops accompanied by additions). `ESUSPECT_SHRINK` is the error; `allowDrastic` opts out for legitimate restores. (This guard exists because a cross-vendor audit wiped the live file with an empty `op:"set"` — it's now structurally impossible.) A second in-lock guard catches **slow erosion** (public issue #1761, @jacobo-ortiz): a single write that net-drops 2+ entries returns `ESUSPECT_EROSION` and records the full delta as a `memory/rejected` ledger event — re-transcription bleed passed the catastrophic checks every time (each write ~10% smaller, each carrying additions) until 12 durable rules died in 48h on a reporter's install. A reviewer's deliberate consolidation sets `consolidate: true` on its memory item (`consolidation` on setEntries), which lifts only the erosion limit and only at ≥39 entries with the result staying at or above 24 (public issue #1905); `allowDrastic: true` lifts both guards and is for a human only (a restore, or a deletion the principal asked for). A third guard, **stale base** (`ESTALE_BASE`, public PR #2097): the reviewer passes the fingerprint of the entries it read before inference, and the write refuses if the file's entries changed in the meantime; the next review starts from the current file.
+
+### The Cortex Ledger (curated ⟺ folded)
+
+The hot-layer memory files (`PRINCIPAL_MEMORY.md`, `DA_MEMORY.md`) are **log-plus-projection**. The invariant: **every autonomically curated byte of a fold-owned file is a deterministic render of ledger events.** The reviewer authors events (its `op:"set"` full desired state); deterministic code folds events into files. Hand edits and rename sweeps are **adopted** into the ledger as `memory/adopt` events rather than refused or erased.
+
+- **The stream:** `MEMORY/LEDGER/cortex-events.jsonl` — append-only, hash-chained (`row_hash` = sha256 of `prev_row_hash` + the canonical row), monotonic `seq`, schema `v` per row. Folding kinds carry the FULL rendered document, so a fold is a byte copy of the head event filtered by redact tombstones. A torn final line (a writer killed mid-append) is quarantined to `LEDGER/torn-*.txt` and truncated, under the ledger lock, by the next memory write or health run (WorkOS: upstream healed it only inside the append, which every write path reached only after a fold that threw on the torn line); any other corruption (an edited row, a broken chain, a gap in `seq`) fails every reader loudly. Content-addressed copies of every prior and new file land in `LEDGER/archive/<sha256>.md`.
+- **Event-first, fail-closed:** `MemoryWriter.setEntries` appends the event (in-lock, fsync) BEFORE the file write; a failed append aborts the write with `EWRITE_FAILED` and the file untouched. A failed file write after the append is forward-healable drift. The guards gate event admission; refused writes append non-folding `memory/rejected` events. `MemoryRestore.ts` restores through `restoreContent`, which appends `memory/restore` first.
+- **Adopt, never heal, for a legitimate edit:** when the live entries differ from the ledger head, the next `setEntries` first appends a `memory/adopt` event carrying the live bytes, then judges its own delta against that base. It adopts unattended when the edit drops no ledger entry, or when it is a fresh git commit whose net loss is under 2 (a rename sweep). Anything else is refused with `EDRIFT` (and parked for replay); `bun WORKOS/TOOLS/CortexLedger.ts adopt [--force]` adopts by hand.
+- **Existing installs (WorkOS):** memory files that predate the ledger are anchored automatically, once. `MemoryWriter.anchorUnledgered` runs at the start of every write, restore and adopt, and inside `MemoryHealthCheck` (unless `CORTEX_HEALTH_NO_WRITE=1`). On an empty ledger it appends ONE `checkpoint` row labelled `reason: "adopt-pre-ledger-files"`, `anchor: true`, carrying each present file's bytes and its `file_hashes` (sha256, entries hash, entry count); a file that appears later gets one `memory/adopt` row with the same label. It records the files as found at that moment: no earlier history is invented and no memory file is rewritten. The append re-checks under the ledger lock, so a second run, or two processes at once, add nothing. `CortexLedger.ts genesis` does the same by hand. A health run that may not write reports "no ledger yet" at `ok`, never a failure.
+- **Detection:** `CortexLedger.ts verify` runs inside MemoryHealthCheck on the Stop cadence — entries-region drift or a chain break is CRITICAL (`ledger-fold-drift`, remedy `CortexLedger.ts adopt`), byte-only drift (out-of-band frontmatter) warns and folds in at the next curation write. A fold-owned file that does not exist and has no event is `absent`, not a failure. Upstream's SystemFileGuard tooth that denies direct harness edits of these files is not ported; out-of-band edits are adopted or flagged by verify.
+- **Locking, and the glibc fallback:** the ledger append holds an O_EXCL lockfile (`cortex-events.jsonl.lock`) — pure filesystem, no libc dependency — which never takes over a stale lock: a writer killed while holding it leaves every later memory write failing closed until the file is removed, and MemoryHealthCheck reports a lock older than 10 minutes as CRITICAL (`ledger-lock-stale`). `lib/LedgerCore.withKernelLock` (flock(2) through `bun:ffi`, unused by Cortex today) no longer depends on glibc: it tries `libc.so.6`, then musl's `libc.musl-<arch>.so.1` and `libc.so`, and when none loads it runs the action under the O_EXCL lockfile at `<lock>.excl` (stale takeover after `staleMs`, default 10 s) instead of failing. `kernelLockMode()` reports which mode a process uses. A flock holder and a fallback holder do not exclude each other, so one ledger directory must not be shared between a musl and a glibc runtime.
+- **CLI:** `bun WORKOS/TOOLS/CortexLedger.ts {status | genesis | verify [--json] | adopt [--force] | fold [--at ISO] [--heal] | checkpoint | compact | redact <sha256> | provenance}`. `fold --at` is time travel; `fold --heal` rebuilds live files from the ledger and erases any live edit (for a missing or corrupt file, a ledger ahead of its file, or finishing a redaction). `checkpoint` + `compact` bound growth: rows before the last checkpoint move to `LEDGER/archive/events-*.jsonl`.
+- **Redaction runbook:** `redact <entry-hash>` appends a fold-honored tombstone, then `fold --heal` removes the entry from live files, and writes refuse to bring it back (`EREDACTED`). For privacy-grade removal the tombstone is not enough — the text survives in earlier rows, checkpoints, snapshots and the archive: rewrite `cortex-events.jsonl` without the offending rows, append a fresh checkpoint, delete matching `LEDGER/archive/` and `OBSERVABILITY/memory-snapshots/` copies, and record the rewrite in `LEDGER/ledger-incidents.jsonl`. This is the ONE sanctioned history rewrite.
+- **Not ported from upstream:** the reviewer replay corpus (`USER/CACHE/cortex-replay/`, consumed by Assay), `proposal/apply` audit rows from `applyProposalEdit`, and the principal text-thread review.
 
 ### Per-write snapshots (recoverability)
 
@@ -311,6 +340,7 @@ This is the canonical list of every directory under `~/.claude/WORKOS/MEMORY/`. 
 | `_BROWSER_STATE/` | skill-private | reserved | Legacy browser-skill profile/cookie scratch — that skill retired 2026-07-04; dir retained for taxonomy stability | (none active) |
 | `UPGRADES/` | core | active | System-improvement queue — the PENDING half of the change pipeline (records/) | `WORKOS/TOOLS/Upgrades.ts`, `SatisfactionCapture.hook.ts` |
 | `BENCHMARKS/` | core | on-demand | Versioned Cortex retrieval benchmark reports — created when a benchmark is run | `WORKOS/TOOLS/CortexBenchmark.ts` |
+| `LEDGER/` | core | on-demand | Cortex Ledger — append-only hash-chained event stream for the two hot-layer memory files (cortex-events.jsonl), content-addressed archive/, provenance/ maps, torn-row quarantine — created at the first memory write or health run | MemoryWriter (event-first writes, adoption anchor), CortexLedger.ts (genesis/checkpoint/redact/compact), MemoryHealthCheck (adoption anchor) |
 
 **Class definitions:**
 - **core** — top-level WorkOS subsystem; written by core hooks/pipelines; documented in this file.

@@ -78,7 +78,7 @@ import { setEntries as memoryWriterSetEntries, read as memoryWriterRead } from "
 import { classifyScope } from "./ProposalScope";
 import { addUpgrade } from "./Upgrades";
 import { getTier } from "./MutationTier";
-import { getRelevantContext, type RelevantResultItem } from "./MemoryRetriever";
+import { getRelevantContext, type RelevantResultItem, bumpMemoryGeneration } from "./MemoryRetriever";
 import { mintId, slugFromPath, SCHEMA_VERSION } from "./KnowledgeSchema";
 import { stripPrivateContent } from "./CaptureEnvelope";
 import { assertInsideUserData } from "./lib/ForeignDataCheck";
@@ -377,6 +377,8 @@ function enqueueProposal(item: TypedItem & { type: "proposal" }): { ok: true; id
       }) + "\n",
       "utf8",
     );
+    // The retriever's persisted index (MemoryRetriever 1.5.1) rebuilds when a writer bumps this.
+    bumpMemoryGeneration();
     return { ok: true, id };
   } catch (e: any) {
     return { ok: false, code: "EWRITE_FAILED", message: `Proposal enqueue failed: ${e?.message}` };
@@ -404,7 +406,7 @@ function generateProposalId(): string {
  * subprocess) is responsible for trimming. add() surfaces the at-cap error
  * verbatim so the caller can re-submit with explicit eviction choices.
  */
-function addMemoryItem(item: TypedItem & { type: "memory" }, path: string): AddResult {
+function addMemoryItem(item: TypedItem & { type: "memory" }, path: string, expectedFingerprint?: string): AddResult {
   const current = memoryWriterRead(path);
   if ("code" in current) {
     return { ok: false, code: "EINVAL_ITEM", message: `Memory file unreadable: ${current.message}` };
@@ -432,7 +434,17 @@ function addMemoryItem(item: TypedItem & { type: "memory" }, path: string): AddR
     newEntries = [...current.entries, item.content.trim()];
   }
 
-  const writeResult = memoryWriterSetEntries(path, newEntries, { updatedBy: "MemorySystem.add" });
+  // Deliberate consolidation is the ONE case allowed to net-drop entries
+  // (public issue #1905, @ksjayeshks; ported from LifeOS 8.761.0). Only the INTENT
+  // is passed: MemoryWriter decides in-lock whether it earns anything, and it never
+  // lifts the catastrophic-shrink guard. expectedFingerprint is the stale-base guard
+  // (public PR #2097, @hjbrandt): the write refuses if the file changed since the
+  // caller's read.
+  const writeResult = memoryWriterSetEntries(path, newEntries, {
+    updatedBy: "MemorySystem.add",
+    consolidation: item.op === "set" && item.consolidate === true,
+    expectedFingerprint,
+  });
   if (!writeResult.ok) {
     return {
       ok: false,
@@ -452,6 +464,7 @@ function addMemoryItem(item: TypedItem & { type: "memory" }, path: string): AddR
       dropped_malformed: writeResult.dropped_malformed,
       dropped_overlength: writeResult.dropped_overlength,
       dropped_duplicates: writeResult.dropped_duplicates,
+      fingerprint: writeResult.detail?.fingerprint,
     },
   };
 }
@@ -653,6 +666,7 @@ function addNoteTypeItem(item: TypedItem & { type: "idea" | "knowledge" }, path:
   }
 
   logTierBWrite(path, totalBytes, item.type);
+  bumpMemoryGeneration();
   return {
     ok: true,
     type: item.type,
@@ -680,7 +694,7 @@ export function sanitizeTypedItemForPersistence(item: TypedItem): SanitizedItemR
 
   const raw = item as any;
   const schemas: Record<string, readonly string[]> = {
-    memory: ["type", "actor", "op", "content", "entries", "provenance", "confidence"],
+    memory: ["type", "actor", "op", "content", "entries", "provenance", "confidence", "consolidate"],
     idea: ["type", "title", "content", "source_session", "confidence", "related"],
     knowledge: ["type", "entity_type", "name", "content", "source_session", "confidence", "related"],
     proposal: ["type", "target_file", "target_kind", "edit", "confidence", "rationale", "observed_across_sessions", "source_session"],
@@ -770,8 +784,11 @@ export function sanitizeTypedItemForPersistence(item: TypedItem): SanitizedItemR
       if (raw.actor !== "principal" && raw.actor !== "assistant") return invalid("memory actor is invalid");
       if (raw.op !== undefined && raw.op !== "add" && raw.op !== "set") return invalid("memory op is invalid");
       if (raw.provenance !== undefined && !["explicit", "deduced", "inferred"].includes(raw.provenance)) return invalid("memory provenance is invalid");
+      if (raw.consolidate !== undefined && typeof raw.consolidate !== "boolean") return invalid("memory consolidate must be a boolean");
+      if (raw.consolidate === true && raw.op !== "set") return invalid("memory consolidate requires op:\"set\"");
       if (raw.op === "set") {
         if (!Array.isArray(cleaned.entries) || cleaned.entries.length === 0) return invalid("memory entries must be a non-empty array");
+        cleaned.consolidate = raw.consolidate === true;
       } else if (cleaned.content === undefined) {
         return invalid("memory content must be a non-empty string");
       }
@@ -808,7 +825,7 @@ export function sanitizeTypedItemForPersistence(item: TypedItem): SanitizedItemR
  * item's resolved storage path's mutation tier matches the type's declared
  * tier — a defense-in-depth check against registry/classifier drift.
  */
-export function add(item: TypedItem): AddResult {
+export function add(item: TypedItem, opts: { expectedFingerprint?: string } = {}): AddResult {
   if (!item || typeof item !== "object" || !("type" in item)) {
     return { ok: false, code: "EINVAL_ITEM", message: "Item missing 'type' field" };
   }
@@ -864,7 +881,7 @@ export function add(item: TypedItem): AddResult {
 
   switch (entry.write_mode) {
     case "set-overwrite":
-      return addMemoryItem(item as TypedItem & { type: "memory" }, path);
+      return addMemoryItem(item as TypedItem & { type: "memory" }, path, opts.expectedFingerprint);
     case "append":
       return addNoteTypeItem(item as TypedItem & { type: "idea" | "knowledge" }, path);
     case "queue": {
