@@ -1,7 +1,7 @@
 ---
 name: Teach
 version: 1.1.0
-description: Interactive text tutorial on whatever the current conversation is about — teaches the topic beat by beat with ASCII diagrams in the terminal, asking one question per beat and quizzing until the ideas land. USE WHEN teach me, /teach-me, tutorial, teach me this, walk me through this interactively, explain this like a lesson, learn mode, quiz me, help me actually understand what we just did. NOT FOR plain written explanations with no dialogue (just answer directly), authored/published content, or discovery interviews that shape a half-formed idea (use grill-me).
+description: Interactive text tutorial on whatever the current conversation is about — teaches the topic beat by beat with ASCII diagrams in the terminal, asking one question per beat and quizzing until the ideas land. USE WHEN teach me, /teach-me, tutorial, teach me this, walk me through this interactively, explain this like a lesson, learn mode, quiz me, help me actually understand what we just did. NOT FOR plain written explanations with no dialogue (just answer directly), authored/published content, or discovery interviews that shape a half-formed idea (use /discuss).
 ---
 
 # Teach
