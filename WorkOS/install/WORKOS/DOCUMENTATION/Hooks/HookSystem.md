@@ -19,7 +19,7 @@ version: 1.4.3
 **Configuration:** `~/.claude/settings.json` (GENERATED — merged from `settings.system.json` + `WORKOS/USER/CONFIG/settings.user.json` by `MergeSettings.ts`; for events the user file defines as a plain array — UserPromptSubmit, PostToolUse, PreToolUse, Stop, SessionEnd — the user array REPLACES the system array, so `settings.json` is the only registration truth. `settings.user.json` does not exist on a fresh install — `MergeSettings` no-ops cleanly until you create it to carry user-side overrides)
 **Status:** Active — hook counts below are hand-maintained (the `UpdateCounts.ts` count-cache write was removed 2026-05-06; statusline/Banner read live via `GetCounts.ts`)
 
-> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-28, 1.1.0).** 38 distinct hook files are registered in `hooks/hooks.json` across 64 hook commands; **46 hook files exist on disk (all `.hook.ts`, no `.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 8 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`DestructiveGuard` and `PublicPushGate` are registered directly on PreToolUse. `LoopDetector` is registered on PostToolUseFailure and runs on PostToolUse through `PostToolObserver`.) WorkOS 1.1.0 retired `PreToolGuard`, the guards it dispatched, `ContextReduction.hook.sh` and `ConfigEvalFire`; `hooks/retired.json` lists each with its reason. The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
+> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-28, 1.1.0).** 37 distinct hook files are registered in `hooks/hooks.json` across 63 hook commands; **45 hook files exist on disk (all `.hook.ts`, no `.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 8 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`DestructiveGuard` and `PublicPushGate` are registered directly on PreToolUse. `LoopDetector` is registered on PostToolUseFailure and runs on PostToolUse through `PostToolObserver`.) WorkOS 1.1.0 retired `PreToolGuard`, the guards it dispatched, `ContextReduction.hook.sh` and `ConfigEvalFire`; `hooks/retired.json` lists each with its reason. The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
 
 ---
 
@@ -218,7 +218,6 @@ Claude Code supports the following hook events:
         { "type": "command", "command": "$HOME/.claude/hooks/LastResponseCache.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/TabState.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/ISARenderOnStop.hook.ts" },
-        { "type": "command", "command": "$HOME/.claude/hooks/SpendAuditor.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/StopGates.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/MemoryReviewFire.hook.ts" }
       ]
@@ -248,11 +247,6 @@ Each Stop hook is a self-contained `.hook.ts` file that reads stdin via shared `
 **`ISARenderOnStop.hook.ts`** — Re-render edited ISAs at end-of-turn
 - Reads the per-session state file written by `ISASync.hook.ts` on every ISA Edit/Write; for each ISA edited this turn spawns `ISARender.ts` ONLY IF the sibling `ISA.html` already exists (the ISA reached `phase: complete` at least once) — the doctrinal gate against constant remaking during authoring
 - Renders spawned detached, never awaited (<100ms budget)
-
-**`SpendAuditor.hook.ts`** — Outcome-side spend verification (added 2026-07-16)
-- Catches the failure class where a HEAVY ask (design, analysis, research, assessment) is answered inline with zero capability use and no stated reason. `AlgorithmNudge` catches the depth SIGNAL at prompt time; this checks the OUTCOME at Stop
-- Hot path only reads/writes a small state file and spawns a detached worker (<20ms target, always exit 0). The worker audits when any trigger fires: a `depth` nudge fired this session, a zero-Skill/zero-Agent session with a ≥200-char last prompt, or a work.json row that hit `phase=complete` in the last 10 minutes
-- **Never blocks, never exits non-zero, never runs inference on the hot path** — a Stop-blocking spend gate Goodharts into token dispatches, which is why the AlgorithmNudge depth-block variant was killed 2026-07-12. Verdicts land in `MEMORY/OBSERVABILITY/spend-audit.jsonl`; an underspend verdict at confidence ≥0.6 also writes `capability-incidents.jsonl`
 
 **`StopGates.hook.ts`** — the ONE Stop-event gate hook (consolidated 2026-07-11)
 - Reads stdin ONCE and evaluates the per-turn gates in order; each gate file still owns its logic and stays runnable standalone:
@@ -1308,8 +1302,8 @@ HOOK LIFECYCLE:
 7. Claude Code continues
 
 HOOKS BY EVENT (11 events wired in hooks/hooks.json; regenerated 2026-10-28.
-38 distinct hook files registered, all .hook.ts;
-46 hook files on disk [all .hook.ts] — the 8 unregistered .hook.ts are
+37 distinct hook files registered, all .hook.ts;
+45 hook files on disk [all .hook.ts] — the 8 unregistered .hook.ts are
 imported as run()/check() modules by dispatchers, noted [via X] below):
 
 SESSION START (4 hooks + 2 TOOLS):
@@ -1356,11 +1350,10 @@ POST TOOL USE FAILURE (3 hooks, in fire order):
   AlgorithmNudge.hook.ts         probe-failed + broken-capability nudge [timeout 5]
   LoopDetector.hook.ts           Repeat-failure / hammering detection [timeout 5]
 
-STOP (7 hooks across 2 blocks, in fire order):
+STOP (6 hooks across 2 blocks, in fire order):
   LastResponseCache.hook.ts      Cache response for SatisfactionCapture + DriftReminder bridge
   TabState.hook.ts               Tab title/color reset after response (formerly ResponseTabReset)
   ISARenderOnStop.hook.ts        Re-render completed ISAs (only if ISA.html already exists)
-  SpendAuditor.hook.ts           Outcome-side spend verification, detached worker; never blocks
   StopGates.hook.ts              ONE gate hook: FormatGate, VerificationGate, ISACloseGate, ISAFoldGate, ISAGate .run [via X] in order; FIRST block wins
   MemoryReviewFire.hook.ts       Owns the WHOLE memory-review cadence: tick at Stop, fire MemoryReviewer.ts
                                  detached (env-scrubbed) at turn_threshold ∧ min_minutes_between. pending_review always false now.
@@ -1410,7 +1403,7 @@ RETIRED IN THE 2026-07-11 HOOKS-BPE PASS (deleted or folded):
 
 RETIRED IN 1.1.0 (files deleted from the payload; reasons in hooks/retired.json):
   PreToolGuard, SystemFileGuard, BashSystemWriteGuard, ISAStaleWriteGuard,
-  CommunicationSkillGuard, EgressClassGuard, ContextReduction.hook.sh, ConfigEvalFire.
+  CommunicationSkillGuard, EgressClassGuard, ContextReduction.hook.sh, ConfigEvalFire, SpendAuditor.
   Updates never delete files, so a retired file can stay on disk; InstallHooks removes
   its settings.json registration and Doctor --reconcile ignores it.
 
@@ -1423,9 +1416,9 @@ KEY FILES:
 ~/.claude/settings.system.json       System-side hook/permission source (SYSTEM)
 ~/.claude/WORKOS/USER/CONFIG/settings.user.json  User-side source (USER); its plain-array events REPLACE the system array
 ~/.claude/WORKOS/TOOLS/MergeSettings.ts  Merges system + user → settings.json (runs async at SessionStart)
-~/.claude/hooks/                     Hook scripts (46 .hook.ts files; 38 distinct hook files registered)
+~/.claude/hooks/                     Hook scripts (45 .hook.ts files; 37 distinct hook files registered)
 ~/.claude/hooks/handlers/            Handler modules (8 files)
-~/.claude/hooks/lib/                 Shared libraries (30 files: 29 .ts + spend-auditor-prompt.md)
+~/.claude/hooks/lib/                 Shared libraries (30 .ts files plus 1 test)
 ~/.claude/hooks/lib/learning-utils.ts Learning categorization
 ~/.claude/hooks/lib/time.ts          PST timestamp utilities
 ~/.claude/WORKOS/MEMORY/WORK/               Work tracking

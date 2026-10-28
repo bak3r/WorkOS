@@ -4,7 +4,7 @@
 
 This document is the authoritative reference for WorkOS's hook system. When modifying any hook, update both the hook's inline documentation AND this README.
 
-*Last updated: 2026-10-28 — WorkOS 1.1.0: registry regenerated against `hooks/hooks.json` (46 hook files on disk, all `.hook.ts`; 38 distinct hook files registered, 8 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
+*Last updated: 2026-10-28 — WorkOS 1.1.0: registry regenerated against `hooks/hooks.json` (45 hook files on disk, all `.hook.ts`; 37 distinct hook files registered, 8 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
 
 ---
 
@@ -87,7 +87,6 @@ Hooks are TypeScript scripts that execute at specific lifecycle events in Claude
 │  Stop ──┬──► LastResponseCache (cache for SatisfactionCapture)      │
 │         ├──► TabState           (Kitty tab reset)                   │
 │         ├──► ISARenderOnStop    (re-render edited ISAs)             │
-│         ├──► SpendAuditor       (outcome-side spend verification)   │
 │         ├──► StopGates          (Format/Verification/ISA gates)     │
 │         ├──► MemoryReviewFire   (memory-review cadence)             │
 │         └──► MemoryHealthGate   (autonomic memory health check)     │
@@ -155,7 +154,7 @@ interface StopPayload extends BasePayload {
 
 ## Hook Registry
 
-> **Census (2026-10-28).** 46 hook files exist on disk (all `.hook.ts`, no `.sh`); **38 distinct hook files are registered in `hooks/hooks.json`**, across 64 hook commands (61 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 8 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
+> **Census (2026-10-28).** 45 hook files exist on disk (all `.hook.ts`, no `.sh`); **37 distinct hook files are registered in `hooks/hooks.json`**, across 63 hook commands (60 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 8 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
 >
 > WorkOS registers hooks **bare** — the path alone, no `bun` prefix — relying on the `#!/usr/bin/env bun` shebang plus the executable bit. `HookHealer` is the one deliberate exception (it carries an explicit `bun` prefix so it can still repair a cleared exec bit on everything else).
 
@@ -229,7 +228,6 @@ interface StopPayload extends BasePayload {
 | `LastResponseCache.hook.ts` | Cache last response for the SatisfactionCapture bridge | No | None |
 | `TabState.hook.ts` | Reset Kitty tab title/color after response | No | Kitty terminal |
 | `ISARenderOnStop.hook.ts` | Re-render ISAs edited during the turn, from the per-session state file `ISASync` writes | No | `MEMORY/WORK/`, ISA renderer |
-| `SpendAuditor.hook.ts` | Outcome-side spend verification — did a HEAVY ask get matching effort | No | `MEMORY/OBSERVABILITY/` |
 | `StopGates.hook.ts` | The ONE Stop-event gate hook — dispatches `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` in that order; first block wins | Yes (decision) | `lib/hook-io.ts` |
 | `MemoryReviewFire.hook.ts` | Owns the whole memory-review cadence | No | `USER/CONFIG/memory-review.json`, `MEMORY/` |
 | `MemoryHealthGate.hook.ts` | Autonomic-memory health check; never fails the Stop chain | No | `MEMORY/OBSERVABILITY/memory-health.jsonl` (timeout 15) |
@@ -290,7 +288,7 @@ The former PreToolUse dispatcher (`PreToolGuard`) and the guards it ran are reti
 
 Removed from disk in the 2026-05-06 security simplification and the 2026-07-10/2026-07-11 consolidation passes (per-row dates below where they differ). They appear in older docs and in the public repo's cut; none of them exist now.
 
-**Retired in 1.1.0:** `PreToolGuard`, `SystemFileGuard`, `BashSystemWriteGuard`, `ISAStaleWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, `ContextReduction.hook.sh` and `ConfigEvalFire`. The files are deleted from the payload; `hooks/retired.json` lists each with its reason. `InstallHooks` (`retireHooks` in `Tools/InstallEngine.ts`) removes their `settings.json` registrations on update. Updates never delete files, so a retired hook's file can stay on disk after an update; `Doctor --reconcile` ignores it.
+**Retired in 1.1.0:** `PreToolGuard`, `SystemFileGuard`, `BashSystemWriteGuard`, `ISAStaleWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, `ContextReduction.hook.sh`, `ConfigEvalFire` and `SpendAuditor`. The files are deleted from the payload; `hooks/retired.json` lists each with its reason. `InstallHooks` (`retireHooks` in `Tools/InstallEngine.ts`) removes their `settings.json` registrations on update. Updates never delete files, so a retired hook's file can stay on disk after an update; `Doctor --reconcile` ignores it.
 
 | Retired hook | Where its behaviour went |
 |--------------|--------------------------|
@@ -336,7 +334,6 @@ Stop:
   LastResponseCache  →  writes MEMORY/STATE/last-response.txt
   TabState           →  Kitty tab → completion state
   ISARenderOnStop    →  re-render ISAs edited this turn
-  SpendAuditor       →  outcome-side spend verification
   StopGates          →  Format / Verification / ISA gates
   MemoryReviewFire   →  memory-review cadence
   MemoryHealthGate   →  memory health check

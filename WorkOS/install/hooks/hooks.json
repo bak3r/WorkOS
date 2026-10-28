@@ -426,10 +426,6 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/SpendAuditor.hook.ts"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/StopGates.hook.ts"
           },
           {
