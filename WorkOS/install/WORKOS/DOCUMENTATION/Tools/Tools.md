@@ -359,37 +359,6 @@ brew install trufflehog
 
 ---
 
-## RTK — Context Reduction Proxy
-
-**Location:** `~/.local/bin/rtk` (installed via `curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh`)
-
-**Repository:** [github.com/rtk-ai/rtk](https://github.com/rtk-ai/rtk) (MIT license)
-
-Transparent CLI proxy that compresses the output of a few high-volume commands before it reaches Claude Code's context. Integrated via a PreToolUse hook that rewrites matching commands to their `rtk` equivalents before execution.
-
-**`rtk` is an OPTIONAL dependency, not bundled by the installer.** Without `rtk` on PATH the hook is an inert passthrough — it never errors and never blocks a command. To enable it, install rtk separately (see Location above). This is deliberate: the installer ships no third-party binary.
-
-**Scope (2026-07-13 shrink):** the hook rewrites **only** `git` (status/diff/log/commit/push/pull/branch/fetch/stash/show), `gh` (pr/issue/run/api/release), and an `interceptor screenshot --save` output redirect. An earlier build carried a ~15-family rewrite table (cargo, vitest, pytest, go, docker, kubectl, npm, pnpm, tsc, eslint, prettier, prisma, ruff, mypy); those were removed because they are not this system's stack (bun/TS) and the table was dead weight.
-
-**What it does NOT touch (INVARIANT):** read-path commands whose stdout the model reasons over as evidence — `rg`/`grep`, `cat`/`head`, `ls`/`tree`/`find`, `diff`, `curl`/`wget`, `psql`/`aws`. rtk's parse-fail there falls back to a different binary (`rg`→BSD grep) and can silently corrupt results. Compress what the model *watches* (VCS status, gh metadata), never what it *reads*. Incident: 2026-06-10 Vector ISA miss.
-
-**Measured value (this install):** `git status` ≈69% smaller, `gh pr diff` ≈65%, `git log` ≈42%. `rtk gain` reports a much larger lifetime figure, but most of that is direct/manual rtk usage of read-path commands (curl, grep, ls) that the hook does **not** rewrite — the hook's own contribution is the git/gh subset.
-
-**Key Commands:**
-```bash
-rtk gain              # rtk's own token-savings ledger (all rtk usage, not just the hook)
-rtk --help            # supported subcommands
-```
-
-**Technical Details:**
-- Rust binary, zero runtime dependencies
-- 3-tier parsing: JSON → regex → passthrough (graceful degradation)
-- SQLite tracking database at `~/.config/rtk/history.db`
-- Hook requires `jq` (for JSON stdin parsing) in addition to `rtk`
-- Regression gate: `cd ~/.claude/hooks && bun test ContextReduction.test.ts`
-
----
-
 ## Monitor Tool — Event-Driven Background Watching
 
 The Monitor tool starts a background script whose stdout lines become chat notifications. Instead of polling in a loop (burning tokens), the script runs independently and wakes you when something happens. Zero token cost between events.

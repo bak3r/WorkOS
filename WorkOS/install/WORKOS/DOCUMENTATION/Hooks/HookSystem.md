@@ -19,7 +19,7 @@ version: 1.4.3
 **Configuration:** `~/.claude/settings.json` (GENERATED — merged from `settings.system.json` + `WORKOS/USER/CONFIG/settings.user.json` by `MergeSettings.ts`; for events the user file defines as a plain array — UserPromptSubmit, PostToolUse, PreToolUse, Stop, SessionEnd — the user array REPLACES the system array, so `settings.json` is the only registration truth. `settings.user.json` does not exist on a fresh install — `MergeSettings` no-ops cleanly until you create it to carry user-side overrides)
 **Status:** Active — hook counts below are hand-maintained (the `UpdateCounts.ts` count-cache write was removed 2026-05-06; statusline/Banner read live via `GetCounts.ts`)
 
-> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-21).** 40 distinct hook files are registered in `hooks/hooks.json` (39 `.hook.ts` + `ContextReduction.hook.sh`) across 72 hook commands; **54 hook files exist on disk (53 `.hook.ts` + `ContextReduction.hook.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 14 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `DestructiveGuard`, `SystemFileGuard`, `BashSystemWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, `PublicPushGate` → `PreToolGuard`; `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`LoopDetector` graduated to a direct PostToolUse + PostToolUseFailure registration and is no longer dispatcher-only; `ISAStaleWriteGuard` is both registered directly on PostToolUse and called by `PreToolGuard` for whole-file Writes.) The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
+> **Post-consolidation state (2026-07-11 hooks-BPE pass; WorkOS census 2026-10-28, 1.1.0).** 38 distinct hook files are registered in `hooks/hooks.json` across 64 hook commands; **46 hook files exist on disk (all `.hook.ts`, no `.sh`).** WorkOS has no HTTP hooks (the Pulse SkillGuard/AgentGuard routes were removed along with Pulse, voice/TTS and push notifications). The 8 `.hook.ts` files that are on disk but NOT registered directly are not dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and still runnable standalone via its own shim: `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` → `StopGates`; `LoadMemory`, `MemoryDeltaSurface` → `MemoryTurnStart`; `SystemChangeSurface` → `PostToolObserver`. (`DestructiveGuard` and `PublicPushGate` are registered directly on PreToolUse. `LoopDetector` is registered on PostToolUseFailure and runs on PostToolUse through `PostToolObserver`.) WorkOS 1.1.0 retired `PreToolGuard`, the guards it dispatched, `ContextReduction.hook.sh` and `ConfigEvalFire`; `hooks/retired.json` lists each with its reason. The consolidation retired `TheRouter` entirely (removed 2026-07-11) (mode/tier classification abolished; model rungs now live in `WORKOS/TOOLS/models.ts` + `AgentInvocation.hook.ts`) and folded a family of single-purpose loggers/gates/painters into `EventLogger`, `TabState`, `StopGates`, `MemoryTurnStart`, `MemoryReviewFire`, and `PostToolObserver`. Details per event below.
 
 ---
 
@@ -283,8 +283,7 @@ Each Stop hook is a self-contained `.hook.ts` file that reads stdin via shared `
 ### 5. **PreToolUse**
 **When:** Before Claude executes any tool
 **Use Cases:**
-- Security validation across write/exec operations (Bash, Write, Edit, MultiEdit) — `PreToolGuard` blocks destructive and credential-exfil Bash shapes in every permission mode, USER content landing in SYSTEM files, raw email sends, and over-ceiling Tier-2 egress; the native permission denylist covers the rest
-- Context reduction (RTK command rewrite on Bash)
+- Security validation on Bash — `DestructiveGuard` blocks destructive and credential-exfil shapes in every permission mode, and `PublicPushGate` blocks pushes to public repos; the native permission denylist covers the rest. There is no PreToolUse guard for Write/Edit/MultiEdit
 - Tab state updates on questions
 - Subagent-start capture at the `Agent` boundary (`AgentInvocation`)
 
@@ -292,28 +291,29 @@ Each Stop hook is a self-contained `.hook.ts` file that reads stdin via shared `
 ```json
 {
   "PreToolUse": [
-    { "matcher": "Bash", "hooks": [ { "type": "command", "command": "$HOME/.claude/hooks/ContextReduction.hook.sh" } ] },
+    { "matcher": "Bash", "hooks": [
+        { "type": "command", "command": "$HOME/.claude/hooks/DestructiveGuard.hook.ts" },
+        { "type": "command", "command": "$HOME/.claude/hooks/PublicPushGate.hook.ts" }
+    ] },
     { "matcher": "Agent", "hooks": [
         { "type": "command", "command": "$HOME/.claude/hooks/AgentInvocation.hook.ts" }
     ] },
-    { "matcher": "AskUserQuestion", "hooks": [ { "type": "command", "command": "$HOME/.claude/hooks/TabState.hook.ts" } ] },
-    { "matcher": "Bash|Write|Edit|MultiEdit", "hooks": [ { "type": "command", "command": "$HOME/.claude/hooks/PreToolGuard.hook.ts" } ] }
+    { "matcher": "AskUserQuestion", "hooks": [ { "type": "command", "command": "$HOME/.claude/hooks/TabState.hook.ts" } ] }
   ]
 }
 ```
-<!-- regenerated from hooks/hooks.json 2026-10-21 -->
+<!-- regenerated from hooks/hooks.json 2026-10-28 -->
 
-**Security guard (active — `PreToolGuard.hook.ts`, the ONE PreToolUse blocking dispatcher, consolidated 2026-07-11):** Reads stdin ONCE and routes by tool to isolated blocker modules (each still runnable standalone via its own shim), FIRST block wins (`exit 2`, message to stderr → model):
-- `Write | Edit | MultiEdit` → `SystemFileGuard.check` (blocks deny-list USER content landing in a SYSTEM file; fail-OPEN), then `ISAStaleWriteGuard.check` (Write-only: a whole-file Write that would silently discard ISA changes the session never saw; fail-OPEN)
-- `Bash` → `DestructiveGuard.check` first (hard-blocks recursive deletes of `/`, system dirs, the home dir or the config root; download-piped-to-shell; raw device writes, mkfs, fork bombs, `chmod -R 777`; reverse shells; privileged or host-mounting `docker run`; force-push or hard reset on main/master/prod; history rewrites and ref deletion; process attach; private-key, cloud-credential and `/proc/*/environ` reads; `.env` or credential files sent over the network. It runs on PreToolUse because `Safety.hook.ts` only sees PermissionRequest, which never fires under bypassPermissions — the Docker Sandboxes TUI mode. Interpreter one-liners and plain `.env` reads stay with the normal permission flow. Matching uses `buildShapeTargets()` from `lib/safety-classifier.ts`, so quoting, `bash -c`, env-prefix wrappers, substitutions and escapes are seen through. Fail-OPEN on internal error; tests in `hooks/DestructiveGuard.test.ts`), then `BashSystemWriteGuard.check` (the Bash lane of `SystemFileGuard`: a write-shaped command into a SYSTEM-tree target — redirection, tee, cp/mv, sed -i, script-writes — has its whole command text, heredocs included, scanned against the same deny-list; fail-OPEN), `CommunicationSkillGuard.check` (blocks raw email send; fail-OPEN), `EgressClassGuard.check` (blocks over-ceiling Tier-2 egress; fail-CLOSED on a Tier-2-signature call whose classification throws, fail-OPEN otherwise), then `PublicPushGate.check` (blocks a Bash-driven push to a PUBLIC GitHub repo, or making a repo public, until the repo's HEAD tree and reachable history pass a deny-scan; patterns from `WORKOS/USER/SECURITY/PublicScrubPatterns.txt` plus built-in secret signatures; fail-OPEN while visibility is undetermined, fail-CLOSED once the destination is confirmed public; visibility cached 24 h in `MEMORY/STATE/public-push-gate.json`)
+**Security guards (active — registered directly on the `Bash` matcher, in this order):** each hook is registered on its own, so one guard failing can never suppress the other, and each is fail-OPEN on bad input or an internal error. A block is `exit 2` with the message on stderr → model.
+- `DestructiveGuard.hook.ts` hard-blocks recursive deletes of `/`, system dirs, the home dir or the config root; download-piped-to-shell; raw device writes, mkfs, fork bombs, `chmod -R 777`; reverse shells; privileged or host-mounting `docker run`; force-push or hard reset on main/master/prod; history rewrites and ref deletion; process attach; private-key, cloud-credential and `/proc/*/environ` reads; `.env` or credential files sent over the network. It runs on PreToolUse because `Safety.hook.ts` only sees PermissionRequest, which never fires under bypassPermissions — the Docker Sandboxes TUI mode — so it blocks in every permission mode, including bypassPermissions. Interpreter one-liners and plain `.env` reads stay with the normal permission flow. Matching uses `buildShapeTargets()` from `lib/safety-classifier.ts`, so quoting, `bash -c`, env-prefix wrappers, substitutions and escapes are seen through. Tests in `hooks/DestructiveGuard.test.ts`.
+- `PublicPushGate.hook.ts` blocks a Bash-driven push to a PUBLIC GitHub repo, or making a repo public, until the repo's HEAD tree and reachable history pass a deny-scan; patterns from `WORKOS/USER/SECURITY/PublicScrubPatterns.txt` plus built-in secret signatures; fail-OPEN while visibility is undetermined, fail-CLOSED once the destination is confirmed public; visibility cached 24 h in `MEMORY/STATE/public-push-gate.json`.
 
-Each check is wrapped in its own try/catch so one guard throwing can never suppress the others. `ContextReduction.hook.sh` stays a SEPARATE Bash hook because it REWRITES the command (`updatedInput`) rather than block/allow. `AgentInvocation.hook.ts` captures subagent-start at the `Agent` boundary. See `DOCUMENTATION/Security/README.md` for full architecture.
+`AgentInvocation.hook.ts` captures subagent-start at the `Agent` boundary. There is no command-rewrite hook on Bash. See `DOCUMENTATION/Security/README.md` for full architecture.
 
 **What They Do:**
-- `ContextReduction.hook.sh` - Context reduction via [RTK](https://github.com/rtk-ai/rtk). Transparently rewrites Bash commands to `rtk` equivalents for 60-90% token reduction across git, build, test, lint, and package manager output. Runs on the Bash matcher. Meta commands (use directly, not through hook): `rtk gain` (savings analytics), `rtk gain --history` (command history), `rtk discover` (missed opportunities), `rtk proxy <cmd>` (bypass filtering). Note: if `rtk gain` fails, check for name collision with reachingforthejack/rtk (Rust Type Kit).
 - `TabState.hook.ts` *(PreToolUse:AskUserQuestion branch; formerly `SetQuestionTab.hook.ts`)* - Sets the tab to teal "awaiting input" and saves the previous title so the PostToolUse branch can restore it when the question is answered.
 
-> **Historical (retired 2026-07-11):** `SecurityPipeline.hook.ts` (the v4.0 Inspector Pipeline: PatternInspector → EgressInspector) is no longer registered — its blocking role was absorbed by `PreToolGuard` above and the native permission denylist. `SetQuestionTab.hook.ts` was merged into the unified `TabState.hook.ts`. The `Read` matcher was dropped (no PreToolUse security hook fires on Read anymore).
+> **Historical (retired 2026-07-11):** `SecurityPipeline.hook.ts` (the v4.0 Inspector Pipeline: PatternInspector → EgressInspector) is no longer registered — its blocking role was absorbed by `DestructiveGuard`, `PublicPushGate` and the native permission denylist (the interim `PreToolGuard` dispatcher itself was retired in 1.1.0 — see `hooks/retired.json`). `SetQuestionTab.hook.ts` was merged into the unified `TabState.hook.ts`. The `Read` matcher was dropped (no PreToolUse security hook fires on Read anymore).
 
 ---
 
@@ -331,40 +331,32 @@ Each check is wrapped in its own try/catch so one guard throwing can never suppr
     { "matcher": "mcp__.*", "hooks": [ { "type": "command", "command": "$HOME/.claude/hooks/Safety.hook.ts", "timeout": 5 } ] },
     { "matcher": "ToolSearch", "hooks": [ { "type": "command", "command": "$HOME/.claude/hooks/Safety.hook.ts", "timeout": 5 } ] },
     { "matcher": "AskUserQuestion", "hooks": [ { "type": "command", "command": "$HOME/.claude/hooks/TabState.hook.ts" } ] },
-    { "matcher": "Read", "hooks": [
-        { "type": "command", "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts" }
-    ] },
     { "matcher": "Write", "hooks": [
         { "type": "command", "command": "$HOME/.claude/hooks/ISASync.hook.ts" },
-        { "type": "command", "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/CheckpointPerISC.hook.ts", "timeout": 30 },
-        { "type": "command", "command": "$HOME/.claude/hooks/ConfigEvalFire.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/AtlasEventCapture.hook.ts", "timeout": 5 },
         { "type": "command", "command": "$HOME/.claude/hooks/KnowledgeWriteGuard.hook.ts", "timeout": 5 },
         { "type": "command", "command": "$HOME/.claude/hooks/ComplexityRatchet.hook.ts" }
     ] },
     { "matcher": "Edit", "hooks": [
         { "type": "command", "command": "$HOME/.claude/hooks/ISASync.hook.ts" },
-        { "type": "command", "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/CheckpointPerISC.hook.ts", "timeout": 30 },
-        { "type": "command", "command": "$HOME/.claude/hooks/ConfigEvalFire.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/AtlasEventCapture.hook.ts", "timeout": 5 },
         { "type": "command", "command": "$HOME/.claude/hooks/KnowledgeWriteGuard.hook.ts", "timeout": 5 },
         { "type": "command", "command": "$HOME/.claude/hooks/ComplexityRatchet.hook.ts" }
     ] },
     { "matcher": "MultiEdit", "hooks": [
         { "type": "command", "command": "$HOME/.claude/hooks/ISASync.hook.ts" },
-        { "type": "command", "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/CheckpointPerISC.hook.ts", "timeout": 30 },
-        { "type": "command", "command": "$HOME/.claude/hooks/ConfigEvalFire.hook.ts" },
         { "type": "command", "command": "$HOME/.claude/hooks/AtlasEventCapture.hook.ts", "timeout": 5 },
         { "type": "command", "command": "$HOME/.claude/hooks/KnowledgeWriteGuard.hook.ts", "timeout": 5 },
         { "type": "command", "command": "$HOME/.claude/hooks/ComplexityRatchet.hook.ts" }
     ] },
     { "hooks": [
-        { "type": "command", "command": "$HOME/.claude/hooks/PostToolObserver.hook.ts", "timeout": 5 },
-        { "type": "command", "command": "$HOME/.claude/hooks/LoopDetector.hook.ts", "timeout": 5 },
         { "type": "command", "command": "$HOME/.claude/hooks/EventLogger.hook.ts", "timeout": 5, "async": true }
+    ] },
+    { "matcher": "", "hooks": [
+        { "type": "command", "command": "$HOME/.claude/hooks/PostToolObserver.hook.ts" }
     ] },
     { "matcher": "Bash", "hooks": [
         { "type": "command", "command": "$HOME/.claude/hooks/AtlasEventCapture.hook.ts", "timeout": 5 }
@@ -372,7 +364,7 @@ Each check is wrapped in its own try/catch so one guard throwing can never suppr
   ]
 }
 ```
-<!-- regenerated from hooks/hooks.json 2026-10-21 -->
+<!-- regenerated from hooks/hooks.json 2026-10-28 -->
 
 **What They Do:**
 
@@ -393,7 +385,7 @@ Each check is wrapped in its own try/catch so one guard throwing can never suppr
 **ComplexityRatchet.hook.ts** *(matchers `Write`, `Edit`, `MultiEdit`; registered 2026-08-08)* - Advisory complexity-drift meter (inspired by github.com/0xwilliamortiz/ratchet). Measures the complexity a session ADDS — PostToolUse only ever sees new edits, so every pre-existing line of debt is the baseline for free — and reports drift back into the live session via `additionalContext`. v1 is advise-only: it never blocks (the tool has already run at PostToolUse), and fail-open is absolute — any parse, fs, or measurement error exits silently. `MODE` is the single extension point for a future guard/strict tier.
 
 **PostToolObserver.hook.ts** *(catch-all; the ONE sync catch-all hook, consolidated 2026-07-11)* - Dispatcher merging the sync catch-all modules that emit `additionalContext`, joined into one `hookSpecificOutput`:
-- `LoopDetector.run()` — exact-repeat / oscillation / hammering detection
+- `LoopDetector.run()` — exact-repeat / oscillation / hammering detection (runs here on PostToolUse; `LoopDetector` is no longer registered on PostToolUse on its own, and its standalone entry ignores PostToolUse events, so a pre-1.1.0 install that still carries the old registration does not double-count)
 - `AlgorithmNudge.run()` — the Algorithm live nudge layer (run-scoped: agent-return / claim-close / stale-ISA / spend; always-on: late-ISA when no run is registered)
 - `SystemChangeSurface.run()` — the **⚙️ SYSTEM line** (added 2026-07-27, principal directive: "any time that we modify the system, I want the response format to include a cool, maintenance-looking system message"). Emits a `<workos-system-delta>` block naming this turn's writes to the four self-surfaces — ISA (anywhere on disk, with its claim delta), doctrine (CLAUDE.md, the system prompt, the Algorithm), identity (PRINCIPAL/DA identity, TELOS, OPERATIONAL_RULES, PROJECTS), machinery (hooks, skills, settings, TOOLS). Silent on ordinary work, and silent on `WORKOS/MEMORY/` by design — that belongs to 🧠. **Why PostToolUse:** the line must describe THIS turn's writes and be in context before the model composes, so UserPromptSubmit (where the 🧠 surface lives) is structurally one turn too late, and Stop is worse — it fires after the message is on screen and can only enforce by forcing a doubled response. **Turn boundary:** `clearLedger(sessionId)` from `MemoryTurnStart`, per-session. A first cut keyed the boundary to the memory system's GLOBAL heartbeat mtime; a concurrent session's prompt then wiped a live session's ledger mid-turn, which is why the boundary is per-session and owned here. Rendering compliance is flagged (never blocked) by `FormatGate`'s `missing-system-line`.
 
@@ -425,7 +417,7 @@ Each check is wrapped in its own try/catch so one guard throwing can never suppr
 **What They Do:**
 - `EventLogger.hook.ts` *(PostToolUseFailure branch; formerly `ToolFailureTracker.hook.ts`)* - Appends structured failure events (tool name, error message, truncated tool input, session ID, timestamp) to `MEMORY/OBSERVABILITY/tool-failures.jsonl`. Lightweight, file append only, no inference calls.
 - `AlgorithmNudge.hook.ts` - Fires the probe-failed nudge ("Claim wrong or code wrong? If the claim, update the ISA.") on an active Algorithm run, plus the always-on capability row for a Doctor-tracked capability the manifest marks `broken`.
-- `LoopDetector.hook.ts` - Repeat-failure / hammering detection on the failing tool call. Direct registration here as well as the `PostToolUse` catch-all, so a tool that fails the same way repeatedly is caught on the failure path too.
+- `LoopDetector.hook.ts` - Repeat-failure / hammering detection on the failing tool call. Registered directly on this event; on PostToolUse it runs through `PostToolObserver` instead, so a tool that fails the same way repeatedly is caught on the failure path too.
 
 ---
 
@@ -1315,9 +1307,9 @@ HOOK LIFECYCLE:
 6. Hook exits 0 (always succeeds)
 7. Claude Code continues
 
-HOOKS BY EVENT (11 events wired in hooks/hooks.json; regenerated 2026-10-21.
-40 distinct hook files registered [39 .hook.ts + ContextReduction.hook.sh];
-53 hook files on disk [52 .hook.ts + 1 .sh] — the 13 unregistered .hook.ts are
+HOOKS BY EVENT (11 events wired in hooks/hooks.json; regenerated 2026-10-28.
+38 distinct hook files registered, all .hook.ts;
+46 hook files on disk [all .hook.ts] — the 8 unregistered .hook.ts are
 imported as run()/check() modules by dispatchers, noted [via X] below):
 
 SESSION START (4 hooks + 2 TOOLS):
@@ -1340,30 +1332,23 @@ USER PROMPT SUBMIT (9 hooks, in fire order):
   ModelRungGuard.hook.ts         Reports a session running below the settings.json model pin [timeout 5, async]
 
 PRE TOOL USE (4 distinct hooks):
-  ContextReduction.hook.sh       Context reduction via RTK — REWRITES command [Bash]
+  DestructiveGuard.hook.ts       Destructive + credential-exfil blocker, every permission mode [Bash]
+  PublicPushGate.hook.ts         Public-repo push / make-public blocker [Bash]
   AgentInvocation.hook.ts        subagent_start capture [Agent]
   TabState.hook.ts               Tab teal "awaiting input" [AskUserQuestion]
-  PreToolGuard.hook.ts           ONE blocking dispatcher: SystemFileGuard.check [via X] +
-                                 ISAStaleWriteGuard.check on Write/Edit/MultiEdit;
-                                 BashSystemWriteGuard.check [via X] + CommunicationSkillGuard.check [via X] +
-                                 EgressClassGuard.check [via X] + PublicPushGate.check [via X] on Bash.
-                                 FIRST block wins (exit 2). [Bash|Write|Edit|MultiEdit]
 
-POST TOOL USE (13 distinct hooks):
+POST TOOL USE (10 distinct hooks):
   AgentInvocation.hook.ts        subagent_stop with duration [Agent]
   Safety.hook.ts                 Tag external content as data [WebFetch, WebSearch, mcp__.*,
                                  ToolSearch; timeout 5] — same file as PermissionRequest hook
                                  below; dispatches by event
   TabState.hook.ts               Post-question tab restore [AskUserQuestion]
-  ISAStaleWriteGuard.hook.ts     Stale-ISA write guard [Read, Write, Edit, MultiEdit]
   ISASync.hook.ts                ISA → work.json sync [Write, Edit, MultiEdit]
   CheckpointPerISC.hook.ts       Per-ISC auto-commit [Write, Edit, MultiEdit; timeout 30]
-  ConfigEvalFire.hook.ts         Config-eval trigger [Write, Edit, MultiEdit]
   AtlasEventCapture.hook.ts      Atlas asset-event capture [Write, Edit, MultiEdit, Bash; timeout 5]
   KnowledgeWriteGuard.hook.ts    Knowledge-note schema advisory [Write, Edit, MultiEdit; timeout 5]
   ComplexityRatchet.hook.ts      Advisory complexity-drift meter, advise-only [Write, Edit, MultiEdit]
-  PostToolObserver.hook.ts       ONE sync catch-all: LoopDetector [via X] + AlgorithmNudge [via X] + SystemChangeSurface [via X] (catch-all) [timeout 5]
-  LoopDetector.hook.ts           Direct catch-all registration [timeout 5]
+  PostToolObserver.hook.ts       ONE sync catch-all: LoopDetector [via X] + AlgorithmNudge [via X] + SystemChangeSurface [via X] (catch-all)
   EventLogger.hook.ts            Unified observability writer: tool-activity + skill-execution (catch-all) [async]
 
 POST TOOL USE FAILURE (3 hooks, in fire order):
@@ -1421,9 +1406,13 @@ RETIRED IN THE 2026-07-11 HOOKS-BPE PASS (deleted or folded):
   ToolActivityTracker+ToolFailureTracker+SkillExecutionLog+ConfigAudit+
   StopFailureHandler → EventLogger; SetQuestionTab+QuestionAnswered+
   ResponseTabReset → TabState; FormatGate+VerificationGate+ISACloseGate+ISAGate → StopGates;
-  LoadMemory+MemoryDeltaSurface → MemoryTurnStart; SystemChangeSurface → PostToolObserver (LoopDetector now also registered directly);
-  SystemFileGuard+CommunicationSkillGuard+EgressClassGuard → PreToolGuard
-  (BashSystemWriteGuard and PublicPushGate were later added as PreToolGuard lanes).
+  LoadMemory+MemoryDeltaSurface → MemoryTurnStart; SystemChangeSurface → PostToolObserver.
+
+RETIRED IN 1.1.0 (files deleted from the payload; reasons in hooks/retired.json):
+  PreToolGuard, SystemFileGuard, BashSystemWriteGuard, ISAStaleWriteGuard,
+  CommunicationSkillGuard, EgressClassGuard, ContextReduction.hook.sh, ConfigEvalFire.
+  Updates never delete files, so a retired file can stay on disk; InstallHooks removes
+  its settings.json registration and Doctor --reconcile ignores it.
 
 REMOVED IN WORKOS (not part of this fork):
   VoiceCompletion / VoiceNotification hooks, WritingGate, DeployRegistrationGate,
@@ -1434,7 +1423,7 @@ KEY FILES:
 ~/.claude/settings.system.json       System-side hook/permission source (SYSTEM)
 ~/.claude/WORKOS/USER/CONFIG/settings.user.json  User-side source (USER); its plain-array events REPLACE the system array
 ~/.claude/WORKOS/TOOLS/MergeSettings.ts  Merges system + user → settings.json (runs async at SessionStart)
-~/.claude/hooks/                     Hook scripts (53 files: 52 .hook.ts + ContextReduction.hook.sh; 40 distinct hook files registered)
+~/.claude/hooks/                     Hook scripts (46 .hook.ts files; 38 distinct hook files registered)
 ~/.claude/hooks/handlers/            Handler modules (8 files)
 ~/.claude/hooks/lib/                 Shared libraries (30 files: 29 .ts + spend-auditor-prompt.md)
 ~/.claude/hooks/lib/learning-utils.ts Learning categorization
@@ -1651,4 +1640,4 @@ watch(eventsPath, (eventType) => { /* read new lines */ });
 
 - **`DriftReminder.hook.ts`** (UserPromptSubmit) — deterministic format drift nudges. Scans the Stop-hook last-response cache (`MEMORY/STATE/last-response.txt`) with the banned-vocab regex (`hooks/lib/banned-vocab.ts`, derived from DA_IDENTITY's ban list — regenerate when that list changes), banner-presence check, and em-dash count. Fires at most one `DRIFT-REMINDER:` context line; budget 1-per-5-turns (`MEMORY/STATE/drift-reminder.json`); consecutive identical findings dedupe, a clean response re-arms; 30-min staleness guard prevents firing on a previous session's cached response. No LLM calls.
 - **`SkillSurface.hook.ts`** *(retired 2026-07-11, commit `ac4f703ab`)* — historically a deterministic top-3 skill surfacer on UserPromptSubmit (`LIKELY SKILLS (may not apply): …`). Deleted in the hooks-BPE pass; no longer registered or on disk.
-- **Chain note (updated 2026-07-11):** the UserPromptSubmit chain is 6 hooks (`PromptProcessing`, `SatisfactionCapture`, `ReminderRouter`, `DriftReminder`, `MemoryTurnStart`, `AlgorithmNudge`); the earlier per-prompt memory trio was already collapsed into `MemoryTurnStart`. The single-dispatcher-process consolidation the old note anticipated has partly landed via the per-event dispatchers (`MemoryTurnStart`, `PostToolObserver`, `StopGates`, `PreToolGuard`, `EventLogger`, `TabState`).
+- **Chain note (updated 2026-07-11):** the UserPromptSubmit chain is 6 hooks (`PromptProcessing`, `SatisfactionCapture`, `ReminderRouter`, `DriftReminder`, `MemoryTurnStart`, `AlgorithmNudge`); the earlier per-prompt memory trio was already collapsed into `MemoryTurnStart`. The single-dispatcher-process consolidation the old note anticipated has partly landed via the per-event dispatchers (`MemoryTurnStart`, `PostToolObserver`, `StopGates`, `EventLogger`, `TabState`).

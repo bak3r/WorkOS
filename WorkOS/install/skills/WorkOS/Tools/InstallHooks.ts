@@ -24,7 +24,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } fr
 import { execFileSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 import { homedir } from "node:os";
-import { detectDevTree, isTestFile, mergeHooks } from "./InstallEngine";
+import { detectDevTree, isTestFile, mergeHooks, retireHooks } from "./InstallEngine";
 import { atomicWriteText } from "./lib/atomic-write";
 import { Classifier } from "./lib/inventory";
 import { Ledger } from "./lib/ledger";
@@ -112,7 +112,15 @@ function main(): void {
   }
   const existingHooks = (settings.hooks && typeof settings.hooks === "object" ? settings.hooks : {}) as Record<string, never>;
 
-  const { merged, added, skipped } = mergeHooks(existingHooks as never, incoming);
+  const { merged: withNew, added, skipped } = mergeHooks(existingHooks as never, incoming);
+
+  // Hooks WorkOS no longer ships: drop their registrations so an updated install stops
+  // running them. The files stay on disk (updates never delete); Doctor ignores them.
+  const retiredPath = join(skillRoot, "install", "hooks", "retired.json");
+  const retiredFiles: string[] = existsSync(retiredPath)
+    ? (JSON.parse(readFileSync(retiredPath, "utf-8"))?.retired ?? []).map((r: { file: string }) => r.file)
+    : [];
+  const { merged, removed: retired } = retireHooks(withNew, retiredFiles, configRoot);
 
   // A same-named hook file that is not WorkOS's blocks the whole step (nothing written).
   const classifier = new Classifier(configRoot, skillRoot);
@@ -129,7 +137,7 @@ function main(): void {
     process.exit(1);
   }
 
-  const report = { ok: true, apply, settingsPath, added, skipped, events: Object.keys(merged).length, hooksDestDir, hookFiles };
+  const report = { ok: true, apply, settingsPath, added, skipped, retired, events: Object.keys(merged).length, hooksDestDir, hookFiles };
 
   if (!apply) {
     console.log(JSON.stringify({ ...report, dryRun: true, note: "no changes written; re-run with --apply after permission" }, null, 2));
@@ -160,7 +168,7 @@ function main(): void {
     hookFilesCopied++;
   }
 
-  ledger.beforeWrite(settingsPath, "settings-key", `hooks: +${added} WorkOS registration(s)`);
+  ledger.beforeWrite(settingsPath, "settings-key", `hooks: +${added} WorkOS registration(s), -${retired.length} retired`);
   settings.hooks = merged;
   // Atomic — a kill mid-write would leave the user with no settings.json at all
   // (public PR #1643, @elhoim)

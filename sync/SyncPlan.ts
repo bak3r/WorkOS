@@ -221,7 +221,7 @@ const pending = [...plan.values()].filter((c) => PENDING.has(c)).length;
 
 // Rename fidelity: of the files WorkOS shares with the base, how many match the renamed base exactly.
 let shared = 0, fidelity = 0;
-for (const [p, l] of localFiles) { const b = B.get(p); if (b && !skipRule(p)) { shared++; if (b.hash === l) fidelity++; } }
+for (const [p, l] of localFiles) { const b = B.get(p); if (b && !skipRule(p) && (!onlyPrefix || p.startsWith(onlyPrefix))) { shared++; if (b.hash === l) fidelity++; } }
 
 // ── --diff ──
 const diffPath = flag("--diff");

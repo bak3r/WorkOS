@@ -754,8 +754,12 @@ function statuslineGlyph(): string {
 function reconcileHooks(): { unwired: string[]; missing: string[]; note: string } {
   const hooksDir = join(CONFIG_ROOT, 'hooks');
   const settingsPath = join(CONFIG_ROOT, 'settings.json');
+  // Retired hooks stay on disk after an update (updates never delete) but are no
+  // longer registered on purpose, so they are not "unwired".
+  let retired: string[] = [];
+  try { retired = (JSON.parse(readFileSync(join(hooksDir, 'retired.json'), 'utf8')).retired ?? []).map((r: { file: string }) => r.file); } catch {}
   const declared = existsSync(hooksDir)
-    ? readdirSync(hooksDir).filter(f => f.endsWith('.hook.ts') || f.endsWith('.hook.sh'))
+    ? readdirSync(hooksDir).filter(f => (f.endsWith('.hook.ts') || f.endsWith('.hook.sh')) && !retired.includes(f))
     : [];
   let registeredBlob = '';
   try {

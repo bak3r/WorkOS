@@ -71,7 +71,7 @@ WorkOS configuration follows the **system/user separation** contract (`WORKOS/DO
 
 ## Write-time enforcement
 
-`hooks/SystemFileGuard.hook.ts` (PreToolUse, Phase E) blocks USER content from landing in SYSTEM files at write time. Fail-safe-open on hook errors. Primary defense against drift; catches violations the moment they would land. Tests: 19/19 pass.
+`hooks/SystemFileGuard.hook.ts` (PreToolUse, Phase E) used to block USER content from landing in SYSTEM files at write time. It was retired in WorkOS 1.1.0: WorkOS ships no `DENY_LIST.txt`, so it always failed open (`hooks/retired.json`).
 
 ## Two-repo sync
 

@@ -1,1 +1,16 @@
-{}
+{
+  "hooks/lib/data-classification.ts": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "cfebb691096974bdd44491a0a441441d696c86cc",
+    "reason": "Imported by lib/egress-class-core.ts, which WorkOS keeps for Safety.hook's secret scan.",
+    "at": "2026-10-28T10:11:38.312Z"
+  },
+  "hooks/lib/egress-class-core.ts": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "75eee698b2bae22b0239ee462cbac2dab71de0df",
+    "reason": "Safety.hook.ts imports SECRET_VALUE_SHAPES from it for the MCP secret scan; WorkOS keeps Safety.hook, which upstream deleted.",
+    "at": "2026-10-28T10:11:36.184Z"
+  }
+}

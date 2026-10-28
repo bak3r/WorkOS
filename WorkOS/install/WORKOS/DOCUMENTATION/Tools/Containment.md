@@ -7,7 +7,7 @@ version: 1.2.3
 > Containment zones draw the boundary at release time (`WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md`): the OS ships; the principal's private data never does.
 
 **Status:** Authoritative. Contributors and future DA sessions read this before adding a new file.
-**Enforcement:** two points. (1) The release pipeline's containment gates (G1-G14 + G17-G25, release-build time). (2) `hooks/SystemFileGuard.hook.ts` — a runtime PreToolUse Write/Edit gate that reads the same zone inventory (restored 2026-05-21 in Phase E of the system/user separation rebuild; it superseded the 2026-05-06 "release-build only" consolidation, which had removed the prospective `ContainmentGuard.hook.ts`).
+**Enforcement:** the release pipeline's containment gates (G1-G14 + G17-G25, release-build time). The runtime PreToolUse Write/Edit gate, `hooks/SystemFileGuard.hook.ts` (restored 2026-05-21 in Phase E of the system/user separation rebuild), was retired in WorkOS 1.1.0: with no `DENY_LIST.txt` shipped it always failed open (`hooks/retired.json`).
 **Zone inventory (authoritative):** `hooks/lib/containment-zones.ts` — the source of truth ShadowRelease imports.
 **Last updated:** 2026-05-10
 
@@ -66,7 +66,7 @@ A file outside every configured zone is a policy violation if it contains any of
 - **Secrets** — API tokens, private keys (`.pem`, `.key`), session cookies, OAuth refresh tokens
 - **Private-tree references** — pointers to something only this machine has: a dated work-session path (`MEMORY/WORK/<date>-<slug>`) or a dated incident citation (`INC-<date>-<slug>`)
 
-The `ShadowRelease --check` gates enforce all four categories at release-build time; `SystemFileGuard.hook.ts` enforces the zone boundary at write time between releases.
+The `ShadowRelease --check` gates enforce all four categories at release-build time. Since WorkOS 1.1.0 nothing enforces the zone boundary at write time between releases (`SystemFileGuard.hook.ts` was retired).
 
 ### Writing rule: shipped prose keeps the lesson, never the citation
 

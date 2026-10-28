@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.0.3
+ * @version 1.0.4
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
@@ -226,6 +226,11 @@ if (import.meta.main) {
   (async () => {
     if (process.argv.includes('--selftest')) runSelftest();
     const input = parseInput(await readStdin());
+    // PostToolObserver already runs this detector on PostToolUse, so the standalone
+    // entry serves PostToolUseFailure only. Installs from before 1.1.0 still carry a
+    // standalone PostToolUse registration (InstallHooks only adds), which would count
+    // every tool call twice and trip the repeat detector early.
+    if (input?.hook_event_name === 'PostToolUse') process.exit(0);
     if (input) {
       const message = run(input);
       if (message) emitAdditionalContext(message, input.hook_event_name);

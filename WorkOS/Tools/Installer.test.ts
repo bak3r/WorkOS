@@ -17,6 +17,7 @@ import { BLOCK_BEGIN, BLOCK_END, blockState, buildBlock, fixLifeosPaths, removeB
 import { Ledger, readManifest, startRun } from "./lib/ledger";
 import { executeRollback, planRollback } from "./Rollback";
 import { applySettingsPlan, planSettings } from "./Adopt";
+import { retireHooks } from "./InstallEngine";
 
 const tmp: string[] = [];
 const mk = (tag: string) => { const d = mkdtempSync(join(tmpdir(), `workos-${tag}-`)); tmp.push(d); return d; };
@@ -244,5 +245,36 @@ describe("ledger + Rollback replay", () => {
     const { steps, skipped } = planRollback(readManifest(root), run, { keepUserData: true });
     expect(skipped.map((s) => s.path)).toEqual([join(outside, "USER")]);
     expect(steps.map((s) => s.path)).toEqual(["WORKOS"]);
+  });
+});
+
+describe("hook retirement", () => {
+  const cmd = (c: string) => ({ type: "command", command: c });
+  const settings = () => ({
+    PreToolUse: [
+      { matcher: "Bash", hooks: [cmd("$HOME/.claude/hooks/ContextReduction.hook.sh"), cmd("$HOME/.claude/hooks/DestructiveGuard.hook.ts")] },
+      { matcher: "Bash|Write|Edit|MultiEdit", hooks: [cmd("$HOME/.claude/hooks/PreToolGuard.hook.ts")] },
+      { matcher: "Bash", hooks: [cmd("/home/dev/my-hooks/PreToolGuard.hook.ts")] },
+    ],
+    PostToolUse: [{ matcher: "Read", hooks: [cmd("~/.claude/hooks/ISAStaleWriteGuard.hook.ts")] }],
+    Stop: [{ matcher: "", hooks: [cmd("bun /cfg/hooks/ConfigEvalFire.hook.ts --x"), cmd("$HOME/.claude/hooks/StopGates.hook.ts")] }],
+  });
+  const retired = ["PreToolGuard.hook.ts", "ContextReduction.hook.sh", "ISAStaleWriteGuard.hook.ts", "ConfigEvalFire.hook.ts"];
+
+  test("removes only config-root registrations of retired files and drops emptied groups and events", () => {
+    const { merged, removed } = retireHooks(settings() as never, retired, "/cfg");
+    expect(removed).toHaveLength(4);
+    expect(merged.PreToolUse).toEqual([
+      { matcher: "Bash", hooks: [cmd("$HOME/.claude/hooks/DestructiveGuard.hook.ts")] },
+      { matcher: "Bash", hooks: [cmd("/home/dev/my-hooks/PreToolGuard.hook.ts")] }, // not under the config root: kept
+    ]);
+    expect(merged.PostToolUse).toBeUndefined();
+    expect(merged.Stop).toEqual([{ matcher: "", hooks: [cmd("$HOME/.claude/hooks/StopGates.hook.ts")] }]);
+  });
+
+  test("is a no-op with nothing retired, and never matches a longer file name", () => {
+    expect(retireHooks(settings() as never, [], "/cfg").merged).toEqual(settings() as never);
+    const near = { PreToolUse: [{ matcher: "Bash", hooks: [cmd("$HOME/.claude/hooks/PreToolGuard.hook.ts.bak"), cmd("$HOME/.claude/hooks/XPreToolGuard.hook.ts")] }] };
+    expect(retireHooks(near as never, ["PreToolGuard.hook.ts"], "/cfg").removed).toEqual([]);
   });
 });

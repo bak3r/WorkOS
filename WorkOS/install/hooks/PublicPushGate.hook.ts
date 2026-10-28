@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 /**
- * @version 1.1.0
- * PublicPushGate.hook.ts — PreToolUse:Bash lane of PreToolGuard.
+ * @version 1.1.1
+ * PublicPushGate.hook.ts — PreToolUse:Bash gate (registered on its own; it was a
+ * lane of PreToolGuard until WorkOS 1.1.0).
  *
  * The gap this closes (2026-08): the release pipeline has 23 gates, but
  * ad-hoc public repos had zero deterministic scrub — a session could create
@@ -234,8 +235,15 @@ export function check(input: any): BlockResult {
 }
 
 if (import.meta.main) {
-  const input = JSON.parse(readFileSync(0, "utf-8"));
-  const r = check(input);
+  // Registered on its own since PreToolGuard was retired, so it carries the isolation
+  // the dispatcher used to give it: bad stdin or an internal throw allows (fail-OPEN);
+  // only a returned block decision exits 2.
+  let r: ReturnType<typeof check> = null;
+  try {
+    r = check(JSON.parse(readFileSync(0, "utf-8")));
+  } catch {
+    process.exit(0);
+  }
   if (r?.block) {
     process.stderr.write(r.message);
     process.exit(2);
