@@ -43,7 +43,7 @@ WorkOS is the AI harness that moves your work from its current state to its idea
 
 **Canonical thesis:** `WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md` — read this first when any framing question comes up. This architecture doc describes *how* the OS is built; the thesis doc describes *what* the OS is for.
 
-**Version:** WorkOS 1.0.0 | Algorithm v8.20.2 | Cortex (Memory) v8.3.0
+**Version:** WorkOS 1.1.0 | Algorithm v8.45.0 | Cortex (Memory) v8.3.0
 
 ---
 

@@ -40,5 +40,110 @@
     "localSha": "e1323a9292d035f9beacbf8ccc1e0a039dd3cc96",
     "reason": "Principal decision 2026-10-28: keep.",
     "at": "2026-10-28T10:21:04.210Z"
+  },
+  "WORKOS/ALGORITHM/AlgorithmReference.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "1f054facf605cb87eac8acb7994c1a112a5d3ee0",
+    "reason": "Phase 3: WorkOS adaptation of upstream 8.45.0 (Claude-only on Bedrock, WorkOS-side linked ISAs, no Assay/Vigil/STATVS/Pulse); reviewed, upstream changes taken in substance.",
+    "at": "2026-10-28T11:23:26.807Z"
+  },
+  "WORKOS/ALGORITHM/archive/mode-detection.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "a0b89b4a0dd3fe4f431881f51da26f03a62ac820",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:22:54.061Z"
+  },
+  "WORKOS/ALGORITHM/archive/modes/ideate.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "3fabbd69918d5038227cf941bcd0a6297812d096",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:22:56.159Z"
+  },
+  "WORKOS/ALGORITHM/archive/modes/iterate.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "334913bea57f024574a7a4bc91773ae0c649510a",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:22:58.223Z"
+  },
+  "WORKOS/ALGORITHM/archive/modes/loop.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "d58cb145eeddb07e7343cac93d9a3a0975cf03f1",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:14.747Z"
+  },
+  "WORKOS/ALGORITHM/archive/modes/native.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "46095ff4f050ef659da6cd53f8c460e27a7d56fd",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:00.296Z"
+  },
+  "WORKOS/ALGORITHM/archive/modes/optimize.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "6ca6c6c1f170dfcf3e812d3f2245436b0bb1d2f5",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:02.391Z"
+  },
+  "WORKOS/ALGORITHM/archive/modes/README.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "3229dce939d1565f3ec5482ad0485f978f1e1e5e",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:12.687Z"
+  },
+  "WORKOS/ALGORITHM/archive/target-types.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "3cd29696d32fdb68c962582d4163391fcbb2e0e4",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:04.465Z"
+  },
+  "WORKOS/ALGORITHM/changelog.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "e0c9c10a99245f7f1ccb79f9c3bc13a1ede355f3",
+    "reason": "Phase 3: WorkOS adaptation of upstream 8.45.0 (Claude-only on Bedrock, WorkOS-side linked ISAs, no Assay/Vigil/STATVS/Pulse); reviewed, upstream changes taken in substance.",
+    "at": "2026-10-28T11:23:28.860Z"
+  },
+  "WORKOS/ALGORITHM/eval-guide.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "cd2e7c2dcd2589c8d737a07469e533fdd71df210",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:06.517Z"
+  },
+  "WORKOS/ALGORITHM/ideate-loop.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "058eaeebe6aee280c93d9f72e301f6dec3f30684",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:08.565Z"
+  },
+  "WORKOS/ALGORITHM/optimize-loop.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "3aa34b03be5b4a2fdeb882ccb8b114b486892b8c",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:10.634Z"
+  },
+  "WORKOS/ALGORITHM/v8.20.2.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "7b6740205705074c693751548ca1582053b8c64a",
+    "reason": "Phase 3: WorkOS keeps its copy; the upstream version points at Assay/HillClimb or the retired mode docs, which WorkOS does not ship yet (revisit with Phase 5 skills).",
+    "at": "2026-10-28T11:23:16.797Z"
+  },
+  "WORKOS/ALGORITHM/v8.45.0.md": {
+    "as": "keep-local",
+    "target": "v8.761.0",
+    "localSha": "97195258f2322848d29f4cd107f29d5421426cc0",
+    "reason": "Phase 3: WorkOS adaptation of upstream 8.45.0 (Claude-only on Bedrock, WorkOS-side linked ISAs, no Assay/Vigil/STATVS/Pulse); reviewed, upstream changes taken in substance.",
+    "at": "2026-10-28T11:23:30.936Z"
   }
 }

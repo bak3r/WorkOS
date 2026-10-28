@@ -74,7 +74,7 @@ Mirror the source path, not co-locate. Map:
 |--------|------|
 | `hooks/<Hook>.hook.ts` | `test/hooks/<Hook>.hook.test.ts` |
 | `skills/<Skill>/Tools/<Tool>.ts` | `test/skills/<Skill>/Tools/<Tool>.test.ts` |
-| `skills/ISA/Workflows/Scaffold.md` | `test/skills/ISA/Workflows/Scaffold.test.ts` (workflow contract test) |
+| `skills/ISA/Intents/Scaffold.md` | `test/skills/ISA/Intents/Scaffold.test.ts` (workflow contract test) |
 | `WORKOS/TOOLS/Inference.ts` | `test/tools/Inference.test.ts` |
 
 Snapshot files at `test/<surface>/__snapshots__/<name>.test.ts.snap`.
@@ -400,7 +400,7 @@ The checkbox is downstream of a real exit code, never upstream of it. A failing 
 
 ## Cross-references
 
-- Algorithm doctrine on ISA-as-test-harness: `~/.claude/WORKOS/ALGORITHM/v8.20.2.md` § Doctrine (line 17)
+- Algorithm doctrine on ISA-as-test-harness: `~/.claude/WORKOS/ALGORITHM/v{LATEST}.md` (version in `WORKOS/ALGORITHM/LATEST`) § Doctrine
 - ISA format spec: `~/.claude/WORKOS/DOCUMENTATION/ISA/ISAFormat.md`
 - Bun test docs: <https://bun.sh/docs/cli/test>, <https://bun.sh/docs/test/writing>, <https://bun.sh/docs/test/lifecycle>, <https://bun.sh/docs/test/snapshots>, <https://bun.sh/docs/test/coverage>, <https://bun.sh/docs/test/mocks>
 - Bun's own test doctrine: <https://github.com/oven-sh/bun/blob/main/test/CLAUDE.md>
