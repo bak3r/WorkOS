@@ -4,7 +4,7 @@
 
 This document is the authoritative reference for WorkOS's hook system. When modifying any hook, update both the hook's inline documentation AND this README.
 
-*Last updated: 2026-10-28 — WorkOS 1.1.0: registry regenerated against `hooks/hooks.json` (45 hook files on disk, all `.hook.ts`; 37 distinct hook files registered, 8 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
+*Last updated: 2026-10-28 — WorkOS 1.1.0: registry regenerated against `hooks/hooks.json` (46 hook files on disk, all `.hook.ts`; 37 distinct hook files registered, 9 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
 
 ---
 
@@ -154,7 +154,7 @@ interface StopPayload extends BasePayload {
 
 ## Hook Registry
 
-> **Census (2026-10-28).** 45 hook files exist on disk (all `.hook.ts`, no `.sh`); **37 distinct hook files are registered in `hooks/hooks.json`**, across 63 hook commands (60 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 8 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
+> **Census (2026-10-28).** 46 hook files exist on disk (all `.hook.ts`, no `.sh`); **37 distinct hook files are registered in `hooks/hooks.json`**, across 63 hook commands (60 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 9 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
 >
 > WorkOS registers hooks **bare** — the path alone, no `bun` prefix — relying on the `#!/usr/bin/env bun` shebang plus the executable bit. `HookHealer` is the one deliberate exception (it carries an explicit `bun` prefix so it can still repair a cleared exec bit on everything else).
 
@@ -278,6 +278,7 @@ These 8 `.hook.ts` files are on disk but carry no direct `settings.json` registr
 | `ISACloseGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `ISAFoldGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `ISAGate.hook.ts` | `StopGates.hook.ts` | Stop |
+| `IsaCodeSyncGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `LoadMemory.hook.ts` | `MemoryTurnStart.hook.ts` | UserPromptSubmit |
 | `MemoryDeltaSurface.hook.ts` | `MemoryTurnStart.hook.ts` | UserPromptSubmit |
 | `SystemChangeSurface.hook.ts` | `PostToolObserver.hook.ts` | PostToolUse |

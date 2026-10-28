@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.0.2
+ * @version 1.0.3
  * ISAFoldGate.hook.ts — the D-50 gate: prod mutated, ISA untouched → fold before closing.
  *
  * Origin (2026-07-29, {{PRINCIPAL_NAME}}: "you were supposed to do that after the work finished — why
@@ -34,7 +34,7 @@ import type { HookInput } from "./lib/hook-io";
 import { parseTurnEvents, spawnedAgent, type TxEvent } from "./lib/transcript-evidence";
 import { findActiveSessionByUUID } from "./lib/isa-utils";
 import { isaEditedThisTurn, ISA_ADDRESSED_RE } from "./ISACloseGate.hook";
-import { appendFileSync, mkdirSync } from "fs";
+import { appendFileSync, mkdirSync, readFileSync, statSync } from "fs";
 import { dirname, join } from "path";
 
 const WORKOS = getWorkosDir();
@@ -141,3 +141,162 @@ export async function run(input: HookInput): Promise<object | null> {
     return null;
   }
 }
+
+// ── the bridge reader (ported from upstream LifeOS 8.761.0 ISAFoldGate 1.4.5 for IsaCodeSyncGate) ───────
+// Additive: nothing above reads it, so this gate's own behaviour is unchanged.
+
+/** The tail a Stop gate judges in turn scope; the same 8 MB transcript-evidence reads. */
+const TURN_CAP_BYTES = 8 * 1024 * 1024;
+
+/** One tool call, paired with its result by id. */
+export interface ToolCall {
+  id: string;
+  name: string;
+  input: Record<string, any>;
+  /** A tool_result for this call exists. An unanswered call is not evidence that anything ran. */
+  answered: boolean;
+  /** Answered and not an error. */
+  ok: boolean;
+  /** The full result text (transcript-evidence keeps only its first 4,000 characters). */
+  resultText: string;
+  /** The call was made inside a subagent's sidechain, not by this session. */
+  sidechain: boolean;
+  /** Epoch-ms timestamp of the transcript entry that made the call; null when it carries none. */
+  ts: number | null;
+  /** Arrival position of this call's result among all results paired in scope (0 first); -1 when unanswered. */
+  resultOrder: number;
+  /** Epoch-ms timestamp of the entry that carried the result; null when unanswered or it carries none. */
+  resultTs: number | null;
+}
+
+/** A strict read refuses any malformed line in scope; a lenient one skips it and counts it in `malformed`. */
+export type CallsRead = { ok: true; calls: ToolCall[]; malformed: number } | { ok: false; reason: string };
+
+/** The entry that opens a turn: a user/human message with text that is not only tool results.
+ *  The rule transcript-evidence's turn boundary uses. */
+function opensTurn(e: Record<string, any>): boolean {
+  const role = e.role ?? e.message?.role ?? e.type;
+  if (role !== "user" && role !== "human") return false;
+  const content = e.message?.content ?? e.content;
+  if (Array.isArray(content) && content.length && content.every((b: any) => b?.type === "tool_result")) return false;
+  return typeof content === "string" ? content.trim().length > 0
+    : Array.isArray(content) && content.some((b: any) => b?.type === "text" && typeof b.text === "string" && b.text.trim());
+}
+
+function resultTextOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map((c: any) => (typeof c?.text === "string" ? c.text : "")).join("\n");
+  return "";
+}
+
+/**
+ * The entry is written by `role` as the harness writes it: every role field it carries (`type`,
+ * `role`, `message.role`) names that role, and it carries at least one. As in the shared reader,
+ * `human` names the user, and `type: "message"` is the neutral envelope that names no role (S038).
+ */
+function writtenBy(e: Record<string, any>, role: "assistant" | "user"): boolean {
+  const named = [e.type === "message" ? null : e.type, e.role, e.message?.role]
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => (v === "human" ? "user" : v));
+  return named.length > 0 && named.every((v) => v === role);
+}
+
+/** The entry's own `timestamp` as epoch-ms, or null when it has none that parses. */
+function entryMs(e: Record<string, any>): number | null {
+  const ms = typeof e.timestamp === "string" ? Date.parse(e.timestamp) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Tool calls of the current turn ("turn") or of the whole session ("session"), each paired with its
+ * result by id. A bridge, not a second evidence reader: transcript-evidence's parseTurnEvents is the
+ * reader and judge of the turn, and this exists only for what it does not report yet, a MultiEdit
+ * call (it emits no event for one) and a Bash result's full text across the whole session (it keeps
+ * 4,000 characters of an 8 MB tail). Both are requested of transcript-evidence's owner; when they
+ * land, the callers drop this. It refuses what strict parseTurnEvents refuses: a transcript that is
+ * missing, unreadable or not a regular file, and a line in scope that is not a JSON object (the
+ * cut-off first line of a turn-scope tail read excepted). Session scope reads the whole file.
+ */
+export function transcriptToolCalls(path: unknown, scope: "turn" | "session", opts: { lenient?: boolean } = {}): CallsRead {
+  if (typeof path !== "string" || !path) return { ok: false, reason: "no transcript path was given" };
+  let buf: Buffer;
+  try {
+    if (!statSync(path).isFile()) return { ok: false, reason: "the transcript is not a regular file" };
+    buf = readFileSync(path);
+  } catch {
+    return { ok: false, reason: "the transcript could not be read" };
+  }
+  const rowsOf = (text: string) => {
+    const rows: { line: number; entry: Record<string, any> | null }[] = [];
+    const lines = text.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const s = lines[i]!.trim();
+      if (!s) continue;
+      let entry: Record<string, any> | null = null;
+      try {
+        const v = JSON.parse(s);
+        entry = v && typeof v === "object" && !Array.isArray(v) ? v : null;
+      } catch { entry = null; }
+      rows.push({ line: i + 1, entry });
+    }
+    return rows;
+  };
+  const opening = (rows: { entry: Record<string, any> | null }[]) => {
+    for (let k = rows.length - 1; k >= 0; k--) {
+      const e = rows[k]!.entry;
+      if (e && opensTurn(e)) return k;
+    }
+    return -1;
+  };
+  let rows: { line: number; entry: Record<string, any> | null }[];
+  let start = 0;
+  if (scope === "turn" && buf.length > TURN_CAP_BYTES) {
+    const tail = buf.subarray(buf.length - TURN_CAP_BYTES).toString("utf-8");
+    rows = rowsOf(tail.slice(tail.indexOf("\n") + 1));
+    start = opening(rows);
+    // The turn opened before the tail (one result can be larger than the cap): read the whole turn.
+    if (start < 0) { rows = rowsOf(buf.toString("utf-8")); start = Math.max(0, opening(rows)); }
+  } else {
+    rows = rowsOf(buf.toString("utf-8"));
+    if (scope === "turn") start = Math.max(0, opening(rows));
+  }
+  const calls: ToolCall[] = [];
+  const byId = new Map<string, ToolCall>();
+  let arrived = 0;
+  let malformed = 0;
+  for (let k = start; k < rows.length; k++) {
+    const r = rows[k]!;
+    if (!r.entry) {
+      if (!opts.lenient) return { ok: false, reason: `a line of the ${scope === "turn" ? "current turn" : "session"} is not a valid transcript entry (line ${r.line})` };
+      malformed++;
+      continue;
+    }
+    const content = r.entry.message?.content ?? r.entry.content;
+    if (!Array.isArray(content)) continue;
+    for (const b of content) {
+      if (b?.type === "tool_use" && typeof b.id === "string" && typeof b.name === "string") {
+        if (!writtenBy(r.entry, "assistant")) continue; // only the assistant makes a call
+        if (byId.has(b.id)) continue; // a transcript can repeat an entry; one call per id
+        const c: ToolCall = {
+          id: b.id, name: b.name, input: b.input && typeof b.input === "object" ? b.input : {},
+          answered: false, ok: false, resultText: "", sidechain: r.entry.isSidechain === true,
+          ts: entryMs(r.entry), resultOrder: -1, resultTs: null,
+        };
+        calls.push(c);
+        byId.set(b.id, c);
+      } else if (b?.type === "tool_result" && typeof b.tool_use_id === "string") {
+        const c = byId.get(b.tool_use_id);
+        if (!c || c.answered) continue;
+        // Only a user entry carries a result, and only from the same side of a sidechain as its call.
+        if (!writtenBy(r.entry, "user") || (r.entry.isSidechain === true) !== c.sidechain) continue;
+        c.answered = true;
+        c.ok = b.is_error !== true;
+        c.resultText = resultTextOf(b.content);
+        c.resultOrder = arrived++;
+        c.resultTs = entryMs(r.entry);
+      }
+    }
+  }
+  return { ok: true, calls, malformed };
+}
+
