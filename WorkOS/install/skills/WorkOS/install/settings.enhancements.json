@@ -685,7 +685,7 @@
       "ISASync.hook.ts fires on Write/Edit of ISA.md and syncs frontmatter to work.json for the status line.",
       "Context compaction on long runs prevents context rot — a top cause of late-run failures.",
       "The Algorithm: every capability — context, thinking skills, research, agents, audits, stronger models — exists to sharpen the ISA toward the hard-to-vary shape of done.",
-      "Thinking skills include IterativeDepth, ApertureOscillation, FirstPrinciples, SystemsThinking, RootCauseAnalysis, Council, RedTeam, Science, BeCreative, Ideate, and BitterLessonEngineering — pulled in by judgment when the work needs them.",
+      "Thinking skills include IterativeDepth, ApertureOscillation, FirstPrinciples, SystemsThinking, RootCauseAnalysis, Council, RedTeam, Science, BeCreative, HillClimb, and BitterLessonEngineering — pulled in by judgment when the work needs them.",
       "Thinking skills are chosen by judgment for the work, not gated against a fixed list — the ISA and the AlgorithmNudge layer keep a run on track.",
       "ApertureOscillation: tactical/strategic scope oscillation — surface design tensions invisible at any single zoom level.",
       "SystemsThinking: Iceberg, causal loops, Meadows leverage points — find why the same thing keeps happening.",

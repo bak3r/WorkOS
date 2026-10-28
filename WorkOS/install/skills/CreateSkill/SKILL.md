@@ -25,7 +25,7 @@ Shared facts the intents rely on:
 
 - Intents and skills are born from the template through `Tools/Scaffold.ts`, never `touch` or a hand-typed skeleton.
 - The checks are code first: `WORKOS/TOOLS/IntentLint.ts` (the standard), `WORKOS/TOOLS/IntentPreserve.ts` (nothing load-bearing lost), `WORKOS/TOOLS/SkillHygieneGate.ts` (publishable-clean), `WORKOS/TOOLS/SkillCoverage.ts` (does this skill already exist). Judgment covers only what code cannot decide.
-- An intent's Ideal State and Anti-criteria are also its grading criteria: Assay checks a run against them (`Proof.ts run --intent`) and builds a skill suite's rubric from them. Lanes and when suites run follow the one progressive contract, `skills/Assay/References/Progressive.md`.
+- An intent's Ideal State and Anti-criteria are also its grading criteria: Assay checks a run against them (`Proof.ts run --intent`) and builds a skill suite's rubric from them.
 
 ## Ideal State
 
