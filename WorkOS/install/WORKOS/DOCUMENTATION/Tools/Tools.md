@@ -173,6 +173,22 @@ bun ~/.claude/WORKOS/TOOLS/GetTranscript.ts "https://www.youtube.com/watch?v=VID
 
 ---
 
+## LearningLog.ts - Learning Record for the Explain Skill
+
+**Location:** `~/.claude/WORKOS/TOOLS/LearningLog.ts`
+
+Append-only JSONL record of fundamentals explanations and graded quiz answers, at `WORKOS/USER/LEARNING/learning.jsonl`. The Explain skill's ExplainFundamentals and QuizFundamentals intents are its only writers; upstream LifeOS keeps the same rows as the STATVS `learning` stream.
+
+**Usage:**
+```bash
+bun ~/.claude/WORKOS/TOOLS/LearningLog.ts append --kind explain|quiz --area <slug> --title "<text>" --data '<json object>'
+bun ~/.claude/WORKOS/TOOLS/LearningLog.ts tail [--area <slug>] [--n 500]
+```
+
+Exits 1 on a usage error, 2 when the record cannot be read or written. No command edits or removes a row.
+
+---
+
 ## MemoryRetriever.ts - Compressed Knowledge Retrieval
 
 **Location:** `~/.claude/WORKOS/TOOLS/MemoryRetriever.ts`
