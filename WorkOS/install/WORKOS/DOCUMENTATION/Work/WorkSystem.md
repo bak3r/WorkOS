@@ -186,6 +186,7 @@ Docker Sandboxes guarantee no systemd, so the recurring jobs run from `hooks/Mai
 | worksweep | 1h | `WorkSweep.ts` |
 | commitment-sweep | 20h | `CommitmentSweep.ts` |
 | observability-prune | 20h | in-process: archives whole stale logs in `MEMORY/OBSERVABILITY` (30-day window; see `HookSystem.md` § MaintenanceJobs) |
+| ledger-compact | 168h | `CortexLedger.ts maintain`: checkpoint + compact the memory ledger once 200 rows follow its last checkpoint |
 
 A job runs only when a session starts after its interval has elapsed. The systemd timers (`InstallWorkSweep.ts`, `InstallCommitmentSweep.ts`, via `Services.ts`) remain as optional extras for a Linux host with a user systemd session; running both is harmless because every ledger write is slug-idempotent.
 

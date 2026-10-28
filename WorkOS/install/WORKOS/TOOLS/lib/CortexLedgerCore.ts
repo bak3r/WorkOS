@@ -35,10 +35,15 @@
  * WorkOS has no STATVS, so Cortex is its only user here). Cortex keeps its own
  * on-disk names: the quarantine file is `torn-<stamp>.txt` in the ledger dir, the
  * temp file is `<events>.tmp`, and the incident row goes to ledger-incidents.jsonl.
- * The lock is the O_EXCL lockfile (no flock, so no libc dependency) and never takes
- * over a stale lockfile (staleMs: Infinity): a holder killed mid-append leaves
- * `cortex-events.jsonl.lock` behind and every later append fails closed until it is
- * removed by hand. Fail-closed is the upstream choice, kept.
+ * The lock is LedgerCore's withKernelLock on `cortex-events.jsonl.lock` (WorkOS;
+ * upstream used the O_EXCL lockfile with no stale takeover, so a holder killed
+ * mid-append left the lockfile behind and every later memory write failed closed
+ * until it was deleted by hand). flock(2) is released by the kernel the moment its
+ * holder dies, and a live holder keeps it however slow it is. The lockfile is never
+ * removed, so its presence means nothing; a stale O_EXCL lockfile left by an older
+ * build at the same path is simply opened and locked, which recovers it. Where
+ * flock cannot load, the fallback is an O_EXCL lockfile taken over after
+ * LEDGER_FALLBACK_STALE_MS, far longer than any append or compaction holds it.
  *
  * WorkOS port of LifeOS 8.761.0 (Cortex 8.4.0). One addition: appendEventIf, a
  * conditional append evaluated under the lock, which the adoption anchor
@@ -61,7 +66,8 @@ import {
 import { getClaudeDir } from "../Paths"; // public issue #1665 @rogdex24, #1584 @ramazanpolat — aliased resolve sites missed by the 09-03 sweep
 import { dirname, resolve as pathResolve } from "node:path";
 import { invariant, InvariantViolation } from "../Invariant";
-import { sha256, rowHash, withFileLock, quarantineTornTail as quarantineTail } from "./LedgerCore";
+import { sha256, rowHash, withKernelLock, quarantineTornTail as quarantineTail } from "./LedgerCore";
+import { atomicWriteText } from "./atomic-write";
 
 export { sha256 };
 
@@ -81,6 +87,8 @@ export function archiveDir(): string {
 }
 const incidentsPath = () => pathResolve(ledgerDir(), "ledger-incidents.jsonl");
 const lockPath = () => eventsPath() + ".lock";
+/** Staleness of the O_EXCL fallback lock, used only where flock(2) cannot load. */
+export const LEDGER_FALLBACK_STALE_MS = 60_000;
 
 // ── Types ──
 
@@ -245,14 +253,14 @@ export function readRowsForWrite(): LedgerRowBase[] {
  */
 function withLedgerLock<T>(action: () => T): T | AppendErr {
   mkdirSync(ledgerDir(), { recursive: true });
-  const res = withFileLock(lockPath(), () => {
+  const res = withKernelLock(lockPath(), () => {
     try {
       return { threw: false as const, value: action() };
     } catch (e: unknown) {
       if (e instanceof InvariantViolation) throw e;
       return { threw: true as const, message: (e as Error)?.message ?? String(e) };
     }
-  }, { deadlineMs: 5000, staleMs: Infinity, retryMs: 25 });
+  }, { deadlineMs: 5000, staleMs: LEDGER_FALLBACK_STALE_MS, retryMs: 25 });
   // LedgerCore's messages ("lock acquisition failed: …", "lock held past deadline: <path>")
   // with the "ledger " prefix are the exact strings Cortex returned before.
   if (res.ok === false) return { ok: false, message: `ledger ${res.message}` };
@@ -363,6 +371,43 @@ export function archiveContent(content: string): string {
     if (!existsSync(p)) writeFileSync(p, content, "utf8");
   } catch { /* recoverability extra — ledger content is the durable copy */ }
   return h;
+}
+
+// ── Compaction ──
+
+export interface CompactOk {
+  ok: true;
+  /** Rows moved to the archive file; 0 when there was no checkpoint past row 1. */
+  archived: number;
+  kept: number;
+  archivePath: string | null;
+}
+
+/**
+ * Move every row before the last checkpoint into `archive/events-<first>-<last>.jsonl`
+ * and rewrite the live stream to start at that checkpoint. Runs under the ledger lock
+ * (WorkOS: upstream's `compact` read and rewrote the file unlocked, so a memory write
+ * landing in between was dropped from the stream). The archive file is written before
+ * the live file is replaced, so a crash in between leaves rows in both places, never in
+ * neither.
+ */
+export function compactEvents(): CompactOk | AppendErr {
+  const res = withLedgerLock<CompactOk>(() => {
+    const rows = readRows({ healTail: true });
+    let last = -1;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i].kind === "checkpoint") { last = i; break; }
+    }
+    if (last <= 0) return { ok: true, archived: 0, kept: rows.length, archivePath: null };
+    const archived = rows.slice(0, last);
+    const kept = rows.slice(last);
+    mkdirSync(archiveDir(), { recursive: true });
+    const archivePath = pathResolve(archiveDir(), `events-${archived[0].seq}-${archived[archived.length - 1].seq}.jsonl`);
+    atomicWriteText(archivePath, archived.map((r) => JSON.stringify(r)).join("\n") + "\n");
+    atomicWriteText(eventsPath(), kept.map((r) => JSON.stringify(r)).join("\n") + "\n");
+    return { ok: true, archived: archived.length, kept: kept.length, archivePath };
+  });
+  return res;
 }
 
 // ── Fold ──

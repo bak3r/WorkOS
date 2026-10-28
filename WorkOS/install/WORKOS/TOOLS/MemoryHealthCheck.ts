@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.3.19
+ * @version 1.3.20
  * MemoryHealthCheck.ts — Autonomic memory subsystem health check.
  *
  * Detects regressions that would silently kill the autonomic memory loop:
@@ -30,8 +30,9 @@
  * parser WorkOS does not have), and the new-install rule that evidence which only
  * exists once the reviewer has run is "ok", not a warning, until it first fires.
  * Added for WorkOS: memory files that predate the ledger are anchored here once
- * (MemoryWriter.anchorUnledgered) unless CORTEX_HEALTH_NO_WRITE=1, and a ledger
- * lockfile left by a killed writer is reported, since it blocks every memory write.
+ * (MemoryWriter.anchorUnledgered) unless CORTEX_HEALTH_NO_WRITE=1. (The stale ledger-lock
+ * check of 1.3.19 is gone: the ledger now holds a kernel lock, which a dead writer
+ * cannot leave behind, and whose lockfile stays on disk by design.)
  */
 
 import { existsSync, readFileSync, appendFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
@@ -248,19 +249,6 @@ const reviewerNeverFired = !existsSync(REVIEW_STATE);
 {
   try {
     const { verifyAll, FOLD_OWNED } = await import("./CortexLedger");
-    const { eventsPath } = await import("./lib/CortexLedgerCore");
-    // A killed writer leaves the O_EXCL lockfile behind, and the Cortex lock never takes over a stale
-    // one (fail-closed), so every memory write fails until it is removed. An append holds it for
-    // milliseconds; ten minutes is unambiguous.
-    const ledgerLock = eventsPath() + ".lock";
-    if (existsSync(ledgerLock)) {
-      const ageMs = Date.now() - statSync(ledgerLock).mtimeMs;
-      if (ageMs > 10 * 60 * 1000) {
-        add("ledger-lock-stale", "critical",
-            `Cortex ledger lockfile is ${Math.round(ageMs / 60000)} min old — a writer died holding it and every memory write now fails closed. Check no MemoryWriter/MemoryReviewer is running, then delete ${ledgerLock}.`,
-            { path: ledgerLock, age_ms: Math.round(ageMs) });
-      }
-    }
     // Memory that predates the ledger is anchored once, as found (WorkOS). Only when this run checks the
     // tree MemoryWriter writes: with CORTEX_HEALTH_ROOT pointing elsewhere, anchoring would change a
     // tree other than the one being checked.
@@ -571,7 +559,6 @@ function actionFor(f: Finding): string | null {
   if (id.startsWith("index-")) return "Rebuild the memory index";
   if (id === "delta-surface-dead") return "Memory delta hook is dead: check hooks";
   if (id === "ledger-fold-drift") return "Adopt memory edits: CortexLedger adopt";
-  if (id === "ledger-lock-stale") return "Remove the stale memory-ledger lock";
   if (id === "ledger-anchor-failed") return "Anchor the memory ledger: CortexLedger genesis";
   if (f.severity === "critical") return "Run a memory health check";
   return null; // internals-only warn — lives in the log and the 🩺 nag

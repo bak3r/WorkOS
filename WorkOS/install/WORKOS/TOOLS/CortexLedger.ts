@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.1.1
+ * @version 1.2.0
  * CortexLedger — CLI over the hot-layer memory event ledger.
  * WorkOS port of LifeOS 8.761.0 CortexLedger 1.1.1. WorkOS differences: genesis and
  * adopt anchor through MemoryWriter.anchorUnledgered (one labelled row per pre-ledger
@@ -14,6 +14,7 @@
  *   bun CortexLedger.ts fold [--at ISO] [--heal] — render from events; --heal rebuilds a missing/corrupt live file (erases any live edit)
  *   bun CortexLedger.ts checkpoint             — append full-state checkpoint (compaction anchor)
  *   bun CortexLedger.ts compact                — archive rows before the last checkpoint
+ *   bun CortexLedger.ts maintain [--min-rows N] — checkpoint + compact once N rows (200) follow the last checkpoint
  *   bun CortexLedger.ts redact <entry-hash>    — append a fold-honored tombstone (physical-rewrite runbook: see MemorySystem.md)
  *   bun CortexLedger.ts provenance             — write LEDGER/provenance/<base>.map.json (entry-hash → first admitting event)
  *
@@ -30,7 +31,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 import {
   appendEvent,
-  archiveDir,
+  appendEventIf,
+  compactEvents,
   entriesHash,
   eventsPath,
   foldState,
@@ -237,6 +239,12 @@ function cmdFold(at: string | undefined, heal: boolean): number {
   return 0;
 }
 
+/**
+ * Append a full-state checkpoint. The fold it renders is read outside the lock, so the
+ * append is conditional: it lands only while the chain still ends at the row that fold
+ * saw (WorkOS; upstream appended unconditionally, and a memory write landing between
+ * the fold and the append was then buried under a checkpoint carrying the older bytes).
+ */
 function cmdCheckpoint(): number {
   const state = foldState();
   if (state.files.size === 0) { console.error("checkpoint refused: no folding events (run genesis first)"); return 1; }
@@ -245,28 +253,46 @@ function cmdCheckpoint(): number {
     const rendered = renderFile(rel, state);
     if (rendered !== null) files[rel] = rendered;
   }
-  const res = appendEvent({ kind: "checkpoint", ts: new Date().toISOString(), updated_by: "CortexLedger.checkpoint", files });
+  const seen = state.lastSeq;
+  const res = appendEventIf(
+    { kind: "checkpoint", ts: new Date().toISOString(), updated_by: "CortexLedger.checkpoint", files },
+    (rows) => (rows.length > 0 ? rows[rows.length - 1].seq : 0) === seen,
+  );
+  if (!res.ok && "skipped" in res) { console.error("checkpoint skipped: a memory write landed while it was being rendered; run it again"); return 1; }
   if (!res.ok) { console.error(`checkpoint append failed: ${res.message}`); return 1; }
   console.log(`checkpoint appended (seq=${res.row.seq})`);
   return 0;
 }
 
 function cmdCompact(): number {
-  const rows = readRows();
-  let lastCheckpointIdx = -1;
-  for (let i = rows.length - 1; i >= 0; i--) {
-    if (rows[i].kind === "checkpoint") { lastCheckpointIdx = i; break; }
-  }
-  if (lastCheckpointIdx <= 0) { console.log("compact: nothing to archive (no checkpoint past row 1)"); return 0; }
-  const archived = rows.slice(0, lastCheckpointIdx);
-  const kept = rows.slice(lastCheckpointIdx);
-  mkdirSync(archiveDir(), { recursive: true });
-  const archivePath = pathResolve(archiveDir(), `events-${archived[0].seq}-${archived[archived.length - 1].seq}.jsonl`);
-  writeFileSync(archivePath, archived.map((r) => JSON.stringify(r)).join("\n") + "\n", "utf8");
-  const w = atomicWriteContent(eventsPath(), kept.map((r) => JSON.stringify(r)).join("\n") + "\n");
-  if (w !== true) { console.error(`compact rewrite failed: ${w.message}`); return 1; }
-  console.log(`compacted: ${archived.length} rows → ${archivePath}; ${kept.length} rows retained (anchor seq=${kept[0].seq})`);
+  const res = compactEvents();
+  if (!res.ok) { console.error(`compact failed: ${res.message}`); return 1; }
+  if (res.archived === 0) { console.log("compact: nothing to archive (no checkpoint past row 1)"); return 0; }
+  console.log(`compacted: ${res.archived} rows → ${res.archivePath}; ${res.kept} rows retained`);
   return 0;
+}
+
+/** Rows past the last checkpoint at which `maintain` checkpoints and compacts. */
+export const MAINTAIN_MIN_ROWS = 200;
+
+/**
+ * The scheduled bound on growth (MaintenanceJobs `ledger-compact`): when at least
+ * `minRows` rows follow the last checkpoint, append a checkpoint and compact. Below
+ * that, or with no ledger yet, it does nothing. Each set row carries a full memory
+ * file, so this keeps the live stream small; history moves to LEDGER/archive/ and is
+ * never deleted.
+ */
+function cmdMaintain(minRows: number): number {
+  if (!existsSync(eventsPath())) { console.log("maintain: no ledger yet"); return 0; }
+  const rows = readRows();
+  let since = rows.length;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (rows[i].kind === "checkpoint") { since = rows.length - 1 - i; break; }
+  }
+  if (since < minRows) { console.log(`maintain: ${since} rows since the last checkpoint (< ${minRows}); nothing to do`); return 0; }
+  const c = cmdCheckpoint();
+  if (c !== 0) return c;
+  return cmdCompact();
 }
 
 function cmdRedact(entryHash: string): number {
@@ -327,10 +353,11 @@ function main(): void {
       case "fold": process.exit(cmdFold(opt("--at"), flag("--heal")));
       case "checkpoint": process.exit(cmdCheckpoint());
       case "compact": process.exit(cmdCompact());
+      case "maintain": process.exit(cmdMaintain(Number(opt("--min-rows") ?? MAINTAIN_MIN_ROWS)));
       case "redact": process.exit(cmdRedact(args[1] ?? ""));
       case "provenance": process.exit(cmdProvenance());
       default:
-        console.error("Usage: bun CortexLedger.ts {status|genesis|verify [--json]|adopt [--force]|fold [--at ISO] [--heal]|checkpoint|compact|redact <hash>|provenance}");
+        console.error("Usage: bun CortexLedger.ts {status|genesis|verify [--json]|adopt [--force]|fold [--at ISO] [--heal]|checkpoint|compact|maintain [--min-rows N]|redact <hash>|provenance}");
         process.exit(2);
     }
   } catch (e) {

@@ -301,6 +301,83 @@ describe("MemoryWriter guards", () => {
   });
 });
 
+/** Run the CortexLedger CLI in the sandbox, with the same isolated environment as inSandbox. */
+function cliInSandbox(sb: Sandbox, args: string[]): { code: number | null; out: string } {
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v === undefined || /^(CLAUDE_|WORKOS_|CORTEX_|GIT_)/.test(k)) continue;
+    env[k] = v;
+  }
+  env.HOME = sb.home;
+  env.CLAUDE_CONFIG_DIR = sb.claude;
+  const r = Bun.spawnSync(["bun", join(TOOLS, "CortexLedger.ts"), ...args], { env, cwd: sb.home, stdout: "pipe", stderr: "pipe" });
+  return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+}
+
+describe("Cortex locks: a dead writer cannot block memory", () => {
+  test("lockfiles an older build left behind do not block the next write", () => {
+    const sb = sandbox();
+    // What a writer killed mid-write under the O_EXCL scheme left on disk.
+    mkdirSync(join(sb.claude, "WORKOS/MEMORY/LEDGER"), { recursive: true });
+    writeFileSync(join(sb.claude, EVENTS_REL + ".lock"), "");
+    writeFileSync(join(sb.userData, "PRINCIPAL/PRINCIPAL_MEMORY.md.lock"), "");
+    const out = inSandbox(sb, `
+      const p = P(${JSON.stringify(PRINCIPAL_REL)});
+      return W.setEntries(p, [...W.read(p).entries, "RULE: written past a stale lock ~explicit"], { updatedBy: "test" });
+    `);
+    expect(out.ok).toBe(true);
+  });
+
+  test("a live holder of the memory-file lock still gets ELOCK_HELD", () => {
+    const sb = sandbox();
+    const out = inSandbox(sb, `
+      const K = await import(${JSON.stringify(join(TOOLS, "lib/LedgerCore.ts"))});
+      const p = P(${JSON.stringify(PRINCIPAL_REL)});
+      const held = K.withKernelLock(p + ".lock", () => W.setEntries(p, [...W.read(p).entries, "RULE: must not land ~explicit"], { updatedBy: "test" }));
+      return held.value;
+    `);
+    expect(out.ok).toBe(false);
+    expect(out.code).toBe("ELOCK_HELD");
+  });
+});
+
+describe("Cortex ledger: scheduled compaction", () => {
+  test("maintain does nothing below the row threshold", () => {
+    const sb = sandbox();
+    inSandbox(sb, `
+      const p = P(${JSON.stringify(PRINCIPAL_REL)});
+      return W.setEntries(p, [...W.read(p).entries, "RULE: one ~explicit"], { updatedBy: "test" });
+    `);
+    const before = readFileSync(join(sb.claude, EVENTS_REL), "utf8");
+    const r = cliInSandbox(sb, ["maintain"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("nothing to do");
+    expect(readFileSync(join(sb.claude, EVENTS_REL), "utf8")).toBe(before);
+  });
+
+  test("past the threshold it checkpoints, archives the older rows, and memory folds the same", () => {
+    const sb = sandbox();
+    inSandbox(sb, `
+      const p = P(${JSON.stringify(PRINCIPAL_REL)});
+      for (const n of [1, 2, 3]) W.setEntries(p, [...W.read(p).entries, "RULE: compaction test " + n + " ~explicit"], { updatedBy: "test" });
+      return true;
+    `);
+    const rowsBefore = ledgerRows(sb);
+    const r = cliInSandbox(sb, ["maintain", "--min-rows", "2"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("compacted:");
+    const rowsAfter = ledgerRows(sb);
+    expect(rowsAfter.length).toBe(1);
+    expect(rowsAfter[0].kind).toBe("checkpoint");
+    expect(rowsAfter[0].seq).toBe(rowsBefore[rowsBefore.length - 1].seq + 1);
+    const archived = readFileSync(join(sb.claude, `WORKOS/MEMORY/LEDGER/archive/events-1-${rowsBefore.length}.jsonl`), "utf8").trim().split("\n");
+    expect(archived.length).toBe(rowsBefore.length);
+    const out = inSandbox(sb, `return { verify: L.verifyAll().status, entries: W.read(P(${JSON.stringify(PRINCIPAL_REL)})).entries };`);
+    expect(out.verify).toBe("ok");
+    expect(out.entries).toContain("RULE: compaction test 3 ~explicit");
+  });
+});
+
 describe("LedgerCore.withKernelLock without flock(2)", () => {
   function lockDir(): string {
     const d = realpathSync(mkdtempSync(join(tmpdir(), "workos-ledger-lock-test-")));

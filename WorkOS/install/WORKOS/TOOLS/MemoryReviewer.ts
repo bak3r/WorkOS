@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.4.9
+ * @version 1.4.10
  * MemoryReviewer — single-pass autonomic reviewer for the typed-item memory system.
  *
  * WorkOS autonomic memory subsystem, F5.
@@ -142,13 +142,24 @@ const EVERY_KIND = "*";
  * Optional per-kind auto-apply thresholds, `confidence_threshold_by_kind` in
  * memory-review.json: proposal kind → number, or null to never auto-apply that kind
  * and queue it for review instead (GHSA-xjxj-cqpp-gf82, @mj-deving; discussion
- * #2229, @Steffen025). A missing map or kind keeps the single threshold. Any value
+ * #2229, @Steffen025). A kind the map does not name keeps the single threshold. Any value
  * other than a finite non-negative number reads as null, so a malformed entry can only
  * queue more; a supplied map of the wrong shape disables auto-apply for every kind.
+ *
+ * WorkOS: when the config has NO map at all, DEFAULT_THRESHOLD_BY_KIND applies (upstream
+ * fell back to the single threshold). memory-review.json is USER data that an update never
+ * rewrites, so every install made before the map shipped would otherwise keep auto-applying
+ * identity and operational-rule edits at 0.70. A config that names the map, even as {},
+ * is the principal's own choice and is read as written.
  */
+export const DEFAULT_THRESHOLD_BY_KIND: Readonly<Record<string, null>> = { identity: null, "operational-rule": null };
+
 export function loadThresholdByKind(config: Record<string, unknown> = readReviewConfig()): ReadonlyMap<string, number | null> {
   const out = new Map<string, number | null>();
-  if (!Object.prototype.hasOwnProperty.call(config, "confidence_threshold_by_kind")) return out;
+  if (!Object.prototype.hasOwnProperty.call(config, "confidence_threshold_by_kind")) {
+    for (const [kind, value] of Object.entries(DEFAULT_THRESHOLD_BY_KIND)) out.set(kind, value);
+    return out;
+  }
   const map = config.confidence_threshold_by_kind;
   if (map === null || typeof map !== "object" || Array.isArray(map)) {
     console.error("MemoryReviewer: confidence_threshold_by_kind is not an object; auto-apply disabled for every kind");

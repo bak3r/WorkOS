@@ -32,8 +32,8 @@
  * same libc in every process, so a mixed pair needs two libcs sharing one ledger
  * directory (a musl container and a glibc host on one bind mount); do not do that.
  * `kernelLockMode()` names the mode this process uses.
- * The Cortex memory ledger itself locks with withFileLock, not withKernelLock, so
- * the memory write path never needed flock at all.
+ * Cortex (the ledger and MemoryWriter's per-file lock) uses withKernelLock, so on a
+ * host where flock cannot load, memory writes run under this fallback.
  *
  * @version 1.1.0
  */

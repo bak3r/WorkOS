@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.3.19
+ * @version 1.3.20
  * MemoryWriter — set-overwrite writer for PRINCIPAL_MEMORY.md / DA_MEMORY.md.
  *
  * WorkOS autonomic memory subsystem, F2.
@@ -69,7 +69,8 @@ import { InvariantViolation, invariant } from "./Invariant";
 import { getClaudeDir } from "./Paths"; // public issue #1665 @rogdex24, #1584 @ramazanpolat — aliased resolve sites missed by the 09-03 sweep
 import { spawnSync } from "node:child_process";
 import { dirname, relative, resolve as pathResolve } from "node:path";
-import { appendEvent, appendEventIf, archiveContent, entriesHash, foldState, readRows, readRowsForWrite, sha256, type AppendResult, type LedgerRowBase } from "./lib/CortexLedgerCore";
+import { appendEvent, appendEventIf, archiveContent, entriesHash, foldState, readRows, readRowsForWrite, sha256, LEDGER_FALLBACK_STALE_MS, type AppendResult, type LedgerRowBase } from "./lib/CortexLedgerCore";
+import { withKernelLock } from "./lib/LedgerCore";
 import { isInstructionShaped } from "./InjectionShapes";
 import { assertInsideUserData } from "./lib/ForeignDataCheck";
 import { ANNOTATION_PATTERN, recordWrite } from "./MemoryEntryMeta";
@@ -537,43 +538,31 @@ export function serializeMemoryContent(
 
 // ── Atomic write with lock ──
 
+// WorkOS: the per-file lock is LedgerCore's withKernelLock on `<file>.lock`. It was an
+// O_EXCL lockfile with no takeover, so a writer killed while holding it left the file
+// behind and every later write to that memory file failed with ELOCK_HELD until someone
+// deleted it. flock(2) is released by the kernel when its holder dies; the lockfile now
+// stays on disk and its presence means nothing (an older build's stale one is simply
+// reused). A held lock is waited on briefly and then refused, as before.
+const MEMORY_LOCK_WAIT_MS = 250;
+
 function withLock<T>(filePath: string, action: () => T): T | SetEntriesErrLock | SetEntriesErrIO {
   const lockPath = `${filePath}.lock`;
-  let fd: number | null = null;
-  try {
-    fd = openSync(lockPath, "wx"); // O_CREAT | O_EXCL
-  } catch (e: any) {
-    if (e?.code === "EEXIST") {
-      return {
-        ok: false,
-        code: "ELOCK_HELD",
-        message: `Lock held by another writer: ${lockPath}. Investigate stale lock if persistent.`,
-      };
+  const res = withKernelLock(lockPath, () => {
+    try {
+      return { threw: false as const, value: action() };
+    } catch (e: any) {
+      return { threw: true as const, message: e?.message || String(e) };
     }
-    return {
-      ok: false,
-      code: "EWRITE_FAILED",
-      message: `Failed to acquire lock: ${e?.message || String(e)}`,
-    };
+  }, { deadlineMs: MEMORY_LOCK_WAIT_MS, staleMs: LEDGER_FALLBACK_STALE_MS, retryMs: 25 });
+  if (res.ok === false) {
+    if (res.message.startsWith("lock held past deadline")) {
+      return { ok: false, code: "ELOCK_HELD", message: `Lock held by another writer: ${lockPath}.` };
+    }
+    return { ok: false, code: "EWRITE_FAILED", message: `Failed to acquire lock: ${res.message}` };
   }
-
-  try {
-    const result = action();
-    return result;
-  } catch (e: any) {
-    return {
-      ok: false,
-      code: "EWRITE_FAILED",
-      message: `Write action threw: ${e?.message || String(e)}`,
-    };
-  } finally {
-    try {
-      if (fd !== null) closeSync(fd);
-    } catch { /* ignore */ }
-    try {
-      unlinkSync(lockPath);
-    } catch { /* lockfile cleanup best-effort */ }
-  }
+  if (res.value.threw) return { ok: false, code: "EWRITE_FAILED", message: `Write action threw: ${res.value.message}` };
+  return res.value.value;
 }
 
 // ── Per-write snapshots (recoverability) ──

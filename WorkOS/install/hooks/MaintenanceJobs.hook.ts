@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 2.1.0
+ * @version 2.2.0
  * MaintenanceJobs.hook.ts — throttled background maintenance, per-job intervals.
  *
  * PURPOSE:
@@ -13,6 +13,8 @@
  *   4. commitment-sweep     (20h): CommitmentSweep.ts       (due/overdue digest)
  *   5. observability-prune  (20h): archive whole stale logs in MEMORY/OBSERVABILITY
  *                                  (in-process, see "OBSERVABILITY PRUNE" below)
+ *   6. ledger-compact      (168h): CortexLedger.ts maintain (checkpoint + compact the
+ *                                  memory ledger once 200 rows follow its last checkpoint)
  * The systemd timers for WorkSweep / CommitmentSweep stay as optional extras;
  * running both is harmless (ledger writes are slug-idempotent).
  *
@@ -49,6 +51,7 @@
  * - MEMORY/STATE/maintenance-jobs.lock   (present only while a worker runs)
  * - MEMORY/OBSERVABILITY/maintenance-jobs.log (job stdout/stderr, appended)
  * - MEMORY/OBSERVABILITY/ARCHIVE/<name>.until-<date>.gz (whole stale logs, observability-prune)
+ * - MEMORY/LEDGER/archive/events-<first>-<last>.jsonl (compacted ledger rows, ledger-compact)
  */
 
 import { appendFileSync, closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
@@ -112,6 +115,12 @@ export const JOBS: Job[] = [
     timeoutMs: 60_000,
     steps: [],
     run: () => runObservabilityPrune(),
+  },
+  {
+    name: "ledger-compact",
+    intervalH: 168,
+    timeoutMs: 120_000,
+    steps: [[join(TOOLS, "CortexLedger.ts"), "maintain"]],
   },
 ];
 
