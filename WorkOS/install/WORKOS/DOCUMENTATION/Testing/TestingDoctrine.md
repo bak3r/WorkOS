@@ -312,11 +312,11 @@ When a single Algorithm run spans multiple context windows — Ralph Loop, Maest
 
 `tests.json` is optional for single-window runs (the ISA already carries the probes). It earns its place only when the run will cross a context boundary.
 
-### Relationship to the Evals skill
+### Relationship to the Assay skill
 
-`Skill("Evals")` evaluates *agent transcripts* — multi-turn conversations, tool-call sequences, model-vs-model comparisons. `bun test` evaluates *code correctness* — does this function return the right value, does this hook write the right output, does this CLI exit with the right code.
+`Skill("Assay")` evaluates *agent transcripts* — multi-turn conversations, tool-call sequences, model-vs-model comparisons. `bun test` evaluates *code correctness* — does this function return the right value, does this hook write the right output, does this CLI exit with the right code.
 
-They're complementary. An Algorithm run on a complex feature might use both: `bun test` for the code-correctness ISCs, `Skill("Evals")` for the "did the agent answer well" ISCs. Neither replaces the other.
+They're complementary. An Algorithm run on a complex feature might use both: `bun test` for the code-correctness ISCs, `Skill("Assay")` for the "did the agent answer well" ISCs. Neither replaces the other.
 
 ### Relationship to Interceptor
 
@@ -375,7 +375,7 @@ The rule is mechanical: the `tool` column starts with `bun test`, so `[ ]` → `
 
 - **A pure function** ("slugify is idempotent") → `bun test`. It's code correctness, checked in-process.
 - **A rendered page** ("the toggle flips the theme on a phone viewport") → Interceptor. `bun test` can't see a DOM.
-- **An agent's answer quality** ("the summary keeps every key fact") → `Skill("Evals")`. That's judging a transcript, not asserting a return value.
+- **An agent's answer quality** ("the summary keeps every key fact") → `Skill("Assay")`. That's judging a transcript, not asserting a return value.
 
 Reaching for `bun test` on a DOM claim, or Interceptor on a pure function, is the wrong instrument — the claim would close on evidence that doesn't actually test it.
 

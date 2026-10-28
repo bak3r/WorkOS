@@ -32,7 +32,7 @@ Canonical writer for the three append-only sections of an ISA, `## Decisions`, `
 - User directly when adding an entry by hand.
 
 Every Decisions, C/R/L and Verification entry passes through Append, except the Verification stubs `IsaFold.ts` writes from a result file of pass verdicts (`bun WORKOS/TOOLS/IsaFold.ts apply <isa> <result.json>`).
-> Run code rows with `bun test ./<path>` and suite rows with `bun skills/Evals/Tools/EvalRunner.ts`.
+> Run code rows with `bun test ./<path>` and suite rows with `bun skills/Assay/Tools/EvalRunner.ts`.
 
 ## Safety gates
 

@@ -109,15 +109,14 @@ A few tools use npm packages. `DeployCore` runs `bun install` for them, which fa
 | Feature | Package(s) | `bun install` in |
 |---------|------------|------------------|
 | Prompting templates (`RenderTemplate`, `ValidateTemplate`) | `handlebars` | `<configRoot>/skills/Prompting/Tools` |
-| Evals suite/case writers (`SuiteManager`, `FailureToTask`, `GenerateCases`, `ProposeFromFailures`) | `yaml` | `<configRoot>` |
-| Evals multi-turn scenarios (`ScenarioRunner`, legacy path) | `@langwatch/scenario`, `@ai-sdk/anthropic` | `<configRoot>/skills/Evals` |
+| Assay case drafts (`FailureToCase`) | `yaml` | `<configRoot>` |
 | Memory graph (`MemoryGraph.ts`) | `graphology`, `graphology-communities-louvain`, `graphology-metrics` | `<configRoot>/WORKOS/TOOLS` |
 | Token X-ray (`TokenXray.ts`) | `js-tiktoken` | `<configRoot>/WORKOS/TOOLS/TokenXray` |
 | Apify skill | `apify-client` | `<configRoot>/skills/Apify` |
 
 - **Verify:** `Doctor.ts` → npm-deps. ⏸ off = none installed; ✅ live lists any that are still missing. It is never ❌.
 - **Bun auto-install:** with no `node_modules`, bun tries to fetch a missing package at import time. In the sandbox the egress proxy answers 403 and bun reports the package as not found; the tools turn that into the message above. There is no install-wide switch to stop the attempt: env vars and a global `~/.bunfig.toml` are ignored, `bunfig.toml` `[install] auto = "disable"` only applies when it is in the current directory, and `bun --no-install` has to be passed on every call. So the 403 is the expected failure, not a fault.
-- **Docker Sandboxes: the docker-sbx `workos` kit.** It installs `yaml`, `handlebars`, `graphology` (+ `-communities-louvain`, `-metrics`) and `js-tiktoken` into the sandbox image at `/opt/workos/deps`, pinned by a committed lockfile, and sets `NODE_PATH` to its `node_modules`. Bun falls back to `NODE_PATH` after every `node_modules` up the tree misses, so these tools work with no `node_modules` in the workspace, and Doctor's `npm-deps` line counts them. Compose it after the `bun` kit. Price: the kit's `registry.npmjs.org:443` rule stays open for the sandbox's life (sbx cannot scope a rule to install time). It deliberately leaves out `apify-client` (no Apify egress) and the Evals scenario packages (they call the Anthropic API directly). Without the kit, the features above stay off.
+- **Docker Sandboxes: the docker-sbx `workos` kit.** It installs `yaml`, `handlebars`, `graphology` (+ `-communities-louvain`, `-metrics`) and `js-tiktoken` into the sandbox image at `/opt/workos/deps`, pinned by a committed lockfile, and sets `NODE_PATH` to its `node_modules`. Bun falls back to `NODE_PATH` after every `node_modules` up the tree misses, so these tools work with no `node_modules` in the workspace, and Doctor's `npm-deps` line counts them. Compose it after the `bun` kit. Price: the kit's `registry.npmjs.org:443` rule stays open for the sandbox's life (sbx cannot scope a rule to install time). It deliberately leaves out `apify-client` (no Apify egress) (the Evals scenario packages went with the Evals skill in WorkOS 2.0). Without the kit, the features above stay off.
 
 ---
 

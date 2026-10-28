@@ -7,7 +7,7 @@
  * sentinel file (system prompt, DA/principal identity, CLAUDE.md, OPERATIONAL_RULES,
  * a hook). Never runs inline in a session — the hook returns immediately.
  *
- * Billing: routes through the Evals runner, which uses Inference.ts (subscription).
+ * Billing: routes through the Assay runner, which uses Inference.ts (subscription or Bedrock).
  * The spawner deletes ANTHROPIC_API_KEY/AUTH_TOKEN so no API billing is possible.
  *
  * Single-flight: a lockfile prevents overlapping runs when several sentinel files
@@ -15,10 +15,10 @@
  * fires log and on stderr.
  */
 
-import { getClaudeDir } from './Paths';
+import { assayUserDir, getClaudeDir } from './Paths';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { runSuite } from '../../skills/Evals/Tools/EvalRunner.ts';
+import { runSuite } from '../../skills/Assay/Tools/EvalRunner.ts';
 
 const CLAUDE_ROOT = getClaudeDir();
 const RESULTS_DIR = join(CLAUDE_ROOT, 'WORKOS', 'MEMORY', 'STATE', 'Evals-Results');
@@ -26,17 +26,17 @@ const LOCK = join(RESULTS_DIR, '.config-eval.lock');
 const LOG = join(CLAUDE_ROOT, 'WORKOS', 'MEMORY', 'OBSERVABILITY', 'config-eval-fires.jsonl');
 // Which suite to fire. Identity-bound suites live in the USER customization
 // layer (never the public skill tree), so the name is USER-configured too:
-// WORKOS/USER/CUSTOMIZATIONS/SKILLS/Evals/config.json {"config_change_suite": "..."}.
+// WORKOS/USER/CUSTOMIZATIONS/SKILLS/Assay/config.json {"config_change_suite": "..."} (the legacy Evals/ dir while only it exists).
 // Default is the generic core-dispositions suite that ships with the skill —
 // a fresh install fires a suite that actually exists (Forge 7.10.2 audit).
 //
 // Was 'core-behaviors' until public issue #1752, @ozdreamwalk: that suite is a
 // legacy v1 `tasks:` file EvalRunner cannot execute, so this path errored on
 // every single config change and no config edit was ever actually verified.
-// core-behaviors stays in the tree as SKILL.md's anti-pattern example.
+// core-behaviors was retired with the Evals skill (WorkOS 2.0).
 function resolveSuite(): string {
   try {
-    const cfgPath = join(CLAUDE_ROOT, 'WORKOS', 'USER', 'CUSTOMIZATIONS', 'SKILLS', 'Evals', 'config.json');
+    const cfgPath = join(assayUserDir(), 'config.json');
     const cfg = JSON.parse(readFileSync(cfgPath, 'utf-8'));
     if (typeof cfg.config_change_suite === 'string' && cfg.config_change_suite.length > 0) return cfg.config_change_suite;
   } catch { /* no user config — generic default */ }
@@ -88,9 +88,13 @@ async function main(): Promise<void> {
 
   try {
     const result = await runSuite(SUITE);
-    log({ event: 'run', trigger, passed: result.passed, score: result.score, pass_to_k: result.pass_to_k, summary: result.summary });
+    log({ event: 'run', trigger, passed: result.passed, verifier_unavailable: result.verifier_unavailable, score: result.score, pass_to_k: result.pass_to_k, summary: result.summary });
 
-    if (!result.passed) {
+    if (result.verifier_unavailable) {
+      // No verdict is not a regression: the model or judge gave no answer. Same
+      // operational fact as an error, so it gets the "unverified" notice.
+      notify(`Behavioural eval gave no verdict after editing ${trigger}: ${SUITE} (${result.summary}). The change is unverified.`);
+    } else if (!result.passed) {
       const worst = [...result.cases].sort((a, b) => a.mean_score - b.mean_score)[0];
       notify(
         `Behavioural regression after editing ${trigger}: ${SUITE} at pass^k ${(result.pass_to_k * 100).toFixed(0)}%, mean ${(result.score * 100).toFixed(0)}% (${result.summary}). Weakest: ${worst?.id ?? 'n/a'}.`,

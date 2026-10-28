@@ -96,10 +96,10 @@ Traditionally the requirements, the tests, the acceptance criteria, and the stat
 The ISA collapses all four into one artifact by construction:
 
 - The **requirements** are the ISC list — criteria about the ideal state.
-- The **test suite** is the same list — every criterion carries its assert rows in `## Test Strategy`, and each is checked by the tool or command it names: deterministic rows (`bun-test`, `bun-property`, `bash`, `curl`) execute, `eval` rows dispatch to the Evals skill's EvalRunner (judged, pass^k), `manual` rows report as attested exceptions.
+- The **test suite** is the same list — every criterion carries its assert rows in `## Test Strategy`, and each is checked by the tool or command it names: deterministic rows (`bun-test`, `bun-property`, `bash`, `curl`) execute, `eval` rows dispatch to the Assay skill's EvalRunner (judged, pass^k), `manual` rows report as attested exceptions.
 - The **acceptance gate** is the same list — done means every criterion closed on evidence.
 - The **status** is the same list — `progress: N/M` in the frontmatter is a mechanical count of closed criteria, not an opinion.
-> Run code rows with `bun test ./<path>` and suite rows with `bun skills/Evals/Tools/EvalRunner.ts`.
+> Run code rows with `bun test ./<path>` and suite rows with `bun skills/Assay/Tools/EvalRunner.ts`.
 
 There is nothing to keep in sync because there is only one thing. This is why WorkOS forbids parallel artifacts — no `acceptance.yaml`, no separate test-spec document, no standalone status page. For complex applications the ISA naturally grows large, because the ideal state of a complex application includes API behavior, performance budgets, the security model, auth flows, and data-integrity invariants alongside the visible features. Those are not "in addition to" the ISA. They ARE the ISA.
 

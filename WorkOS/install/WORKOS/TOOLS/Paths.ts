@@ -26,7 +26,7 @@
  *   import { getWorkosDir, getClaudeDir, workosPath } from "../../WORKOS/TOOLS/Paths";  // or "./Paths" inside WORKOS/TOOLS
  */
 
-import { mkdtempSync, realpathSync } from 'fs';
+import { existsSync, mkdtempSync, realpathSync } from 'fs';
 import { homedir, tmpdir, userInfo } from 'os';
 import { dirname, join, sep } from 'path';
 
@@ -157,4 +157,16 @@ export function getSkillsDir(): string {
 /** The MEMORY directory. */
 export function getMemoryDir(): string {
   return workosPath('MEMORY');
+}
+
+/**
+ * The Assay skill's USER customization directory. Falls back to the legacy
+ * `Evals` directory while only that one exists, so suites written before the
+ * Evals → Assay rename keep resolving.
+ */
+export function assayUserDir(workosDir: string = getWorkosDir()): string {
+  const skills = join(workosDir, 'USER', 'CUSTOMIZATIONS', 'SKILLS');
+  const current = join(skills, 'Assay');
+  const legacy = join(skills, 'Evals');
+  return !existsSync(current) && existsSync(legacy) ? legacy : current;
 }

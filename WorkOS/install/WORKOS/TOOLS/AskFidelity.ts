@@ -27,7 +27,7 @@
  *   unmet    — not done and not accounted for → blocks
  *
  * Consumers (do not break these):
- *   - skills/Evals/Tools/ProposeFromFailures.ts — reads asks[].ask, asks[].status,
+ *   - (upstream) skills/Assay case drafting reads asks[].ask, asks[].status,
  *     deferred[].item, deferred[].reason, session, ts
  *   - <your-release-skill>/Workflows/AlgorithmAudit.md — reads all_met, slug
  *

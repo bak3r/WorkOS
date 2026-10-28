@@ -358,7 +358,7 @@ function deployNestedDependencies(payloadInstall: string, configRoot: string, ap
   if (!r.present) return r; // runtime not deployed yet — deployRuntime() already reports that blocker
 
   // Walk skills/ alongside WORKOS/ — skills ship nested package.json manifests
-  // too (Apify, Evals, Prompting templates, Art tools), and installing
+  // too (Apify, Assay, Prompting templates, Art tools), and installing
   // only the runtime tree left them import-broken. Public issue #1605, @cristbc.
   //
   // Scoped to the skills THIS payload ships, per skill dir (ported from public

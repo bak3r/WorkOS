@@ -583,7 +583,7 @@ const CAPS: CapSpec[] = [
   {
     id: 'npm-deps',
     title: 'optional npm packages',
-    powers: 'Prompting templates, Evals writers + scenarios, MemoryGraph, TokenXray, Apify',
+    powers: 'Prompting templates, Assay case drafts, MemoryGraph, TokenXray, Apify',
     ttlHours: 24 * 7,
     optional: true,
     configured: () => NPM_DEPS.some(d => isInstalled(d.pkg, join(CONFIG_ROOT, d.dir))),

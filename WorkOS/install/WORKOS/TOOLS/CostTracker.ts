@@ -58,7 +58,7 @@ interface CostSnapshot {
   call_sites: {
     total: number;
     bypass: number;    // should NOT bill API but do
-    legit: number;     // CF Workers, opt-in Evals
+    legit: number;     // CF Workers, known-legit paths
     new_since_baseline: string[];
   };
   alerts: string[];
@@ -163,7 +163,6 @@ const RISK_PATTERNS = [
 const LEGIT_HINTS: Record<string, string> = {
   "CostTracker.ts": "this tool — scans itself for patterns",
   "hooks/handlers/UpdateCounts.ts": "OAuth usage cache (not billing inference)",
-  "skills/Evals/": "opt-in API billing, gated by EVALS_ALLOW_API_BILLING=1",
   "WORKOS/TOOLS/Inference.ts": "canonical inference tool — deletes ANTHROPIC_API_KEY before spawn",
 };
 

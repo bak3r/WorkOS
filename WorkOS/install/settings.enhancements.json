@@ -660,7 +660,7 @@
       "Council is collaborative-adversarial (find best path). RedTeam is purely adversarial (attack the idea).",
       "Council runs 4 agents in parallel per round — 12 calls but only 3 sequential waits.",
       "Science skill applies the scientific method: Goal, Observe, Hypothesize, Experiment, Measure, Analyze, Iterate.",
-      "Science is THE meta-skill — Council, Evals, Development all implement its cycle.",
+      "Science is THE meta-skill — Council, Assay, Development all implement its cycle.",
       "Science requires minimum 3 hypotheses. Never just one idea — hypothesis plurality.",
       "Science anti-pattern: 'Make it better' without measurable success criteria.",
       "RedTeam TestIdea tests ideas against 11 persistent world models (6mo to 50yr).",

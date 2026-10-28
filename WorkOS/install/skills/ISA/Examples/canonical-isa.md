@@ -167,7 +167,7 @@ Reach: GET /health → field "version" ; GET /api/lots → header "RateLimit-Rem
      types (bash/bun-test/bun-property/curl) execute, eval dispatches to
      EvalRunner, and manual is the visible, ledgered exception that satisfies
      the gate — a criterion with zero rows is what H8 blocks. -->
-> Run code rows with `bun test ./<path>` and suite rows with `bun skills/Evals/Tools/EvalRunner.ts`.
+> Run code rows with `bun test ./<path>` and suite rows with `bun skills/Assay/Tools/EvalRunner.ts`.
 
 | isc | type | check | threshold | tool | anchors_to | severity | tier |
 |-----|------|-------|-----------|------|------------|----------|------|
