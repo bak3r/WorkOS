@@ -258,6 +258,10 @@
       "Edit(/sbin/**)",
       "Edit(/usr/**)",
       "Edit(~/.claude/projects/**/memory/**)",
+      "Edit(~/.claude/.git/config)",
+      "Edit(~/.claude/.git/hooks/**)",
+      "Edit(~/.config/WORKOS/USER/.git/config)",
+      "Edit(~/.config/WORKOS/USER/.git/hooks/**)",
       "Read(~/.aws/credentials)",
       "Read(~/.gnupg/private*)",
       "Read(~/.ssh/*_ed25519)",
@@ -272,7 +276,10 @@
       "Edit(~/.claude/.env)",
       "Edit(~/.claude/.env.*)",
       "Edit(~/.claude/**/.env)",
-      "Edit(~/.claude/**/.env.*)"
+      "Edit(~/.claude/**/.env.*)",
+      "Edit(~/.claude/settings.system.json)",
+      "Edit(~/.config/WORKOS/USER/CONFIG/settings.user.json)",
+      "Edit(~/.claude/WORKOS/USER/CONFIG/settings.user.json)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": []
