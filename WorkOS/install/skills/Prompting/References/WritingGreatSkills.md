@@ -2,7 +2,7 @@
 
 > **Provenance:** Matt Pocock's `writing-great-skills` skill + its glossary (github.com/mattpocock/skills, MIT License, Copyright (c) 2026 Matt Pocock). Imported 2026-07-16 as a live reference after adversarial evaluation (see the pocock-suite-reanalysis work session). Content preserved faithfully with a short adaptation note; on conflict with local doctrine, `skills/Prompting/Standards.md` and the CreateSkill skill win.
 >
-> **Adaptation note for this system:** skills here are predominantly model-invoked with `USE WHEN` trigger descriptions; the "user-invoked" axis below maps to slash-shortcut skills (`/ic`, `/rc`, …) and `disable-model-invocation` equivalents. The two-loads framing (context load vs cognitive load) applies unchanged. His "no-op test" is the same verdict as BitterPillEngineering Question 1 — use BPE as the enforcement surface, this file as the theory.
+> **Adaptation note for this system:** skills here are predominantly model-invoked with `USE WHEN` trigger descriptions; the "user-invoked" axis below maps to slash-shortcut skills (`/ic`, `/rc`, …) and `disable-model-invocation` equivalents. The two-loads framing (context load vs cognitive load) applies unchanged. His "no-op test" is the same verdict as BitterLessonEngineering Question 1 — use BPE as the enforcement surface, this file as the theory.
 
 A skill exists to wrangle determinism out of a stochastic system. **Predictability** — the agent taking the same *process* every run, not producing the same output — is the root virtue; every lever below serves it.
 

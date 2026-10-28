@@ -118,7 +118,7 @@ Runs hourly from `hooks/MaintenanceJobs.hook.ts` (see **Scheduling**). Sub-sweep
 | **Stale flagging** | `in-progress` item not updated in 7d | adds the `stale` label |
 | **Project check** | project in `USER/PROJECTS.md` with no commit in 14d | `project-check` item (slug on the project name) |
 | **Goal derivation** | active goal in `USER/TELOS/PRINCIPAL_TELOS.md` → `## Active Goals` with no open goal item | `goal` item (slug `goal:<id>`) |
-| **BPE cadence** | no BitterPillEngineering audit stamp in 30d | one `reminder` item |
+| **BPE cadence** | no BitterLessonEngineering audit stamp in 30d | one `reminder` item |
 
 Then it re-renders TASKLIST.md and appends one JSON line to `MEMORY/OBSERVABILITY/worksweep.jsonl`. No LLM, no network. `--dry-run` writes nothing (it prints what it would create and whether TASKLIST.md would change); `--max-create N` (default 50) caps session items per run; `--since Nh` widens the window; `--stamp-bpe` resets the BPE clock.
 

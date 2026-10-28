@@ -427,7 +427,7 @@ function sweepBpeCadence(sw: Sweep): void {
   const body = [
     "As model capability rises, the healthy line (right amount of scaffolding) DROPS — but the actual line keeps climbing, because adding feels productive and pruning feels like nothing. The gap widens unless subtraction is scheduled. This is that schedule.",
     "",
-    `Run: Skill("BitterPillEngineering", "audit") over the ${BPE_AUDIT_TARGETS}.`,
+    `Run: Skill("BitterLessonEngineering", "audit") over the ${BPE_AUDIT_TARGETS}.`,
     `Cadence: every ${BPE_CADENCE_DAYS} days. Last audit: ${days === null ? "never" : days + " days ago"}.`,
     "Then stamp it: bun ~/.claude/WORKOS/TOOLS/WorkSweep.ts --stamp-bpe to reset the clock.",
     "",

@@ -50,7 +50,7 @@ All five satisfy the same intent: **strengthen the test of the test, the test of
 - **ISA format** — new `bun-property` ISC type with `property | generator | runs` columns (`WORKOS/DOCUMENTATION/ISA/ISAFormat.md` § ISC Type Vocabulary).
 - **Algorithm** — hardening is elected during VERIFY when a run's claims warrant property/mutation depth; spend is discovered from the work (the v6.10.0-era tier-gated proposal predates the 2026-07-11 tier retirement).
 - **System prompt** — Verification Is the Mechanism section at top (`WORKOS/WORKOS_SYSTEM_PROMPT.md`).
-- **BitterPillEngineering skill** — `AcceptanceTestMutation` is the mechanized form of BPE's "would a smarter model render this rule unnecessary" applied to ISCs.
+- **BitterLessonEngineering skill** — `AcceptanceTestMutation` is the mechanized form of BPE's "would a smarter model render this rule unnecessary" applied to ISCs.
 
 ## Gotchas
 
