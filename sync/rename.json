@@ -1,0 +1,24 @@
+{
+  "$note": "How an upstream LifeOS payload path and its text become WorkOS. Rebuilt 2026-10-28 by measurement, since the fork recorded no map: with these rules, 644 of the 1033 in-scope files WorkOS 1.0.2 shares with LifeOS v7.40.4 match the renamed upstream byte for byte (SyncPlan's 'rename fidelity' line); sampled remaining differences are WorkOS's own edits, not missed renames. Order matters: rules apply top to bottom.",
+  "text": [
+    ["LIFEOS", "WORKOS"],
+    ["LifeOS", "WorkOS"],
+    ["LifeOs", "WorkOs"],
+    ["Lifeos", "Workos"],
+    ["lifeos", "workos"]
+  ],
+  "paths": [
+    ["LIFEOS", "WORKOS"],
+    ["LifeOS", "WorkOS"],
+    ["LifeOs", "WorkOs"],
+    ["Lifeos", "Workos"],
+    ["lifeos", "workos"]
+  ],
+  "moves": {
+    "$note": "Files the fork moved, keyed by the renamed upstream path. Applied after the path rules.",
+    "skills/Loop/SKILL.md": "skills/Iterate/SKILL.md",
+    "WORKOS/PULSE/lib/atomic-write.ts": "WORKOS/TOOLS/lib/atomic-write.ts",
+    "WORKOS/PULSE/lib/memory-proposals.ts": "WORKOS/TOOLS/lib/memory-proposals.ts",
+    "WORKOS/DOCUMENTATION/Pulse/TerminalTabs.md": "WORKOS/DOCUMENTATION/Terminal/TerminalTabs.md"
+  }
+}

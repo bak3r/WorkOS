@@ -1,0 +1,133 @@
+# Starting plan, generated 2026-10-28 by: bun sync/SyncPlan.ts --target v8.761.0 --by-dir
+# Upstream be9e8ef8 -> fb9aef46, WorkOS 85e0b64 (1.0.2)
+
+v7.40.4 → v8.761.0   WorkOS: WorkOS/install
+
+    UNCHANGED           333
+    KEEP                 17
+    ALREADY               0
+    LOCAL-ONLY           23
+    FORK-REMOVED         38
+    SKIPPED            1857
+    RESOLVED              0
+  * TAKE                232
+  * ADD                1780
+  * MERGE-CLEAN          42
+  * CONFLICT            331
+  * UPSTREAM-DELETED    146
+  * MISSING              77
+    TOTAL              4876  (= 4876 paths)
+
+  rename fidelity: 644 of 1033 in-scope files WorkOS shares with v7.40.4 match the renamed upstream exactly
+
+  PENDING: 2608  (not done)
+
+  pending by area:
+    WORKOS/TOOLS                         ADD 292, TAKE 44, CONFLICT 57, MISSING 39, MERGE-CLEAN 20, UPSTREAM-DELETED 3
+    skills/Fabric                        ADD 295, TAKE 82, MISSING 15, UPSTREAM-DELETED 2, CONFLICT 6
+    skills/Assay                         ADD 130
+    USER/CUSTOMIZATIONS                  ADD 127, CONFLICT 1, TAKE 1
+    WORKOS/WORKFLOWS                     ADD 108
+    WORKOS/DOCUMENTATION                 CONFLICT 36, ADD 57, MISSING 9, TAKE 1, MERGE-CLEAN 2
+    hooks/lib                            TAKE 14, ADD 51, CONFLICT 12, UPSTREAM-DELETED 2, MERGE-CLEAN 2
+    hooks                                CONFLICT 25, UPSTREAM-DELETED 9, TAKE 16, MISSING 1, ADD 8, MERGE-CLEAN 3
+    WORKOS/STATUSLINE                    ADD 57
+    skills/Interceptor                   ADD 25, TAKE 8, CONFLICT 9, UPSTREAM-DELETED 13
+    skills/Evals                         UPSTREAM-DELETED 35, CONFLICT 18
+    USER/CONFIG                          ADD 47, CONFLICT 3, TAKE 1
+    skills/Art                           ADD 39, CONFLICT 4, MISSING 2
+    skills/Research                      ADD 20, CONFLICT 13, TAKE 2, UPSTREAM-DELETED 8
+    skills/ISA                           ADD 18, CONFLICT 9, TAKE 7, MISSING 4
+    skills/Presentation                  ADD 31
+    WORKOS/ERRATA                        ADD 30
+    commands                             ADD 21, TAKE 3, UPSTREAM-DELETED 1, MERGE-CLEAN 1, CONFLICT 2
+    WORKOS/ASSAY                         ADD 26
+    skills/HillClimb                     ADD 26
+    skills/Prompting                     TAKE 1, CONFLICT 6, ADD 1, MISSING 2, UPSTREAM-DELETED 13, MERGE-CLEAN 2
+    skills/Webdesign                     ADD 6, CONFLICT 5, TAKE 4, UPSTREAM-DELETED 10
+    skills/BeCreative                    CONFLICT 9, UPSTREAM-DELETED 3, ADD 10, TAKE 1
+    skills/CreateSkill                   ADD 15, CONFLICT 8
+    skills/WorkOSHooks                   ADD 23
+    skills/Telos                         MERGE-CLEAN 2, TAKE 6, ADD 7, UPSTREAM-DELETED 2, CONFLICT 5
+    skills/RichFormat                    ADD 20
+    USER/SECURITY                        ADD 17, TAKE 1
+    skills/Science                       TAKE 4, ADD 3, CONFLICT 1, UPSTREAM-DELETED 9
+    skills/Upgrade                       ADD 8, MERGE-CLEAN 2, TAKE 1, CONFLICT 6
+    WORKOS/ALGORITHM                     ADD 2, TAKE 10, CONFLICT 3, UPSTREAM-DELETED 1
+    WORKOS/ATLAS                         CONFLICT 4, ADD 7, MISSING 2, MERGE-CLEAN 3
+    skills/SystemsThinking               TAKE 3, ADD 5, CONFLICT 1, UPSTREAM-DELETED 5
+    skills/Development                   ADD 13
+    skills/RedTeam                       TAKE 2, ADD 8, CONFLICT 3
+    skills/RootCauseAnalysis             TAKE 2, ADD 5, CONFLICT 1, UPSTREAM-DELETED 5
+    skills/ThreatModel                   ADD 7, CONFLICT 5, TAKE 1
+    skills/CreateCLI                     TAKE 1, ADD 5, UPSTREAM-DELETED 2, CONFLICT 4
+    WORKOS/EVIDENCE                      ADD 11
+    skills/Cloudflare                    ADD 11
+    WORKOS/REVIEW                        ADD 10
+    skills/Calibrate                     ADD 9
+    skills/Council                       TAKE 2, ADD 3, UPSTREAM-DELETED 1, CONFLICT 3
+    skills/Dotfiles                      ADD 9
+    skills/Errata                        ADD 9
+    skills/Pareto                        ADD 9
+    skills/Workflows                     ADD 9
+    skills/BrightData                    ADD 5, CONFLICT 2, UPSTREAM-DELETED 1
+    skills/Excalidraw                    ADD 8
+    skills/Interview                     ADD 5, CONFLICT 3
+    skills/Visualize                     ADD 8
+    USER/PRINCIPAL                       CONFLICT 1, MERGE-CLEAN 1, ADD 3, MISSING 2
+    skills/ArXiv                         ADD 3, CONFLICT 1, UPSTREAM-DELETED 3
+    skills/DetectAI                      ADD 3, CONFLICT 3, MISSING 1
+    skills/FirstPrinciples               ADD 3, CONFLICT 4
+    skills/Harvest                       ADD 7
+    skills/Ideate                        CONFLICT 7
+    skills/Novelty                       ADD 3, TAKE 1, UPSTREAM-DELETED 3
+    agents                               MERGE-CLEAN 1, ADD 4, CONFLICT 1
+    hooks/handlers                       CONFLICT 2, TAKE 4
+    skills/AnnualReports                 ADD 6
+    skills/Cortex                        ADD 4, CONFLICT 1, MERGE-CLEAN 1
+    skills/ExtractWisdom                 ADD 4, TAKE 1, UPSTREAM-DELETED 1
+    skills/SecurityUpdates               ADD 6
+    skills/Tldraw                        UPSTREAM-DELETED 3, CONFLICT 3
+    skills/WorldThreatModel              UPSTREAM-DELETED 2, CONFLICT 4
+    USER                                 CONFLICT 4, ADD 1
+    USER/TELOS                           ADD 2, CONFLICT 3
+    skills/Explain                       ADD 5
+    skills/IterativeDepth                ADD 1, TAKE 3, UPSTREAM-DELETED 1
+    skills/Profile                       ADD 5
+    skills/Trim                          ADD 3, CONFLICT 1, UPSTREAM-DELETED 1
+    skills/Unify                         ADD 5
+    workflows                            ADD 5
+    USER/DIGITAL_ASSISTANT               CONFLICT 2, MERGE-CLEAN 1, TAKE 1
+    WORKOS/USER_TEMPLATES                CONFLICT 4
+    skills/BiasCheck                     TAKE 1, ADD 1, CONFLICT 2
+    skills/HTML                          ADD 1, CONFLICT 2, TAKE 1
+    skills/Simplify                      ADD 4
+    skills/SuggestSkills                 ADD 1, CONFLICT 2, TAKE 1
+    USER/INTEGRATIONS                    ADD 3
+    WORKOS/RULES                         CONFLICT 2, MERGE-CLEAN 1
+    WORKOS                               CONFLICT 3
+    skills/ApertureOscillation           ADD 1, CONFLICT 1, UPSTREAM-DELETED 1
+    skills/BitterLessonEngineering       ADD 3
+    skills/BitterPillEngineering         CONFLICT 1, UPSTREAM-DELETED 2
+    skills/Hardening                     ADD 1, TAKE 1, CONFLICT 1
+    skills/Sales                         CONFLICT 2, UPSTREAM-DELETED 1
+    skills/Superior                      ADD 3
+    USER/INBOX                           ADD 2
+    USER/SHARED                          UPSTREAM-DELETED 2
+    USER/STATE                           ADD 2
+    USER/WORK                            CONFLICT 1, ADD 1
+    USER/WORKFLOWS                       ADD 2
+    USER/WORKOS_WORKERS                  ADD 2
+    skills/Teach                         CONFLICT 2
+    CLAUDE.template.md                   CONFLICT 1
+    RETIREMENTS.json                     ADD 1
+    USER/DATA                            ADD 1
+    USER/GAUNTLET                        ADD 1
+    WORKOS/SETUP                         ADD 1
+    install.sh                           CONFLICT 1
+    settings.enhancements.json           CONFLICT 1
+    settings.system.json                 CONFLICT 1
+    skills                               CONFLICT 1
+    skills/Iterate                       CONFLICT 1
+    skills/Migrate                       CONFLICT 1
+    skills/Optimize                      UPSTREAM-DELETED 1

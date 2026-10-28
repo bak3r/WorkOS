@@ -1,0 +1,7 @@
+{
+  "$note": "Where the upstream lives and which release WorkOS currently matches. 'clone' is relative to the repository root. 'base' moves forward only after a sync is finished (SyncPlan --mark-base).",
+  "clone": "../LifeOS",
+  "payload": "LifeOS/install",
+  "local": "WorkOS/install",
+  "base": "v7.40.4"
+}
