@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 export type Decision = "allow" | "neutral";
 
 export type ClassificationReason =
-  | "mcp-pre-vetted"
+  | "mcp-defer-native"
   | "read-only-tool"
   | "read-only-command"
   | "trusted-workspace-path"
@@ -479,8 +479,13 @@ export function buildShapeTargets(cmd: string): string[] {
 }
 
 export function classifyCommand(tc: ToolCall): Classification {
+  // A PermissionRequest for an MCP tool only fires when the native rules did
+  // not already allow it, i.e. the tool is ask-listed or unlisted. A blanket
+  // allow here overrode those rules (e.g. an Atlassian MCP write against the
+  // read-only Jira policy), so MCP always defers to the native prompt.
+  // (upstream LifeOS report by @Steffen025; upstream retired the auto-approver)
   if (tc.toolName.startsWith("mcp__")) {
-    return { decision: "allow", reasons: ["mcp-pre-vetted"] };
+    return { decision: "neutral", reasons: ["mcp-defer-native"] };
   }
 
   if (READ_ONLY_TOOLS.includes(tc.toolName)) {

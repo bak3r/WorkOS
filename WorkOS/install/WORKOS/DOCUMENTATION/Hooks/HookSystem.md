@@ -1392,8 +1392,9 @@ PERMISSION REQUEST (1 hook, 2 matchers):
   Safety.hook.ts                 Shape-classifier auto-approve [Write|Edit|MultiEdit|Bash, mcp__.*]
                                  — same file as PostToolUse hook above; dispatches by event.
                                  PermissionRequest path uses lib/safety-classifier.ts to allow safe shapes
-                                 (read-only commands, dev binaries, trusted-workspace targets, mcp pre-vetted,
-                                 shell-control-flow over data) and falls through to native prompt on
+                                 (read-only commands, dev binaries, trusted-workspace targets,
+                                 shell-control-flow over data). Every mcp__ call defers to the native
+                                 prompt, so ask-listed MCP tools still ask. Falls through to native prompt on
                                  dangerous/credential/injection shapes. Cache + observability JSONL.
 
 TASK CREATED (1 hook):

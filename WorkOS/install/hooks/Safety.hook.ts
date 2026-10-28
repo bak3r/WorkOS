@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.3.15
+ * @version 1.3.16
  * Safety.hook.ts — unified safety/permissions hook.
  *
  * Single entry point dispatching by event:
@@ -171,11 +171,11 @@ function logDecision(opts: {
 }
 
 /**
- * Secret-shape scan for MCP egress (#1275). The classifier's blanket
- * `mcp-pre-vetted` allow never inspects tool_input, so an MCP write call
- * (mail send, message post, canvas update, …) carrying .env contents or a
- * credential would previously auto-allow unscanned. Before emitting allow
- * for any mcp__ tool, serialize the full tool_input and scan it for secret
+ * Secret-shape scan for MCP egress (#1275). The classifier no longer allows
+ * any mcp__ call (it defers every one to the native prompt), so this scan no
+ * longer changes the decision; it stays so a secret-bearing MCP payload is
+ * flagged in the observability JSONL with its body redacted. It serializes
+ * the full tool_input and scans it for secret
  * VALUE shapes — reusing SECRET_VALUE_SHAPES from lib/egress-class-core.ts
  * (sk-ant-/sk-*, AKIA, ghp_, glpat-, xox*, PEM blocks, AIza, Bearer, …) —
  * plus a secret-named-assignment shape (KEY/TOKEN/SECRET/PASSWORD = long
@@ -219,10 +219,9 @@ function permissionRequest(input: {
   const filePath =
     typeof toolInput.file_path === "string" ? toolInput.file_path : undefined;
 
-  // #1275 — MCP egress secret scan. Runs BEFORE the classifier's blanket
-  // mcp-pre-vetted allow. On a secret-shape hit, skip emitAllow entirely so
-  // the native permission prompt fires; benign mcp__ calls fall through to
-  // the normal allow path.
+  // #1275 — MCP egress secret scan. Every mcp__ call defers to the native
+  // prompt (classifier `mcp-defer-native`); a secret-shape hit is logged here
+  // with a redacted body instead of the classifier's generic entry.
   if (toolName.startsWith("mcp__")) {
     let serialized = "";
     try {
