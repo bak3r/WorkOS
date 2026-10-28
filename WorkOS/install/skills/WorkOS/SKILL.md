@@ -1,6 +1,6 @@
 ---
 name: WorkOS
-version: 1.5.43
+version: 1.0.0
 description: Install and onboard a user into WorkOS — a work operating system for a developer's AI assistant (where your work stands → where you want it to be, via work TELOS + the Algorithm). The agentic installer detects your OS + harness, wires hooks with permission, scaffolds your USER tree, pulls in sources you provide, and runs the work onboarding interview (identity, team and process, stack, projects, work goals). USE WHEN install WorkOS, set up WorkOS, workos setup, workos-setup, workos interview, onboard me, run the interview, integrate WorkOS into my harness, update WorkOS, uninstall WorkOS, first-time setup, workos doctor, check my install, what capabilities are broken. NOT FOR building or cutting a WorkOS release (private release tooling), editing TELOS after onboarding (use Telos / Interview), or WorkOS system maintenance (use the private maintenance skill).
 disable-model-invocation: true
 argument-hint: "[setup|interview|doctor|update|uninstall]"
