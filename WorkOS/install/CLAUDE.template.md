@@ -1,4 +1,4 @@
-# WorkOS 1.0.0 — the work operating system
+# WorkOS 1.0.1 — the work operating system
 
 > **WorkOS is the AI harness that moves your work from current state to ideal state — an intent engineering platform. The DA is the principal's AI assistant.**
 > Canonical thesis: `WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md`. Everyone running WorkOS names their own DA.

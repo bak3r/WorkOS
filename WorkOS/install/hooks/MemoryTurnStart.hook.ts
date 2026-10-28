@@ -88,16 +88,20 @@ async function readStdin(): Promise<string> {
   });
 }
 
-if (isSubagent()) process.exit(0);
-
 (async () => {
   let sessionId = "unknown";
   let prompt = "";
+  let hookInput: unknown = null;
   try {
     const input = JSON.parse(await readStdin());
+    hookInput = input;
     sessionId = input.session_id || "unknown";
     prompt = typeof input.prompt === "string" ? input.prompt : "";
   } catch {}
+
+  // The skip lives here, after stdin, because a fork is only distinguishable by
+  // the agent stamp on the payload (see lib/subagent.ts).
+  if (isSubagent(hookInput)) process.exit(0);
 
   // Turn boundary for the ⚙️ SYSTEM surface. It lives here because this is the
   // ONE UserPromptSubmit composer, so it needs no new settings.json entry — and

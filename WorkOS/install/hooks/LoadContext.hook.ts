@@ -465,8 +465,16 @@ async function checkActiveProgress(paiDir: string): Promise<string | null> {
 
 async function main() {
   try {
+    // A fork carries no distinguishing env var; its `agent_id` stamp arrives
+    // on stdin, so read it before the guard (see lib/subagent.ts).
+    let hookInput: unknown = null;
+    try {
+      const raw = readFileSync(0, 'utf-8');
+      if (raw.trim()) hookInput = JSON.parse(raw);
+    } catch { /* best-effort: env-only guard below */ }
+
     // Subagents don't need dynamic context injection
-    if (isSubagentContext()) {
+    if (isSubagentContext(hookInput)) {
       console.error('🤖 Subagent session - skipping context loading');
       process.exit(0);
     }

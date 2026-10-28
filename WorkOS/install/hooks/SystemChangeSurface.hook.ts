@@ -113,7 +113,7 @@ function writeLedger(path: string, ledger: Ledger): void {
 
 export function run(input: HookInput): string | null {
   try {
-    if (isSubagent()) return null;
+    if (isSubagent(input)) return null;
     const tool = input.tool_name ?? "";
     if (!WRITE_TOOLS.has(tool)) return null;
     const filePath = input.tool_input?.file_path;

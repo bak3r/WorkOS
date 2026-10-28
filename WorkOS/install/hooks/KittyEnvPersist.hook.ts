@@ -20,21 +20,24 @@ import { isSubagentContext } from './lib/subagent';
 
 const paiDir = getWorkosDir();
 
-// Skip for subagents
-if (isSubagentContext()) process.exit(0);
-
 // Read session_id + source from stdin (SessionStart hook input)
 // source ∈ {"startup", "resume", "compact", "clear"}; absent on older CC versions.
 let sessionId = '';
 let source = '';
+let parsed: unknown = null;
 try {
   const raw = readFileSync(0, 'utf-8');
   if (raw) {
-    const parsed = JSON.parse(raw);
-    sessionId = String(parsed.session_id || '');
-    source = String(parsed.source || '');
+    const j = JSON.parse(raw);
+    parsed = j;
+    sessionId = String(j.session_id || '');
+    source = String(j.source || '');
   }
 } catch { /* best-effort */ }
+
+// Skip for subagents. A fork is only visible through the stdin stamp read
+// above, not in the env (see lib/subagent.ts).
+if (isSubagentContext(parsed)) process.exit(0);
 
 // Persist Kitty environment for hooks that run later without terminal context
 const kittyListenOn = process.env.KITTY_LISTEN_ON;
