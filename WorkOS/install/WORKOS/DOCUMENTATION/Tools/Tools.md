@@ -648,6 +648,23 @@ bun ~/.claude/WORKOS/TOOLS/Doctor.ts ack             # acknowledge the current b
 
 ---
 
+## StatusLine.ts + STATUSLINE/ - The Status Line
+
+**Location:** `~/.claude/WORKOS/TOOLS/StatusLine.ts` (switch), `~/.claude/WORKOS/STATUSLINE/` (renderer, see its README)
+
+The status line is one Bun process (`STATUSLINE/Render.ts`) behind the `WORKOS/WORKOS_StatusLine.sh` entry point. A render only reads files and replays an unchanged frame. `STATUSLINE/Refresh.ts` refreshes its one shared cache from MaintenanceJobs. `StatusLineClip.ts` and `StatusLineAbbrev.ts` are its clipping and name-shortening helpers.
+
+```bash
+bun ~/.claude/WORKOS/TOOLS/StatusLine.ts status        # on | off
+bun ~/.claude/WORKOS/TOOLS/StatusLine.ts off           # new sessions draw no statusline (block kept)
+bun ~/.claude/WORKOS/TOOLS/StatusLine.ts on            # put it back
+```
+
+**When to Use:**
+- "/statusline off", "hide the statusline", "turn the statusline back on"
+
+---
+
 ## MCP Servers
 
 **Config:** `~/.claude/.mcp.json`

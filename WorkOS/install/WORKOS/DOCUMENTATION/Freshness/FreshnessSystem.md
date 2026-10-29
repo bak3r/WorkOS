@@ -86,7 +86,7 @@ Each file gets a letter grade A/B/C/D/F derived from `reviewed_age_days : thresh
 
 The overall grade is a GPA-style mean (A=4..F=0) of all per-file letter grades, mapped back to a letter (≥3.5=A, ≥2.5=B, ≥1.5=C, ≥0.5=D, else F). Per-file `pct` is a 0..100 score from review age, NOT write age — `null reviewed_age` (never reviewed) → 0.
 
-Statusline FRESH line and `/api/freshness/summary` both surface these grades.
+`/interview` and `FreshnessCache.ts --print` surface these grades. The statusline draws no FRESH line (it never did in WorkOS).
 
 ## Library
 
@@ -168,9 +168,9 @@ bun ~/.claude/WORKOS/TOOLS/ContextAudit.ts
 bun ~/.claude/WORKOS/TOOLS/ContextAudit.ts --json
 ```
 
-## Statusline cache (render-path optimization)
+## Freshness cache
 
-The statusline FRESH line cannot afford heavy work on every refresh (1s interval). `WORKOS/TOOLS/FreshnessCache.ts` writes a tiny summary (`{ total, fresh_count, stale_count, overall_pct, overall_grade, most_stale, files: [...] }`, each file entry carrying `slug, name, age_days, threshold_days, reviewed_age_days, pct, grade, stale, why`) to a private file the statusline reads directly with `jq`.
+Readers that cannot afford a full audit read a cache instead. `WORKOS/TOOLS/FreshnessCache.ts` writes a tiny summary (`{ total, fresh_count, stale_count, overall_pct, overall_grade, most_stale, files: [...] }`, each file entry carrying `slug, name, age_days, threshold_days, reviewed_age_days, pct, grade, stale, why`) to a private file readers parse directly.
 
 ```
 ~/.claude/WORKOS/USER/CACHE/freshness.json
@@ -184,15 +184,7 @@ The file is private (under `USER/`, never released), atomically written (temp fi
 2. **SessionStart hook** — `bun WORKOS/TOOLS/FreshnessCache.ts --quiet` runs async at session start, catching age-progression grade flips (a 28-day file with a 30-day threshold ages to 32 days and flips B→F with no bump event).
 3. **CLI** — `bun WORKOS/TOOLS/FreshnessCache.ts` (or `--rebuild`) for manual rebuild; `--print` to dump JSON without writing; `--quiet` for silent success.
 
-**Read path** — `WORKOS/WORKOS_StatusLine.sh` reads the cache file directly:
-
-```bash
-_FRESH_CACHE="$CLAUDE_HOME/WORKOS/USER/CACHE/freshness.json"
-[ -s "$_FRESH_CACHE" ] && _FRESH_RAW=$(cat "$_FRESH_CACHE")
-echo "$_FRESH_RAW" | jq -r '.files[] | "\(.slug)\t\(.grade)"'
-```
-
-No network call in the FRESH section's hot path. Missing cache file degrades gracefully to `—` per file plus `—` ALL grade without blocking.
+**Read path** — a reader parses the cache file directly, with no network call. A missing cache file reads as `—` per file plus `—` overall, without blocking.
 
 ## Interview integration
 
@@ -278,8 +270,7 @@ The diagram is the file's whole life: the grade decays as the file ages toward i
 ## Cross-references
 
 - Library: `WORKOS/TOOLS/TelosFreshness.ts`
-- Statusline cache writer: `WORKOS/TOOLS/FreshnessCache.ts`
-- Statusline reader: `WORKOS/WORKOS_StatusLine.sh` (FRESH section)
+- Cache writer: `WORKOS/TOOLS/FreshnessCache.ts`
 - Cache file (private): `WORKOS/USER/CACHE/freshness.json`
 - Migration: `WORKOS/TOOLS/MigrateContextFreshness.ts`
 - Audit: `WORKOS/TOOLS/ContextAudit.ts`

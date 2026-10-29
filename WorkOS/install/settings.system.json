@@ -359,7 +359,7 @@
     ]
   },
   "principal": {
-    "_docs": "Canonical runtime read point for selected principal fields. Authored in WORKOS/USER/PRINCIPAL/PRINCIPAL_IDENTITY.md frontmatter, mirrored here for runtime consumers that can't afford a markdown read (WORKOS_StatusLine.sh reset-time formatter, etc.). This SYSTEM half ships publicly at release (ShadowRelease Phase D reads this live file) — personal values belong in USER/CONFIG/settings.user.json, which overlays at merge time. timezone: empty follows the OS clock; an explicit IANA zone is an opt-in for headless installs whose system TZ is wrong/UTC.",
+    "_docs": "Canonical runtime read point for selected principal fields. Authored in WORKOS/USER/PRINCIPAL/PRINCIPAL_IDENTITY.md frontmatter, mirrored here for runtime consumers that can't afford a markdown read (the statusline clock in STATUSLINE/State.ts, etc.). This SYSTEM half ships publicly at release (ShadowRelease Phase D reads this live file) — personal values belong in USER/CONFIG/settings.user.json, which overlays at merge time. timezone: empty follows the OS clock; an explicit IANA zone is an opt-in for headless installs whose system TZ is wrong/UTC.",
     "timezone": ""
   },
   "dynamicContext": {

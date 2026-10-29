@@ -605,7 +605,7 @@
       "WORKOS_CONFIG.toml is the canonical config source; settings.json carries a runtime mirror of daidentity for hooks.",
       "Your DA's name, color, and personality live in WORKOS_CONFIG.toml's [da] section.",
       "principal in settings.json stores your name and timezone.",
-      "The statusline command runs from WORKOS/WORKOS_StatusLine.sh.",
+      "The statusline is one Bun process, WORKOS/STATUSLINE/Render.ts; /statusline off switches it off.",
       "Never hardcode paths. Use ${WORKOS_DIR}, ${PROJECTS_DIR}, {PRINCIPAL.NAME}.",
       "Interceptor-first: if you haven't SEEN it with the Interceptor skill, you can't claim it works.",
       "Build passes is not done. It's step 2 of 7 in the browser verification loop.",

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 2.2.0
+ * @version 2.3.0
  * MaintenanceJobs.hook.ts — throttled background maintenance, per-job intervals.
  *
  * PURPOSE:
@@ -15,6 +15,8 @@
  *                                  (in-process, see "OBSERVABILITY PRUNE" below)
  *   6. ledger-compact      (168h): CortexLedger.ts maintain (checkpoint + compact the
  *                                  memory ledger once 200 rows follow its last checkpoint)
+ *   7. statusline-refresh    (1h): STATUSLINE/Refresh.ts (the statusline's shared caches;
+ *                                  upstream runs it every minute from its Workflows clock)
  * The systemd timers for WorkSweep / CommitmentSweep stay as optional extras;
  * running both is harmless (ledger writes are slug-idempotent).
  *
@@ -121,6 +123,12 @@ export const JOBS: Job[] = [
     intervalH: 168,
     timeoutMs: 120_000,
     steps: [[join(TOOLS, "CortexLedger.ts"), "maintain"]],
+  },
+  {
+    name: "statusline-refresh",
+    intervalH: 1,
+    timeoutMs: 60_000,
+    steps: [[join(WORKOS, "STATUSLINE", "Refresh.ts")]],
   },
 ];
 

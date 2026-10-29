@@ -50,7 +50,7 @@ Hooks are TypeScript scripts that execute at specific lifecycle events in Claude
 │  SessionStart ──┬──► HookHealer (exec-bit self-heal)                │
 │                 ├──► KittyEnvPersist (terminal env + tab reset)     │
 │                 ├──► LoadContext (dynamic context injection)        │
-│                 ├──► FreshnessCache (statusline jq cache)           │
+│                 ├──► FreshnessCache (freshness summary cache)           │
 │                 ├──► MaintenanceJobs (throttled background jobs)    │
 │                 └──► SettingsBackport + MergeSettings (config merge) │
 │                                                                     │
@@ -165,8 +165,8 @@ interface StopPayload extends BasePayload {
 | `HookHealer.hook.ts` | Restore the `+x` bit on registered hook scripts the Write tool created as 0644 | No | `settings.json` (timeout 10; the one `bun`-prefixed registration) |
 | `KittyEnvPersist.hook.ts` | Persist Kitty env vars + tab reset | No | None |
 | `LoadContext.hook.ts` | Inject dynamic context (identity, work, projects) | Yes (stdout) | `settings.json`, `MEMORY/` |
-| (inline) `WORKOS/TOOLS/FreshnessCache.ts` | Statusline freshness cache (`--quiet`) | No | None (timeout 5, async) |
-| `MaintenanceJobs.hook.ts` | Throttled background jobs (no cron/daemon/systemd), each on its own interval and stamp: memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 20 h), `ProposalGC.ts --auto` (20 h), `WorkSweep.ts` (1 h), `CommitmentSweep.ts` (20 h), observability prune (20 h, in-process: archives `MEMORY/OBSERVABILITY` logs with no write in 30 days to `ARCHIVE/*.gz`, never deletes, never rewrites a live file). When any job is due and no worker holds the lock, spawns itself detached with `--run` to execute the due jobs. Never blocks session start; skips subagents; exits 0 on every path | No | `WORKOS/TOOLS/SessionHarvester.ts`, `LearningPatternSynthesis.ts`, `ProposalGC.ts`, `WorkSweep.ts`, `CommitmentSweep.ts`; writes `MEMORY/STATE/maintenance-jobs.{json,lock}`, `MEMORY/OBSERVABILITY/maintenance-jobs.log` (timeout 5) |
+| (inline) `WORKOS/TOOLS/FreshnessCache.ts` | Freshness summary cache (`--quiet`) | No | None (timeout 5, async) |
+| `MaintenanceJobs.hook.ts` | Throttled background jobs (no cron/daemon/systemd), each on its own interval and stamp: memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 20 h), `ProposalGC.ts --auto` (20 h), `WorkSweep.ts` (1 h), `CommitmentSweep.ts` (20 h), observability prune (20 h, in-process: archives `MEMORY/OBSERVABILITY` logs with no write in 30 days to `ARCHIVE/*.gz`, never deletes, never rewrites a live file), ledger compaction (`CortexLedger.ts maintain`, 168 h), statusline refresh (`STATUSLINE/Refresh.ts`, 1 h). When any job is due and no worker holds the lock, spawns itself detached with `--run` to execute the due jobs. Never blocks session start; skips subagents; exits 0 on every path | No | `WORKOS/TOOLS/SessionHarvester.ts`, `LearningPatternSynthesis.ts`, `ProposalGC.ts`, `WorkSweep.ts`, `CommitmentSweep.ts`, `CortexLedger.ts`, `STATUSLINE/Refresh.ts`; writes `MEMORY/STATE/maintenance-jobs.{json,lock}`, `MEMORY/OBSERVABILITY/maintenance-jobs.log` (timeout 5) |
 | (inline) `SettingsBackport.ts` + `MergeSettings.ts` | Merge `settings.system.json` + `USER/CONFIG/settings.user.json` → `settings.json` | No | System/user settings split (timeout 15, async) |
 
 ### UserPromptSubmit Hooks (in fire order)
@@ -263,7 +263,7 @@ Outputs: `subagent-events.jsonl` (start + stop events), correlated by `session_i
 |------|---------|----------|--------------|
 | `WorkCompletionLearning.hook.ts` | Extract learnings from work | No | Inference API, `MEMORY/LEARNING/` |
 | `SessionCleanup.hook.ts` | Mark work complete + clear state | No | `MEMORY/WORK/`, `MEMORY/STATE/work.json` |
-| `UpdateCounts.hook.ts` | Refresh the Anthropic OAuth usage cache (`MEMORY/STATE/usage-cache.json`) so the statusline has fresh data next session | No | `handlers/UpdateCounts.ts`, Anthropic API |
+| `UpdateCounts.hook.ts` | Refresh the Anthropic OAuth usage cache (`MEMORY/STATE/usage-cache.json`) for `CostTracker.ts`; the statusline no longer reads it (Bedrock has no plan meter) | No | `handlers/UpdateCounts.ts`, Anthropic API |
 | `MemoryHealthGate.hook.ts` | End-of-session autonomic-memory health check | No | `MEMORY/OBSERVABILITY/memory-health.jsonl` |
 | `DocIntegrity.hook.ts` | Cross-ref + semantic drift checks + arch summary regen | No | Inference API, `handlers/` |
 | `IntegrityCheck.hook.ts` | System file change detection → spawn IntegrityMaintenance | No | `MEMORY/STATE/integrity-state.json`, `handlers/` |

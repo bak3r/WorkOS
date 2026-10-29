@@ -56,7 +56,7 @@ The skill ships everything for both tiers in its payload; nothing activates with
    | Component | What it deploys | Default |
    |-----------|-----------------|---------|
    | `hooks` | Algorithm nudges, memory, context injection — most features need these | **recommended** |
-   | `statusline` | `WORKOS_StatusLine.sh` + `settings.json` `statusLine` (an existing non-WorkOS statusLine is kept unless `--replace-statusline`) | optional |
+   | `statusline` | `WORKOS_StatusLine.sh` and its Bun renderer `WORKOS/STATUSLINE/` + `settings.json` `statusLine` (an existing non-WorkOS statusLine is kept unless `--replace-statusline`) | optional |
    | `tooltips` | `settings.json` `spinnerTipsOverride` — 265 WorkOS Claude-Code tips, shipped public-clean in `install/settings.enhancements.json` | optional |
    | `spinnerverbs` | `settings.json` `spinnerVerbs` — 523 custom spinner verbs, shipped in `install/settings.enhancements.json` | optional |
    | `agents` | the shipped `agents/` tree (copyMissing, never overwrites; on Bedrock/Vertex without Fable in `availableModels`, `Max.md` installs with `model: opus`) | optional |

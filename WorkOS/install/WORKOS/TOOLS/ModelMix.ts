@@ -286,7 +286,7 @@ if (import.meta.main) {
   if (argv.includes('--json')) {
     console.log(JSON.stringify(mix, null, 2));
   } else {
-    // Shell-eval contract consumed by WORKOS_StatusLine.sh.
+    // key=value lines for shell callers; the statusline imports computeMix() instead.
     const out = RUNGS.map(r => `mix_${r}=${mix.pct[r]}`).join('\n');
     console.log(`${out}\nmix_total=${mix.total}`);
   }

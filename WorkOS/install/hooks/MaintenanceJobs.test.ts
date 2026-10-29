@@ -35,7 +35,7 @@ describe("MaintenanceJobs interval logic", () => {
 
   test("shipped schedule", () => {
     expect(Object.fromEntries(JOBS.map((j) => [j.name, j.intervalH]))).toEqual({
-      "memory-consolidation": 20, "proposal-gc": 20, worksweep: 1, "commitment-sweep": 20, "observability-prune": 20, "ledger-compact": 168,
+      "memory-consolidation": 20, "proposal-gc": 20, worksweep: 1, "commitment-sweep": 20, "observability-prune": 20, "ledger-compact": 168, "statusline-refresh": 1,
     });
   });
 

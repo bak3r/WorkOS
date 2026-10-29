@@ -160,7 +160,7 @@ function serviceLoaded(label: string): boolean {
 
 // ── component deployers ──────────────────────────────────────────────
 
-/** Statusline: place the script, chmod +x, wire settings.json statusLine. */
+/** Statusline: place the script and its Bun renderer (STATUSLINE/), chmod +x, wire settings.json statusLine. */
 function deployStatusline(ctx: Ctx): ComponentResult {
   const r: ComponentResult = { component: "statusline", ready: false, actions: [], blockers: [] };
   const av = availability("WORKOS_StatusLine.sh", ctx);
@@ -177,6 +177,12 @@ function deployStatusline(ctx: Ctx): ComponentResult {
     r.blockers.push(`WORKOS_StatusLine.sh not in live tree (${scriptPath}) or payload`);
     return r;
   }
+  // Since 2.0.0 the script only execs STATUSLINE/Render.ts; without that directory it prints the bare name.
+  const renderer = availability(join("STATUSLINE", "Render.ts"), ctx);
+  if (!renderer.inLive && !renderer.inPayload) {
+    r.blockers.push(`STATUSLINE/Render.ts not in live tree or payload`);
+    return r;
+  }
   r.ready = true;
   // An existing statusLine that is not WorkOS's is the developer's: keep it unless asked.
   let existing: Record<string, unknown> | undefined;
@@ -190,12 +196,14 @@ function deployStatusline(ctx: Ctx): ComponentResult {
   }
   if (!ctx.apply) {
     if (!av.inLive) r.actions.push(`copy WORKOS_StatusLine.sh from payload → ${scriptPath}`);
+    if (!renderer.inLive) r.actions.push(`copy STATUSLINE/ from payload → ${join(ctx.workosDir, "STATUSLINE")}`);
     r.actions.push(`chmod +x ${scriptPath}`, `wire settings.json statusLine → ${command}${foreign ? " (replacing yours — --replace-statusline)" : ""}`);
     return r;
   }
 
   try {
     ensurePresent("WORKOS_StatusLine.sh", ctx);
+    ensurePresent("STATUSLINE", ctx);
     chmodSync(scriptPath, 0o755);
 
     // A populated-but-unparseable settings.json must NOT be rewritten from {} —

@@ -7,7 +7,7 @@
  * Mirror:         settings.json `.preferences` (camelCase, what consumers read)
  *
  * Consumers that read settings.json `.preferences`:
- *   - WORKOS_StatusLine.sh  → `.preferences.temperatureUnit`
+ *   - none in WorkOS since 2.0.0 (the old bash statusline read `.preferences.temperatureUnit` for weather)
  *
  * Idempotent: writes only when the mirrored block actually changed.
  *

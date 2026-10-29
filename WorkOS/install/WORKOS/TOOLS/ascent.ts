@@ -16,7 +16,7 @@
  *   Kitty tabs        hooks/lib/tab-constants.ts → tab-setter.ts
  *   cmux sidebar      hooks/lib/tab-setter.ts
  *   work.json rows    hooks/lib/isa-utils.ts (writes the resolved `ascent` object)
- *   Status line       WORKOS_StatusLine.sh (pure jq read of that object)
+ *   Status line       none since 2.0.0 (the Bun statusline draws no ascent row)
  *   ISA HTML mirror   WORKOS/TOOLS/ISARender.ts
  *
  * Theme: climbing a hill you had to name first. A run marks the summit (states

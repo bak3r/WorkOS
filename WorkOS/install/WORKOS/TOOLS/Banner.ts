@@ -98,7 +98,7 @@ const WORKOS_NAVY = rgb(30, 58, 138);     // dark navy (mid blocks)
 const WORKOS_BRIGHT = rgb(37, 99, 235);   // bright blue (top cap)
 
 // WorkOS wordmark — single source of truth for the header text, kept identical
-// to the status line (WORKOS_StatusLine.sh: ${WORKOS_P}Wo${WORKOS_A}rk${WORKOS_I}OS).
+// to the WORKOS_P/A/I blues in STATUSLINE/Ansi.ts (the status line itself now draws the name in one blue).
 // Mixed-case, split Wo/rk/OS across the same three blues. Every banner design uses
 // this so the mark reads the same in the banner and the status line.
 const workosWordmark = (): string =>

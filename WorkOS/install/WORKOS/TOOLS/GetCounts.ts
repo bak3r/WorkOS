@@ -12,7 +12,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *
  * PURPOSE:
  * Provides deterministic, consistent counts for WorkOS system metrics.
- * Both Banner.ts and WORKOS_StatusLine.sh MUST use this tool to ensure
+ * Banner.ts and any other surface that shows counts MUST use this tool to ensure
  * the same numbers are displayed everywhere.
  *
  * COUNTING METHODOLOGY:
