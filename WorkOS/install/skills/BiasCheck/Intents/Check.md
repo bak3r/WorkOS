@@ -50,7 +50,7 @@ If the input is not sufficient, emit ≤3 questions with a `proceed` override an
 
 ## Tool contract
 
-**Reading a URL.** Pull the raw HTML with `curl` (or `fetch`) and extract the body text with `bun -e`, then read it whole. X URLs go through `skills/X/Tools/read.ts` first.
+**Reading a URL.** Pull the raw HTML with `curl` (or `fetch`) and extract the body text with `bun -e`, then read it whole. WorkOS ships no X skill, so an X URL is read like any other page.
 
 **Identification heuristics** for a primary source behind the input:
 

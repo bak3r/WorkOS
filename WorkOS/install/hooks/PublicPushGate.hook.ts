@@ -2,7 +2,7 @@
 /**
  * @version 1.1.1
  * PublicPushGate.hook.ts — PreToolUse:Bash gate (registered on its own; it was a
- * lane of PreToolGuard until WorkOS 1.1.0).
+ * lane of PreToolGuard until WorkOS 2.0.0).
  *
  * The gap this closes (2026-08): the release pipeline has 23 gates, but
  * ad-hoc public repos had zero deterministic scrub — a session could create

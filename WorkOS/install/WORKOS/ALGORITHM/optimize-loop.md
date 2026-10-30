@@ -21,7 +21,7 @@ status: redirect
 - **Parameter schema:** [`archive/parameter-schema.md`](archive/parameter-schema.md)
 - **Eval mode guide:** [`eval-guide.md`](eval-guide.md)
 - **Target types:** [`archive/target-types.md`](archive/target-types.md)
-- **Optimize skill (router):** `~/.claude/skills/Optimize/SKILL.md`
+- **Successor:** the Optimize skill was absorbed into the HillClimb skill in WorkOS 2.0.0 (`skills/HillClimb/`; metric mode → `skills/HillClimb/Intents/Metric.md`, eval mode → `skills/HillClimb/Intents/Prompt.md`)
 
 ## Backwards-compat note
 

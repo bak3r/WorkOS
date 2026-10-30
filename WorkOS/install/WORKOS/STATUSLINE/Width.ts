@@ -38,11 +38,11 @@ export function geometry(env: Record<string, string | undefined>, cachedWidth: s
   // Claude Code draws the status line 2 cells in from each pane edge and ends any longer line with "…" (measured at
   // COLUMNS=100: 96 cells show, the 97th is cut), so the usable width is the pane less CHROME.
   const content = Math.max(10, cap > 0 ? Math.min(width - CHROME, cap) : width - CHROME);
-  // The full layout is about 28 rows at any width, so a phone pane kept only a few rows for the conversation and the
-  // prompt (principal directive, 2026-10-20). A pane under 60 columns or under 30 lines gets the
-  // three-row phone layout; WORKOS_STATUSLINE_COMPACT=0 or 1 forces either.
+  // The full layout is about 28 rows at any width, which leaves a phone pane only a few rows for the conversation
+  // and the prompt. A pane under 60 columns or under 30 lines gets the three-row phone layout;
+  // WORKOS_STATUSLINE_COMPACT=0 or 1 forces either.
   const phone = env.WORKOS_STATUSLINE_COMPACT === "1" || (env.WORKOS_STATUSLINE_COMPACT !== "0" && ((columns > 0 && columns < 60) || (lines > 0 && lines < 30)));
-  // Every layout is centered, the phone one included (principal directive, 2026-10-24).
+  // Every layout is centered, the phone one included.
   const centered = env.WORKOS_STATUSLINE_ALIGN !== "left";
   const margin = centered ? Math.max(0, Math.trunc((width - CHROME - content) / 2)) : 0;
   return { columns, lines, width, content, density, tier, phone, margin, centered, stamp: `${env.COLUMNS || "0"}x${env.LINES || "0"}` };

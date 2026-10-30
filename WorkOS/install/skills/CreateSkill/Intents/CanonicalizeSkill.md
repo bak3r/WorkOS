@@ -87,7 +87,7 @@ Renames follow `References/Conventions.md` § Naming (`create.md` becomes `Creat
 
 | Legacy content | New home |
 |---|---|
-| `## Voice Notification`, notify curl, "Running the **X** intent…" line | Removed (the intent voice, `hooks/lib/intent-voice.ts` run from `hooks/EventLogger.hook.ts`, announces intents) |
+| `## Voice Notification`, notify curl, "Running the **X** intent…" line | Removed (WorkOS has no voice; nothing announces intents) |
 | `## Done looks like` / `## Done` / `## The Deliverable` | `## Ideal State` bullets |
 | What the numbered steps were for | `## Ideal State` outcomes; the steps themselves are cut |
 | "Step 1: read X first" where the deliverable depends on X | Ideal State bullet that X was read or produced first; `contract.requires` when X is a file |

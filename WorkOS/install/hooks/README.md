@@ -4,7 +4,7 @@
 
 This document is the authoritative reference for WorkOS's hook system. When modifying any hook, update both the hook's inline documentation AND this README.
 
-*Last updated: 2026-10-28 — WorkOS 1.1.0: registry regenerated against `hooks/hooks.json` (47 hook files on disk, all `.hook.ts`; 38 distinct hook files registered, 9 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
+*Last updated: 2026-10-28 — WorkOS 2.0.0: registry regenerated against `hooks/hooks.json` (47 hook files on disk, all `.hook.ts`; 38 distinct hook files registered, 9 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
 
 ---
 
@@ -284,13 +284,13 @@ These 8 `.hook.ts` files are on disk but carry no direct `settings.json` registr
 | `MemoryDeltaSurface.hook.ts` | `MemoryTurnStart.hook.ts` | UserPromptSubmit |
 | `SystemChangeSurface.hook.ts` | `PostToolObserver.hook.ts` | PostToolUse |
 
-The former PreToolUse dispatcher (`PreToolGuard`) and the guards it ran are retired as of 1.1.0; `DestructiveGuard` and `PublicPushGate` are now registered directly (see the PreToolUse table), not dispatched. See `hooks/retired.json` for the retired hooks and the reason for each. `LoopDetector` is a registered hook (`PostToolUseFailure`, and `PostToolUse` via `PostToolObserver`), not a dispatched-only module.
+The former PreToolUse dispatcher (`PreToolGuard`) and the guards it ran are retired as of WorkOS 2.0.0; `DestructiveGuard` and `PublicPushGate` are now registered directly (see the PreToolUse table), not dispatched. See `hooks/retired.json` for the retired hooks and the reason for each. `LoopDetector` is a registered hook (`PostToolUseFailure`, and `PostToolUse` via `PostToolObserver`), not a dispatched-only module.
 
 ### Retired Hooks
 
 Removed from disk in the 2026-05-06 security simplification and the 2026-07-10/2026-07-11 consolidation passes (per-row dates below where they differ). They appear in older docs and in the public repo's cut; none of them exist now.
 
-**Retired in 1.1.0:** `PreToolGuard`, `SystemFileGuard`, `BashSystemWriteGuard`, `ISAStaleWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, `ContextReduction.hook.sh`, `ConfigEvalFire` and `SpendAuditor`. The files are deleted from the payload; `hooks/retired.json` lists each with its reason. `InstallHooks` (`retireHooks` in `Tools/InstallEngine.ts`) removes their `settings.json` registrations on update. Updates never delete files, so a retired hook's file can stay on disk after an update; `Doctor --reconcile` ignores it.
+**Retired in 2.0.0:** `PreToolGuard`, `SystemFileGuard`, `BashSystemWriteGuard`, `ISAStaleWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, `ContextReduction.hook.sh`, `ConfigEvalFire` and `SpendAuditor`. The files are deleted from the payload; `hooks/retired.json` lists each with its reason. `InstallHooks` (`retireHooks` in `skills/WorkOS/Tools/InstallEngine.ts`) removes their `settings.json` registrations on update. An update (`skills/WorkOS/Tools/OverlaySystem.ts`) moves an untouched retired hook file to the backup and keeps an edited one; `Doctor --reconcile` ignores what is left.
 
 | Retired hook | Where its behaviour went |
 |--------------|--------------------------|

@@ -3,7 +3,7 @@
  * @version 1.3.0
  * StopGates.hook.ts — the ONE Stop-event gate hook.
  *
- * 1.3.0 (WorkOS 1.1.0, port of upstream 8.761.0 StopGates 1.3.1): IsaCodeSyncGate is gate 0 and BLOCKS
+ * 1.3.0 (WorkOS 2.0.0, port of upstream 8.761.0 StopGates 1.3.1): IsaCodeSyncGate is gate 0 and BLOCKS
  * (code governed by an ISA changed this turn, that ISA not written in the same turn). Upstream's blocks
  * combine, so the gate that holds the turn never displaces another gate's obligation (the recovery turn
  * carries stop_hook_active, on which the other gates self-exempt); this file now combines too. One block

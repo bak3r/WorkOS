@@ -111,7 +111,7 @@ E-level sets the tier; mode sets the execution pattern. Both can be set simultan
 - Dashboard components: `WORKOS/PULSE/Observability/src/components/activity/{UnifiedWorkDashboard,OptimizeDashboard,LoopDashboard,NativeDashboard,NoveltyDashboard}.tsx`
 - Ladder page: `WORKOS/PULSE/Observability/src/app/ladder/page.tsx`
 - Loop skill: `~/.claude/skills/Iterate/SKILL.md (renamed from Loop)`
-- Ideate skill (router stub): `~/.claude/skills/Ideate/SKILL.md`
+- Ideate skill: retired in WorkOS 2.0.0, now HillClimb's Ideate intent (`skills/HillClimb/Intents/Ideate.md`)
 - Parameter schema: `../parameter-schema.md`
 - Capabilities: the system-prompt skill list is the sole inventory (capabilities.md removed at v7.0.0)
 - Target types: `../target-types.md`

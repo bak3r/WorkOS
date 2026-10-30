@@ -141,14 +141,14 @@ const MIGRATIONS: Migration[] = [
   },
   {
     id: "m-006",
-    name: "Phase E — SystemFileGuard hook registered (retired in WorkOS 1.1.0)",
+    name: "Phase E — SystemFileGuard hook registered (retired in WorkOS 2.0.0)",
     detectOnly: true,
-    // SystemFileGuard was retired in WorkOS 1.1.0 (hooks/retired.json): it failed open
+    // SystemFileGuard was retired in WorkOS 2.0.0 (hooks/retired.json): it failed open
     // with no DENY_LIST.txt, and InstallHooks now removes its registration. Nothing is
     // left to migrate, so this always reads as applied.
     isApplied: () => true,
     apply: () => {
-      throw new Error("m-006 has nothing to apply: SystemFileGuard was retired in WorkOS 1.1.0.");
+      throw new Error("m-006 has nothing to apply: SystemFileGuard was retired in WorkOS 2.0.0.");
     },
   },
   {

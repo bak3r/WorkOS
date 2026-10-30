@@ -7,7 +7,7 @@
 
 import { afterAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { templateLine } from "./data/GenerateManifest";
@@ -272,6 +272,17 @@ describe("hook retirement", () => {
     expect(merged.Stop).toEqual([{ matcher: "", hooks: [cmd("$HOME/.claude/hooks/StopGates.hook.ts")] }]);
   });
 
+  test("an entry with events retires only those registrations", () => {
+    const both = {
+      PostToolUse: [{ matcher: "*", hooks: [cmd("$HOME/.claude/hooks/LoopDetector.hook.ts"), cmd("$HOME/.claude/hooks/PostToolObserver.hook.ts")] }],
+      PostToolUseFailure: [{ matcher: "", hooks: [cmd("$HOME/.claude/hooks/LoopDetector.hook.ts")] }],
+    };
+    const { merged, removed } = retireHooks(both as never, [{ file: "LoopDetector.hook.ts", events: ["PostToolUse"] }], "/cfg");
+    expect(merged.PostToolUse).toEqual([{ matcher: "*", hooks: [cmd("$HOME/.claude/hooks/PostToolObserver.hook.ts")] }]);
+    expect(merged.PostToolUseFailure).toEqual(both.PostToolUseFailure);
+    expect(removed).toEqual(["PostToolUse[*]: $HOME/.claude/hooks/LoopDetector.hook.ts"]);
+  });
+
   test("is a no-op with nothing retired, and never matches a longer file name", () => {
     expect(retireHooks(settings() as never, [], "/cfg").merged).toEqual(settings() as never);
     const near = { PreToolUse: [{ matcher: "Bash", hooks: [cmd("$HOME/.claude/hooks/PreToolGuard.hook.ts.bak"), cmd("$HOME/.claude/hooks/XPreToolGuard.hook.ts")] }] };
@@ -292,5 +303,118 @@ describe("permission retirement", () => {
 
   test("is a no-op without a permissions object", () => {
     expect(retirePermissions({ model: "x" }, { allow: ["Bash(env)"] }).removed.allow).toEqual([]);
+  });
+});
+
+describe("OverlaySystem upgrade", () => {
+  const OLD: Record<string, string> = {
+    "install/hooks/Plain.hook.ts": "// v1 plain\n",
+    "install/hooks/Edited.hook.ts": "// v1 edited\n",
+    "install/hooks/Named.hook.ts": "say('{{PRINCIPAL_NAME}}'); // v1\n",
+    "install/skills/Gone/SKILL.md": "---\nname: Gone\n---\n",
+    "install/skills/Gone/Tools/Run.ts": "// gone\n",
+    "install/skills/GoneEdited/SKILL.md": "---\nname: GoneEdited\n---\n",
+    "install/skills/Kept/SKILL.md": "---\nname: Kept\n---\nv1\n",
+    "install/WORKOS/TOOLS/Tool.ts": "// tool v1\n",
+    "install/WORKOS/WORKOS_SYSTEM_PROMPT.md": "prompt v1 for {{DA_NAME}}\n",
+  };
+  const NEW: Record<string, string> = {
+    "hooks/Plain.hook.ts": "// v2 plain\n",
+    "hooks/Edited.hook.ts": "// v2 edited\n",
+    "hooks/Named.hook.ts": "say('{{PRINCIPAL_NAME}}'); // v2 {{WORKOS_VERSION}}\n",
+    "skills/Kept/SKILL.md": "---\nname: Kept\n---\nv2\n",
+    "skills/WorkOS/SKILL.md": "mirror\n",
+    "agents/Engineer.md": "agent\n",
+    "commands/statusline.md": "cmd\n",
+    "WORKOS/TOOLS/Tool.ts": "// tool v2\n",
+    "WORKOS/DOCUMENTATION/A.md": "doc\n",
+    "WORKOS/ALGORITHM/LATEST": "v1\n",
+    "WORKOS/RULES/R.md": "rule\n",
+    "WORKOS/STATUSLINE/Render.ts": "// render\n",
+    "WORKOS/WORKOS_StatusLine.sh": "#!/bin/sh\n",
+    "WORKOS/WORKOS_SYSTEM_PROMPT.md": "prompt v2 for {{DA_NAME}}\n",
+    "WORKOS/VERSION": "2.0.0",
+    "WORKOS/USER/TEMPLATE.md": "never overlaid\n",
+  };
+  const fill = (t: string) => t.split("{{PRINCIPAL_NAME}}").join("Dana").split("{{DA_NAME}}").join("Kai");
+
+  function setup() {
+    const releases = mk("releases");
+    const { WORKOS_TOKENS } = require("./data/GenerateManifest");
+    writeFileSync(join(releases, "workos-1.0.0.sha256"), [
+      "# version 1.0.0",
+      ...Object.entries(OLD).map(([p, t]) => `${sha(t)}  ${p}`),
+      ...Object.entries(OLD).map(([p, t]) => templateLine(p, Buffer.from(t), WORKOS_TOKENS)).filter(Boolean),
+    ].join("\n") + "\n");
+    const skill = mk("skill");
+    for (const [p, t] of Object.entries(NEW)) put(skill, `install/${p}`, t);
+    for (const p of ["hooks/Plain.hook.ts", "WORKOS/WORKOS_StatusLine.sh"]) chmodSync(join(skill, "install", p), 0o755);
+    const root = mk("root");
+    for (const [p, t] of Object.entries(OLD)) put(root, p.slice("install/".length), fill(t));
+    put(root, "hooks/Edited.hook.ts", "// v1 edited, by me\n");
+    put(root, "skills/GoneEdited/SKILL.md", "---\nname: GoneEdited\n---\nmy notes\n");
+    put(root, "hooks/Mine.hook.ts", "// mine\n");
+    put(root, "skills/WorkOS/SKILL.md", "installed by install.sh\n");
+    put(root, "WORKOS/VERSION", "1.0.0");
+    put(root, "WORKOS/MEMORY/STATE/x.json", "{}");
+    return { releases, skill, root };
+  }
+  const run = (s: ReturnType<typeof setup>, apply: boolean) => {
+    const p = Bun.spawnSync(["bun", join(import.meta.dir, "OverlaySystem.ts"), "--config-root", s.root, "--skill-root", s.skill, ...(apply ? ["--apply"] : [])], {
+      env: { ...process.env, WORKOS_RELEASE_MANIFESTS: s.releases, WORKOS_LIFEOS_MANIFESTS: manifestDir, CLAUDE_CONFIG_DIR: s.root },
+    });
+    return JSON.parse(p.stdout.toString());
+  };
+  const read = (root: string, rel: string) => readFileSync(join(root, rel), "utf8");
+
+  test("dry run plans every case and writes nothing", () => {
+    const s = setup();
+    const before = snap(s.root);
+    const out = run(s, false);
+    expect(out.ok).toBe(true);
+    expect(out.edited).toEqual(["hooks/Edited.hook.ts"]);
+    expect(out.retired).toEqual(["skills/Gone/SKILL.md", "skills/Gone/Tools/Run.ts"]);
+    expect(out.retiredKept).toEqual(["skills/GoneEdited/SKILL.md"]);
+    expect(snap(s.root)).toEqual(before);
+  });
+
+  test("apply updates untouched files, keeps edited ones with a .new, retires, and rolls back", () => {
+    const s = setup();
+    const before = snap(s.root);
+    const out = run(s, true);
+    expect(out.ok).toBe(true);
+    expect(read(s.root, "hooks/Plain.hook.ts")).toBe("// v2 plain\n");
+    expect(statSync(join(s.root, "WORKOS/WORKOS_StatusLine.sh")).mode & 0o111).not.toBe(0); // created: executable bit kept
+    expect(statSync(join(s.root, "hooks/Plain.hook.ts")).mode & 0o111).not.toBe(0); // updated: executable bit kept
+    expect(read(s.root, "hooks/Edited.hook.ts")).toBe("// v1 edited, by me\n");
+    expect(read(s.root, "hooks/Edited.hook.ts.new")).toBe("// v2 edited\n");
+    expect(read(s.root, "hooks/Named.hook.ts")).toBe("say('Dana'); // v2 2.0.0\n"); // name learned from the old copy
+    expect(read(s.root, "WORKOS/WORKOS_SYSTEM_PROMPT.md")).toBe("prompt v2 for Kai\n");
+    expect(read(s.root, "skills/Kept/SKILL.md")).toContain("v2");
+    expect(existsSync(join(s.root, "skills/Gone"))).toBe(false);
+    expect(read(s.root, "skills/GoneEdited/SKILL.md")).toContain("my notes");
+    expect(read(s.root, "WORKOS/STATUSLINE/Render.ts")).toBe("// render\n");
+    expect(read(s.root, "WORKOS/WORKOS_StatusLine.sh")).toBe("#!/bin/sh\n");
+    expect(read(s.root, "commands/statusline.md")).toBe("cmd\n");
+    expect(read(s.root, "hooks/Mine.hook.ts")).toBe("// mine\n");
+    expect(read(s.root, "skills/WorkOS/SKILL.md")).toBe("installed by install.sh\n");
+    expect(existsSync(join(s.root, "WORKOS/USER"))).toBe(false);
+    expect(read(s.root, "WORKOS/VERSION")).toBe("2.0.0");
+    expect(out.unfilled).toEqual([]);
+
+    // a second run changes nothing
+    const again = run(s, true);
+    expect([again.updated, again.created, again.retired.length]).toEqual([0, 0, 0]);
+    expect(again.edited).toEqual(["hooks/Edited.hook.ts"]);
+
+    const entries = readManifest(s.root);
+    for (const r of [...new Set(entries.filter((e) => e.tool === "OverlaySystem").map((e) => e.run))].reverse()) {
+      const { steps } = planRollback(readManifest(s.root), r);
+      expect(executeRollback(s.root, r, steps).failures).toEqual([]);
+    }
+    const after = snap(s.root);
+    for (const k of Object.keys(after)) if (k.startsWith("WORKOS/install-manifest") || k.startsWith(".workos-backup") || k.startsWith("WORKOS/.")) delete after[k];
+    const want = { ...before };
+    expect(Object.fromEntries(Object.entries(after).filter(([k]) => !k.includes("manifest")))).toEqual(Object.fromEntries(Object.entries(want).filter(([k]) => !k.includes("manifest"))));
   });
 });

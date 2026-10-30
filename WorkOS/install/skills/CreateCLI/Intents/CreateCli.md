@@ -29,7 +29,7 @@ A complete, immediately usable, production-quality TypeScript CLI generated from
 
 - No Tier 2 (Commander.js) CLI when the user doesn't explicitly need Tier 2 features.
 - A public-app CLI never stores or logs a raw API key or device code, in the CLI, the audit log, console output or error bodies.
-- Never reads the env file from `$WORKOS_CONFIG_DIR/.env`, which resolves to the dead `~/.claude/WORKOS/.env` path (public issue #1490), and never parses an env value with `.split('=')[1]`, which truncates values that contain '='.
+- Never reads the env file from `$WORKOS_CONFIG_DIR/.env`, which resolves to a dead `.env` inside the WORKOS dir (public issue #1490), and never parses an env value with `.split('=')[1]`, which truncates values that contain '='.
 - No `any` types, and no error message that just says "Error" without explaining what failed and how to fix it.
 
 ## Inputs

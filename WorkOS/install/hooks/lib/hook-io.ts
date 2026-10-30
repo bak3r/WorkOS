@@ -6,7 +6,7 @@
  * Each hook calls readHookInput() to get the parsed JSON payload, and
  * parseTranscriptFromInput() if it needs the full transcript.
  *
- * 1.1.0 (WorkOS 1.1.0): ported from upstream LifeOS 8.761.0 hook-io.ts 1.8.0, without its
+ * 1.1.0 (WorkOS 2.0.0): ported from upstream LifeOS 8.761.0 hook-io.ts 1.8.0, without its
  * Vigil reporting (WorkOS does not ship Vigil, so gateInputFailureDecision and gate-run stay
  * out). Gained: typed read failures recorded to a local fallback ledger instead of vanishing,
  * the agent_id / agent_type / source input fields, and a memoised transcript parse.

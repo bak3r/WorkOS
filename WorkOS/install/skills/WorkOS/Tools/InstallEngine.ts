@@ -417,6 +417,11 @@ function fileExtension(filePath: string): string {
   return dot <= 0 ? "" : base.slice(dot).toLowerCase();
 }
 
+/** Does substitution render this file? (OverlaySystem renders the same set, so an update matches a fresh install.) */
+export function isTemplateFile(filePath: string): boolean {
+  return TEMPLATE_EXTENSIONS.has(fileExtension(filePath));
+}
+
 /**
  * Recursive, existsSync-GUARDED copy. Copies only files/dirs absent at dst —
  * NEVER overwrites a populated target. Returns count + any failures. (Ported
@@ -811,23 +816,30 @@ export function mergeHooks(existing: HooksMap, incoming: HooksMap): { merged: Ho
   return { merged, added, skipped };
 }
 
+/** A retired hook: its file name, or the file plus the events whose registration alone is retired (the hook still runs elsewhere). */
+export type RetiredHook = string | { file: string; events?: string[] };
+
 /**
  * Remove the registrations of hooks WorkOS no longer ships (`install/hooks/retired.json`).
  * Only an entry whose command runs `<root>/hooks/<file>` for a retired file is removed, where
- * <root> is a config-root form normalizeCommand knows or the literal `configRoot`; any other
- * entry, foreign or WorkOS, is kept as is. A matcher group left with no hooks is dropped, and
- * an event left with no groups is dropped. Pure (no I/O).
+ * <root> is a config-root form normalizeCommand knows or the literal `configRoot`, and, for an
+ * entry with `events`, only under those events; any other entry, foreign or WorkOS, is kept as
+ * is. A matcher group left with no hooks is dropped, and an event left with no groups is
+ * dropped. Pure (no I/O).
  */
-export function retireHooks(existing: HooksMap, retiredFiles: string[], configRoot?: string): { merged: HooksMap; removed: string[] } {
+export function retireHooks(existing: HooksMap, retiredHooks: RetiredHook[], configRoot?: string): { merged: HooksMap; removed: string[] } {
   const merged: HooksMap = JSON.parse(JSON.stringify(existing ?? {}));
   const removed: string[] = [];
-  if (retiredFiles.length === 0) return { merged, removed };
+  if (retiredHooks.length === 0) return { merged, removed };
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const roots = ["§ROOT§", ...(configRoot ? [configRoot.replace(/\/+$/, "")] : [])].map(esc).join("|");
-  const files = retiredFiles.map(esc).join("|");
-  const re = new RegExp(`(?:^|[\\s"'])(?:${roots})/hooks/(?:${files})(?=$|[\\s"';&|])`);
+  const entries = retiredHooks.map((r) => (typeof r === "string" ? { file: r } : r));
+  const reFor = (list: typeof entries) => list.length === 0 ? null
+    : new RegExp(`(?:^|[\\s"'])(?:${roots})/hooks/(?:${list.map((r) => esc(r.file)).join("|")})(?=$|[\\s"';&|])`);
   for (const [event, groups] of Object.entries(merged)) {
     if (!Array.isArray(groups)) continue;
+    const re = reFor(entries.filter((r) => !r.events || r.events.includes(event)));
+    if (!re) continue;
     const kept: MatcherGroup[] = [];
     for (const g of groups) {
       if (!Array.isArray(g.hooks)) { kept.push(g); continue; }

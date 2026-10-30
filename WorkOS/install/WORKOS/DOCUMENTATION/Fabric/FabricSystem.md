@@ -137,7 +137,7 @@ The diagram shows why patterns compose: the *content* is the variable, the *patt
 ## See Also
 
 - **Full Skill:** `~/.claude/skills/Fabric/SKILL.md`
-- **Pattern Execution:** `~/.claude/skills/Fabric/Workflows/ExecutePattern.md`
-- **Pattern Updates:** `~/.claude/skills/Fabric/Workflows/UpdatePatterns.md`
+- **Pattern Execution:** `~/.claude/skills/Fabric/Intents/ExecutePattern.md`
+- **Pattern Updates:** `~/.claude/skills/Fabric/Intents/UpdatePatterns.md`
 - **All Patterns:** `~/.claude/skills/Fabric/Patterns/`
 - **Architecture:** `~/.claude/WORKOS/DOCUMENTATION/WorkosSystemArchitecture.md` — Master WorkOS architecture reference

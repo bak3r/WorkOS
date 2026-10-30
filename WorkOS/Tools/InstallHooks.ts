@@ -24,7 +24,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } fr
 import { execFileSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 import { homedir } from "node:os";
-import { detectDevTree, isTestFile, mergeHooks, retireHooks } from "./InstallEngine";
+import { detectDevTree, isTestFile, mergeHooks, retireHooks, type RetiredHook } from "./InstallEngine";
 import { atomicWriteText } from "./lib/atomic-write";
 import { Classifier } from "./lib/inventory";
 import { Ledger } from "./lib/ledger";
@@ -114,13 +114,13 @@ function main(): void {
 
   const { merged: withNew, added, skipped } = mergeHooks(existingHooks as never, incoming);
 
-  // Hooks WorkOS no longer ships: drop their registrations so an updated install stops
-  // running them. The files stay on disk (updates never delete); Doctor ignores them.
+  // Hooks WorkOS no longer ships, and registrations it no longer makes: drop them so an
+  // updated install stops running them. OverlaySystem moves the untouched files to the backup.
   const retiredPath = join(skillRoot, "install", "hooks", "retired.json");
-  const retiredFiles: string[] = existsSync(retiredPath)
-    ? (JSON.parse(readFileSync(retiredPath, "utf-8"))?.retired ?? []).map((r: { file: string }) => r.file)
+  const retiredHooks: RetiredHook[] = existsSync(retiredPath)
+    ? (JSON.parse(readFileSync(retiredPath, "utf-8"))?.retired ?? []).map((r: { file: string; events?: string[] }) => (r.events ? { file: r.file, events: r.events } : r.file))
     : [];
-  const { merged, removed: retired } = retireHooks(withNew, retiredFiles, configRoot);
+  const { merged, removed: retired } = retireHooks(withNew, retiredHooks, configRoot);
 
   // A same-named hook file that is not WorkOS's blocks the whole step (nothing written).
   const classifier = new Classifier(configRoot, skillRoot);

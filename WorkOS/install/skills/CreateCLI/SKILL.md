@@ -55,7 +55,7 @@ User customizations live at `<configRoot>/WORKOS/USER/CUSTOMIZATIONS/SKILLS/Crea
 
 - **Bun, never npm or npx**, with no exceptions: the system prompt's tech stack names bun as the package manager.
 - **TypeScript only, never Python.** Every CLI this skill generates is TypeScript on Bun, with no Python or other scripting-language helpers. The install's broader language preferences (for example, which compiled language to use when a binary is required) live in the USER `PREFERENCES.md` (§ Data & Config).
-- **Env loading has one correct shape.** Read secrets from the canonical `~/.claude/.env`, never `${WORKOS_DIR}/.env` (the `~/.claude/WORKOS/.env` path public issue #1490 found dead) or `$WORKOS_CONFIG_DIR/.env`, and slice past the first `=` instead of `.split('=')[1]`, which truncates values that contain '=' such as padded base64 keys. `Intents/CreateCli.md` § Output format carries the correct `loadConfig()`.
+- **Env loading has one correct shape.** Read secrets from the canonical `~/.claude/.env`, never `${WORKOS_DIR}/.env` (the `.env` inside the WORKOS dir, which public issue #1490 found dead) or `$WORKOS_CONFIG_DIR/.env`, and slice past the first `=` instead of `.split('=')[1]`, which truncates values that contain '=' such as padded base64 keys. `Intents/CreateCli.md` § Output format carries the correct `loadConfig()`.
 
 ## Examples
 

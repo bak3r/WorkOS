@@ -4,8 +4,7 @@
  * Queue I/O, lifecycle marking, observability logging, and edit application
  * for memory-system proposals. The MemoryReviewer writes and auto-applies
  * high-confidence rows; pending rows surface via the
- * inline 🧠 MEMORY line. (Formerly telegram-proposals — the Telegram
- * surfacing channel was removed 2026-07-15.)
+ * inline 🧠 MEMORY line.
  *
  * Decision path: the four `*Proposal` writers below are the shipped exit for a
  * human-gated row — accept, reject, edit, or applied-elsewhere. `TERMINAL_STATUSES`

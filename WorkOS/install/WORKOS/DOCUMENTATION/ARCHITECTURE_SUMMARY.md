@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-10-28T11:21:55.470Z
+last_updated: 2026-10-30T08:36:55.640Z
 last_updated_by: ArchitectureSummaryGenerator
 convention: pai-freshness-v1
 derived_from: WORKOS/DOCUMENTATION/WorkosSystemArchitecture.md
@@ -15,7 +15,7 @@ generator: WORKOS/TOOLS/ArchitectureSummaryGenerator.ts
 WorkOS — a **work operating system** — is the AI harness that moves your work from its current state to its ideal state: an intent engineering platform that captures what you are trying to achieve in your role and conveys that intent to your AI on every task, then verifies the output against it.
 Everything below is the machinery of that one loop: Current State → Ideal State via verifiable iteration (ISC). Canonical thesis: `WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md`.
 
-**Current versions:** WorkOS 1.0.2 | Algorithm v8.45.0 | System Prompt v4.0.0 | Cortex (Memory) v8.3.0
+**Current versions:** WorkOS 2.0.0 | Algorithm v8.45.0 | System Prompt v4.0.0 | Cortex (Memory) v8.4.0
 
 Doc routing lives in CLAUDE.md; founding principles + full section map in the master doc.
 

@@ -66,6 +66,7 @@ const EXCLUDE_DIR_NAMES = new Set([
   'node_modules', '.git', '.next', '.turbo', '.cache', 'dist', 'build',
   'logs',
   'Archive', 'Backups',  // frozen historical snapshots — broken refs are expected
+  '.workos-backup',      // the installer's pre-update copies and retired files
   'SYSTEMUPDATES',     // historical system-update records reference long-renamed files (added 2026-05-24)
   'WORK',                 // per-session work archives — refs to files renamed/deleted after the session
 ]);
@@ -73,6 +74,7 @@ const EXCLUDE_DIR_NAMES = new Set([
 // Top-level path segments (relative to CLAUDE_DIR) that are entirely ignored.
 const EXCLUDE_PATH_PREFIXES = [
   'WORKOS/MEMORY',
+  'skills/WorkOS/install',     // the release payload the bootstrap carries; its deployed copies are checked where they live
   'WORKOS/USER/MEMORY',        // post-Phase-G symlink target — MEMORY moved into the user's private USER-data repo (2026-05-22→23)
   'WORKOS/PULSE/Observability/.next',
   'WORKOS/PULSE/Observability/node_modules',

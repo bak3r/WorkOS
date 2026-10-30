@@ -135,5 +135,5 @@ principal_stated_goal: "<verbatim if user stated one>"
 
 - All modes: [`README.md`](README.md)
 - Parameter schema: [`../parameter-schema.md`](../parameter-schema.md)
-- Ideate skill (router): `~/.claude/skills/Ideate/SKILL.md`
+- Ideate skill: retired in WorkOS 2.0.0, now HillClimb's Ideate intent (`skills/HillClimb/Intents/Ideate.md`)
 - Current Algorithm doctrine: `../v6.5.0.md`

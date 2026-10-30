@@ -105,7 +105,7 @@ The USER tree is its own private git repo at `~/.config/WORKOS/USER/`; the SYSTE
 
 The boundary is enforced at write time.
 
-1. **Write-time — retired in WorkOS 1.1.0.** `SystemFileGuard.hook.ts` (Phase E) blocked writes to SYSTEM files whose new content matched deny-list patterns. WorkOS ships no `DENY_LIST.txt`, so the guard always failed open, and it was retired with its `PreToolGuard` dispatcher (`hooks/retired.json`). There is no write-time check now; `bun WORKOS/TOOLS/CheckFileBoundary.ts` still runs the same check on demand.
+1. **Write-time — retired in WorkOS 2.0.0.** `SystemFileGuard.hook.ts` (Phase E) blocked writes to SYSTEM files whose new content matched deny-list patterns. WorkOS ships no `DENY_LIST.txt`, so the guard always failed open, and it was retired with its `PreToolGuard` dispatcher (`hooks/retired.json`). There is no write-time check now; `bun WORKOS/TOOLS/CheckFileBoundary.ts` still runs the same check on demand.
 
 (Upstream's PR-time `DenyListCheck` and release-time `ShadowRelease` gates are maintainer machinery that this fork does not run.)
 

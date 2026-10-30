@@ -63,7 +63,7 @@ First-time setup for the template tools is in [Setup.md](Setup.md).
 
 ## Gotchas
 
-- **`Tools/` is the only tool directory.** A byte-identical stale copy under `Templates/Tools/` was removed on 2026-10-14 (LOSIntegrity cruft sweep); edit and import `Tools/`, which `Tools/RenderTemplate.test.ts` covers.
+- **`Tools/` is the only tool directory.** A byte-identical stale copy under `Templates/Tools/` was removed on 2026-10-14 (LOSIntegrity cruft sweep); edit and import `Tools/`, which its RenderTemplate test covers in the source tree.
 
 ## Examples
 
