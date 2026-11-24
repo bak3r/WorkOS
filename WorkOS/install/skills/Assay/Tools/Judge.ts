@@ -13,7 +13,7 @@
  *                and report the run as no-verdict.
  *
  * WorkOS runs Anthropic models only, through WORKOS/TOOLS/Inference.ts (Bedrock in the
- * sandbox). Upstream LifeOS also routes judges to other vendors and to a judgment-layer
+ * sandbox). Upstream also routes judges to other vendors and to a judgment-layer
  * engine; neither is ported.
  */
 

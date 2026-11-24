@@ -362,15 +362,31 @@ export function unscannedSymlinks(dirArg: string, only: string | null, tracked: 
 
 // ── Frontmatter allowlist ──────────────────────────────────────────────────────────────
 // Every skill runs the same way: inline, through the Skill tool, in the conversation that
-// invoked it (principal, 2026-10-11: no "strange stuff" in skills). So SKILL.md frontmatter
-// carries only keys that DESCRIBE the skill. Any other top-level key fails — context,
-// background, disable-model-invocation, allowed-tools, effort, model, user-invocable, hooks,
+// invoked it (upstream principal, 2026-10-11: no "strange stuff" in skills; see CONTROL_KEYS for the WorkOS exceptions). So SKILL.md frontmatter
+// carries only keys that DESCRIBE the skill. Any other top-level key fails — effort, model,
+// user-invocable, hooks,
 // and whatever the harness adds next — because the class is "not on the allowlist", never a
-// list of today's offenders. The one control key kept is disallowed-tools, and only when it
+// list of today's offenders. Control keys kept: disallowed-tools, only when it
 // denies Edit and Write: it holds an analysis skill read-only, and removing it would weaken a
-// control. Doctrine: WORKOS/DOCUMENTATION/Skills/SkillSystem.md § Frontmatter.
+// control; and the CONTROL_KEYS below, each with fixed values.
+// Doctrine: WORKOS/DOCUMENTATION/Skills/SkillSystem.md (frontmatter table).
 export const PERMITTED_SKILL_KEYS: readonly string[] = ["name", "description", "version", "metadata", "evals", "argument-hint", "license"];
 export const READ_ONLY_KEY = "disallowed-tools";
+
+// WorkOS override (Ales, 2026-11-24): four harness keys are kept, each only with the value
+// that is known and intended, judged on the value YAML gives it like disallowed-tools.
+// `context: fork` / `background` run a long deliberation skill (Council, Research, Cortex)
+// in a forked subagent, which SkillSystem.md § frontmatter documents on purpose.
+// `disable-model-invocation: true` keeps a skill user-invoked only (WorkOS setup,
+// Interview), and `allowed-tools` narrows what a skill may call. Both restrict, so
+// removing them would weaken a control. Any other value, and any other key, still fails.
+export const CONTROL_KEYS: Readonly<Record<string, { ok: (v: unknown) => boolean; want: string }>> = {
+  context: { ok: (v) => v === "fork", want: "fork" },
+  background: { ok: (v) => typeof v === "boolean", want: "true or false" },
+  "disable-model-invocation": { ok: (v) => v === true, want: "true" },
+  "allowed-tools": { ok: (v) => (typeof v === "string" && v.trim() !== "") || (Array.isArray(v) && v.length > 0 && v.every((t) => typeof t === "string")), want: "a tool list" },
+};
+const controlKeysNote = `, ${Object.keys(CONTROL_KEYS).join(", ")} (fixed values)`;
 export const READ_ONLY_TOOLS: readonly string[] = ["Edit", "Write"];
 
 export interface FrontmatterProblem { line: number; key: string; reason: string }
@@ -418,7 +434,8 @@ export function skillFrontmatterProblems(text: string): FrontmatterProblem[] {
     if (PERMITTED_SKILL_KEYS.includes(key)) continue;
     // disallowed-tools is judged below on the value YAML gives it, never on the line's text (S103).
     if (key === READ_ONLY_KEY) continue;
-    problems.push({ line: i + 1, key, reason: `the frontmatter key on this line is not permitted (its name is withheld): skills run one way, keys allowed are ${PERMITTED_SKILL_KEYS.join(", ")} (+ read-only ${READ_ONLY_KEY})` });
+    if (Object.hasOwn(CONTROL_KEYS, key)) continue; // judged below on its parsed value
+    problems.push({ line: i + 1, key, reason: `the frontmatter key on this line is not permitted (its name is withheld): skills run one way, keys allowed are ${PERMITTED_SKILL_KEYS.join(", ")} (+ read-only ${READ_ONLY_KEY}${controlKeysNote})` });
   }
   // The line scan above reads only column-0 keys, but YAML takes a uniformly indented block or a flow
   // mapping as the same top-level mapping, so `  context: fork` passed while the harness read it
@@ -459,7 +476,7 @@ export function skillFrontmatterProblems(text: string): FrontmatterProblem[] {
     // No prototype: `constructor`, `toString` or `__proto__` as a key is an own entry like any other, never
     // mistaken for one already present (final review, :447).
     const fallback: Record<string, unknown> = Object.create(null);
-    for (const { i, key } of topKeys) if (!Object.hasOwn(fallback, key)) fallback[key] = key === READ_ONLY_KEY ? keyValueAt(lines, i, close, indent) : true;
+    for (const { i, key } of topKeys) if (!Object.hasOwn(fallback, key)) fallback[key] = key === READ_ONLY_KEY || Object.hasOwn(CONTROL_KEYS, key) ? keyValueAt(lines, i, close, indent) : true;
     parsed = fallback;
   }
   if (parsed === null || parsed === undefined) return problems;
@@ -469,6 +486,11 @@ export function skillFrontmatterProblems(text: string): FrontmatterProblem[] {
     if (PERMITTED_SKILL_KEYS.includes(key)) continue;
     // The read-only rule is judged only here, on the value YAML gives the key: what YAML parses is what the
     // harness enforces (S103). One problem per key.
+    if (Object.hasOwn(CONTROL_KEYS, key)) {
+      if (CONTROL_KEYS[key].ok(value) || problems.some((p) => p.key === key)) continue;
+      problems.push({ line: lineOf(key), key, reason: `${key} is kept only as ${CONTROL_KEYS[key].want}; this value is not permitted` });
+      continue;
+    }
     if (key !== READ_ONLY_KEY && seen.has(key)) continue;
     if (key === READ_ONLY_KEY) {
       // One problem per key: an occurrence already judged above stands for it.
@@ -478,7 +500,7 @@ export function skillFrontmatterProblems(text: string): FrontmatterProblem[] {
         : `${READ_ONLY_KEY} is kept only to hold a skill read-only, so it must deny ${READ_ONLY_TOOLS.join(" and ")}` });
       continue;
     }
-    problems.push({ line: lineOf(key), key, reason: `the frontmatter key on this line is not permitted (a top-level key once parsed as YAML; its name is withheld): keys allowed are ${PERMITTED_SKILL_KEYS.join(", ")} (+ read-only ${READ_ONLY_KEY})` });
+    problems.push({ line: lineOf(key), key, reason: `the frontmatter key on this line is not permitted (a top-level key once parsed as YAML; its name is withheld): keys allowed are ${PERMITTED_SKILL_KEYS.join(", ")} (+ read-only ${READ_ONLY_KEY}${controlKeysNote})` });
   }
   return problems;
 }

@@ -2,7 +2,7 @@
  * @version 1.0.0
  * Centralized Path Resolution — canonical home is WORKOS/TOOLS.
  *
- * Ported from upstream LifeOS 8.761.0 LIFEOS/TOOLS/Paths.ts (v1.6.3) in WorkOS 2.0.0.
+ * Ported from upstream 8.761.0 Paths.ts (v1.6.3) in WorkOS 2.0.0.
  * Before this, hooks/lib/paths.ts ignored CLAUDE_CONFIG_DIR, so every hook and tool
  * resolved ~/.claude no matter where the config root was. In a Docker sandbox that
  * only worked because the claude-home-link kit symlinks ~/.claude to the workspace.

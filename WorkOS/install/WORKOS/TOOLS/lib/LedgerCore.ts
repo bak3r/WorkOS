@@ -15,7 +15,7 @@
  * propagates after the lock is released, so an InvariantViolation is never
  * turned into a typed error here.
  *
- * WorkOS port (from LifeOS 8.761.0 LedgerCore 1.0.0), the kernel-lock fallback:
+ * WorkOS port (from upstream 8.761.0 LedgerCore 1.0.0), the kernel-lock fallback:
  * upstream's withKernelLock reached flock(2) only through dlopen("libc.so.6"),
  * which exists on glibc and nowhere else, and returned "flock(2) unavailable"
  * on every call when that load failed. The WorkOS sandbox's libc is not fixed

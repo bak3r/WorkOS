@@ -231,6 +231,18 @@ science_cycle_time: meso         # Optional: micro | meso | macro
 
 **The 2.1.218 gotcha:** Claude Code 2.1.218 changed the default — `context: fork` skills now run as **background subagents by default** where they previously blocked the main thread. A backgrounded skill's answer does not arrive in the invoking turn. The test for which way to set it: if the user expects the answer *in that turn* (interactive lookups like Knowledge), set `background: false` explicitly; long-running deliberation skills (Council, Research, Ideate) are better left on the background default — detaching them is the point.
 
+**Permitted frontmatter keys** (enforced by `WORKOS/TOOLS/SkillHygieneGate.ts`, `PERMITTED_SKILL_KEYS` and `CONTROL_KEYS`): the descriptive keys `name`, `description`, `version`, `metadata`, `evals`, `argument-hint` and `license`, plus five control keys, each only with a fixed value:
+
+| Key | Allowed value | Why it is kept |
+|-----|---------------|----------------|
+| `context` | `fork` | runs a long deliberation skill in a forked subagent (table above) |
+| `background` | `true` / `false` | sets how a forked skill returns (table above) |
+| `disable-model-invocation` | `true` | the skill runs only when the user invokes it (WorkOS setup, Interview) |
+| `allowed-tools` | a tool list | narrows what the skill may call |
+| `disallowed-tools` | must deny `Edit` and `Write` | holds an analysis skill read-only |
+
+Any other key (`model`, `effort`, `hooks`, `user-invocable` and whatever the harness adds next), or another value for these, fails the gate.
+
 ### Science Protocol Compliance (Optional)
 
 Skills that involve systematic investigation, iteration, or evidence-based improvement can declare Science Protocol compliance:

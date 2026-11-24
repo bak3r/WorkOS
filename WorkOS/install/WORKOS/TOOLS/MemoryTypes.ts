@@ -107,7 +107,7 @@ export interface MemoryItem {
    * drop the stalest), which is the one case allowed to net-drop entries past
    * MemoryWriter's erosion guard. Honored only at/above CONSOLIDATE_THRESHOLD
    * occupancy — below that it is ignored, so it can never become a general
-   * erosion bypass (public issue #1905, @ksjayeshks; ported from LifeOS 8.761.0).
+   * erosion bypass (public issue #1905, @ksjayeshks; ported from upstream 8.761.0).
    */
   consolidate?: boolean;
   /** How this fact is known. Defaults to "explicit" when absent. */
@@ -535,7 +535,7 @@ function smokeTest(): number {
   // 14b. pinProposalTargetFile — single-file kinds pin (supplied path ignored),
   //      identity validates within its set, out-of-set identity → null (reject).
   check("pin: operational-rule ignores a hallucinated path → canonical",
-    pinProposalTargetFile("operational-rule", "/Users/anyone/WorkOS/USER/CONFIG/OPERATIONAL_RULES.md") === OPERATIONAL_RULES_PATH);
+    pinProposalTargetFile("operational-rule", "/srv/elsewhere/WorkOS/USER/CONFIG/OPERATIONAL_RULES.md") === OPERATIONAL_RULES_PATH);
   check("pin: style ignores any supplied path → canonical",
     pinProposalTargetFile("style", "/tmp/whatever.md") === WRITINGSTYLE_PATH);
   check("pin: identity keeps an in-set path (PRINCIPAL_IDENTITY)",

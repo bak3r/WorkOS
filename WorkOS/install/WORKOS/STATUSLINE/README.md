@@ -1,6 +1,6 @@
 # Statusline
 
-The WorkOS status line, rendered by one Bun process. Ported from LifeOS 8.761.0 in WorkOS 2.0.0, it replaced a 2,469-line bash script that started about 53 processes per render. `WORKOS/WORKOS_StatusLine.sh` is now a thin shim that execs `Render.ts`, so settings and the installer keep their entry point.
+The WorkOS status line, rendered by one Bun process. Ported from upstream 8.761.0 in WorkOS 2.0.0, it replaced a 2,469-line bash script that started about 53 processes per render. `WORKOS/WORKOS_StatusLine.sh` is now a thin shim that execs `Render.ts`, so settings and the installer keep their entry point.
 
 ## Shape
 

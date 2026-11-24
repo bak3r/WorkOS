@@ -18,7 +18,7 @@
  *        the global clock.
  *
  * The time-based safety net and the merge of last_review_at are ported from
- * LifeOS 8.761.0 (MemoryReviewFire 2.3.3, public issue #1893). Not ported: the
+ * upstream 8.761.0 (MemoryReviewFire 2.3.3, public issue #1893). Not ported: the
  * lost-window compensation (#1908) and the texting-thread counter (Tex).
  *
  * Per-session cadence (public issue #1711, @jacobo-ortiz): the turn counter used

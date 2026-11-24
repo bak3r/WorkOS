@@ -20,8 +20,8 @@
  * The systemd timers for WorkSweep / CommitmentSweep stay as optional extras;
  * running both is harmless (ledger writes are slug-idempotent).
  *
- * OBSERVABILITY PRUNE (job 5) — the local stand-in for upstream LifeOS 8.761.0's nightly
- * `observability-prune` workflow, which runs LIFEOS/TOOLS/ObservabilityPrune.ts. Upstream
+ * OBSERVABILITY PRUNE (job 5) — the local stand-in for upstream 8.761.0's nightly
+ * `observability-prune` workflow, which runs upstream's ObservabilityPrune.ts. Upstream
  * archives ROWS older than 30 days (7 for bunker-runs.jsonl) out of every OBSERVABILITY
  * .jsonl of 1 MB or more, rewriting the kept file through Bunker's race-safe window pruner;
  * rows with no parseable ts are kept. This job keeps the 30-day window but NEVER rewrites a

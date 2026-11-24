@@ -145,7 +145,9 @@ function runChild(): Promise<{ envelope: Record<string, unknown> | null; raw: st
  * (projects/<slug>/<session>/subagents/agent-*.jsonl) — the evidence class the
  * manual probes established. Assistant-message `message.model` is what RAN. */
 function sidechainModels(sessionId: string): string[] {
-  const slug = CLAUDE_DIR.replace(/[/.]/g, "-");
+  // Claude Code maps every non-alphanumeric character to "-" (including "_"),
+  // so /Users/x/0_PROJECTS/.claude → -Users-x-0-PROJECTS--claude.
+  const slug = CLAUDE_DIR.replace(/[^a-zA-Z0-9]/g, "-");
   const dir = join(CLAUDE_DIR, "projects", slug, sessionId, "subagents");
   if (!existsSync(dir)) return [];
   const models = new Set<string>();

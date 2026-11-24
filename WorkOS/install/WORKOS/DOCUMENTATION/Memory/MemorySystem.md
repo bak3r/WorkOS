@@ -21,7 +21,7 @@ This is not a narrow event log or a preferences store. This is WorkOS's comprehe
 
 WorkOS MEMORY is the system of record. Claude Code's built-in auto-memory (`~/.claude/projects/<project>/memory/`) is disabled by design (`autoMemoryEnabled: false` in shipped settings, plus deny rules on that path) — see "Claude Code Auto-Memory & Auto-Dream" below.
 
-**Version:** 8.4.0 (Cortex Ledger, ported from LifeOS 8.761.0 on 2026-10-28 — log-plus-projection for hot-layer memory; preserves 8.3 naming + 8.2 proposal subtypes + 8.1 inventory + drift + autonomic loop + health gate)
+**Version:** 8.4.0 (Cortex Ledger, ported from upstream 8.761.0 on 2026-10-28 — log-plus-projection for hot-layer memory; preserves 8.3 naming + 8.2 proposal subtypes + 8.1 inventory + drift + autonomic loop + health gate)
 **Location:** `~/.claude/WORKOS/MEMORY/`
 
 ---
@@ -871,7 +871,7 @@ bun run ~/.claude/hooks/handlers/MemoryDirIntegrity.ts
 - Documented the `_X` skill-private convention (a skill named `_FOO` owns `MEMORY/_FOO/`) so the drift hook recognizes such directories.
 - Reclassified `AUTO/` and `RAW/` as **reserved** (their active roles were retired in v7.4 and v7.0 respectively but the directories still ship in the public-release taxonomy via `ShadowRelease.ts` FLAT_README_ROOTS).
 - Added `MemoryDirIntegrity.ts` handler to `DocIntegrity.hook.ts` — diffs MEMORY/ on disk against this file's inventory table on every Stop and warns on drift. Same pattern as `DocCrossRefIntegrity.ts`.
-- Reduced `MEMORY/README.md` to a stub redirecting to this canonical doc, ending the dual-doc drift between the v7.6 doc and the v8.0 README.
+- Reduced the README in `MEMORY/` to a stub redirecting to this canonical doc (that stub is not part of this install), ending the dual-doc drift between the v7.6 doc and the v8.0 README.
 - No data was moved or deleted; this migration is documentation + drift detection only.
 
 **2026-04-07:** Memory System v7.6 — Retrieval + Navigation + Mining + Temporal

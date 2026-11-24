@@ -3,7 +3,7 @@
  * @version 1.0.0
  * Enrich.ts — fills the judged `enrichment` object on every Errata entry that
  * still has it null, on the cheapest Claude tier (Inference.ts --level low, Haiku):
- * the reply is schema-validated, so a small model is enough. Upstream LifeOS runs
+ * the reply is schema-validated, so a small model is enough. Upstream runs
  * this on an OpenAI lane; WorkOS runs Claude only. A malformed model reply leaves
  * the entry null and logs the error to stderr — never a partial write (ISC-8).
  */

@@ -29,7 +29,7 @@ invocation the guard and the run ledger record, and the checks that come with it
 
 ### Enforcement
 
-No hook enforces this. (Upstream LifeOS retired its `SkillCreationGuard`, which blocked a `Write` creating a
+No hook enforces this. (Upstream retired its `SkillCreationGuard`, which blocked a `Write` creating a
 new `skills/<Name>/SKILL.md` without a `CreateSkill` call, on 2026-10-24; WorkOS never shipped it.)
 `/ic` now catches hand-rolled skills after the fact. Edits, Bash-created files,
 new intents, tools and references were never blocked either; the rule above is

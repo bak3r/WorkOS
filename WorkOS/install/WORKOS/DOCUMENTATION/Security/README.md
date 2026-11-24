@@ -79,7 +79,7 @@ In `settings.json`, scoped narrowly to **irrecoverable** ops only. Categories:
 - Pipe-to-shell: `curl|sh`, `wget|bash`, etc.
 - Force-push to main/master: `git push --force * main`
 - Permission bombs: `chmod -R 777 /`, fork bomb
-- System-root file writes: `Edit(//etc/**)`, `Edit(//usr/**)`, etc. Two leading slashes make the path absolute; one slash is relative to the settings folder and would guard `<config root>/etc` instead (upstream LifeOS #2746 / #2941). Always the `Edit(path)` form — it governs Edit, Write, and NotebookEdit. A `Write(path)` rule is accepted into settings but never matched by file permission checks, so it reads as coverage that isn't there (public PR #1572, @elhoim; Claude Code ≥2.1.210 warns on such rules at startup).
+- System-root file writes: `Edit(//etc/**)`, `Edit(//usr/**)`, etc. Two leading slashes make the path absolute; one slash is relative to the settings folder and would guard `<config root>/etc` instead (upstream #2746 / #2941). Always the `Edit(path)` form — it governs Edit, Write, and NotebookEdit. A `Write(path)` rule is accepted into settings but never matched by file permission checks, so it reads as coverage that isn't there (public PR #1572, @elhoim; Claude Code ≥2.1.210 warns on such rules at startup).
 - Credential reads: SSH private keys, cloud credentials, GPG private keyring
 
 Intentionally **NOT** denied: `rm -rf node_modules`, `git reset --hard`, `chmod` on user files. These are recoverable; the model's judgment plus the constitutional rule are sufficient.

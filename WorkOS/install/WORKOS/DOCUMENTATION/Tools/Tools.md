@@ -177,7 +177,7 @@ bun ~/.claude/WORKOS/TOOLS/GetTranscript.ts "https://www.youtube.com/watch?v=VID
 
 **Location:** `~/.claude/WORKOS/TOOLS/LearningLog.ts`
 
-Append-only JSONL record of fundamentals explanations and graded quiz answers, at `WORKOS/USER/LEARNING/learning.jsonl`. The Explain skill's ExplainFundamentals and QuizFundamentals intents are its only writers; upstream LifeOS keeps the same rows as the STATVS `learning` stream.
+Append-only JSONL record of fundamentals explanations and graded quiz answers, at `WORKOS/USER/LEARNING/learning.jsonl`. The Explain skill's ExplainFundamentals and QuizFundamentals intents are its only writers; upstream keeps the same rows as the STATVS `learning` stream.
 
 **Usage:**
 ```bash
@@ -193,13 +193,13 @@ Exits 1 on a usage error, 2 when the record cannot be read or written. No comman
 
 **Location:** `~/.claude/WORKOS/ERRATA/Errata.ts`, with `Schema.ts`, `Store.ts` and `Enrich.ts`. The front door is `Skill("Errata")` and `/er`.
 
-One JSON line per complaint, bug, correction, feature request or praise in `WORKOS/USER/ERRATA/errata-YYYY-MM.jsonl`, the principal's words verbatim, corrections and enrichments appended as patches. `record`, `list`, `show`, `stats`, `enrich` (Claude low tier), and the three queries other tools read: `skills` and `impact` (complaints per Skill-tool call, from `WORKOS/MEMORY/SKILLS/execution.jsonl`; HillClimb survey and verify) and `misses` (false passes: a complaint against a file whose Proof receipt said presentable). `ERRATA_DIR`, `ERRATA_STATE_DIR` and `ERRATA_EXECUTION_FILE` point it at a scratch ledger. Ported from upstream LifeOS 8.761.0's ledger; capture hooks, trained triage and mining are not ported.
+One JSON line per complaint, bug, correction, feature request or praise in `WORKOS/USER/ERRATA/errata-YYYY-MM.jsonl`, the principal's words verbatim, corrections and enrichments appended as patches. `record`, `list`, `show`, `stats`, `enrich` (Claude low tier), and the three queries other tools read: `skills` and `impact` (complaints per Skill-tool call, from `WORKOS/MEMORY/SKILLS/execution.jsonl`; HillClimb survey and verify) and `misses` (false passes: a complaint against a file whose Proof receipt said presentable). `ERRATA_DIR`, `ERRATA_STATE_DIR` and `ERRATA_EXECUTION_FILE` point it at a scratch ledger. Ported from upstream 8.761.0's ledger; capture hooks, trained triage and mining are not ported.
 
 ---
 
 ## Skill checks - IntentLint, IntentPreserve, SkillContents, SkillCoverage, SkillHygieneGate
 
-**Location:** `~/.claude/WORKOS/TOOLS/`. The code checks `Skill("CreateSkill")` runs on every skill it touches. Ported from upstream LifeOS 8.761.0.
+**Location:** `~/.claude/WORKOS/TOOLS/`. The code checks `Skill("CreateSkill")` runs on every skill it touches. Ported from upstream 8.761.0.
 
 | Tool | What it checks | Run |
 |------|----------------|-----|
@@ -613,7 +613,7 @@ Probes the external tools WorkOS doctrine assumes but the core install does not 
 
 Five states per capability: `live` / `broken` / `declined` / `stale` / `off`. `off` is an optional capability with no local configuration — the read-only work context (`glab`, `jira`) is off until `GITLAB_HOST`/glab or `JIRA_URL` exist; `--network` adds Jira's `GET /rest/api/3/myself`. The manifest is a **TTL'd cache, never truth** — it carries a salted integrity hash and readers re-verify doctrine-critical capabilities live at point-of-use. `declined` is a first-class permanent, silent opt-out. Diagnostic register only — no scores, no percentages.
 
-**What "live" means (Doctor 1.0.10 rules, ported from upstream LifeOS 8.761.0):**
+**What "live" means (Doctor 1.0.10 rules, ported from upstream 8.761.0):**
 - **A binary is probed, not just found.** `rg`, `magick`, `ffmpeg` (`-version`), `yt-dlp`, `fabric`, `jq` and `glab` are run with `--version` under a 3 s timeout, so a wedged or non-runnable binary reads `broken` with the reason. `yt-dlp` is date-versioned and reads `broken` when it is over 180 days old. A `fabric-ai` binary with no `fabric` is reported (callers exec `fabric`), not hidden.
 - **Unconfigured optional capabilities read `off`, never `broken`.** Optional ones (Interceptor with no browser, ImageMagick, ffmpeg, yt-dlp, fabric, `glab`, Jira, npm packages) are re-probed every run, so they turn live once set up. A present-but-misconfigured one is still `broken`.
 - **The orphan-memory search is bounded.** The shadow-`$HOME` scan looks only under the config root, `~/Projects`, `~/LocalProjects`, `~/code`, `~/Developer`, `~/src` and the `~/...` paths named in `USER/PROJECTS.md` — never all of `$HOME`; on macOS it also skips the privacy-protected folders (Desktop, Documents, Downloads, Movies, Pictures, Music) and prints the `find` command to run by hand.
@@ -667,7 +667,7 @@ bun ~/.claude/WORKOS/TOOLS/StatusLine.ts on            # put it back
 
 ## MCP Servers
 
-**Config:** `~/.claude/.mcp.json`
+**Config:** `.mcp.json` at the config root. It is not shipped: you create it when you add your first server, or `WORKOS/TOOLS/workos.ts` writes it when it switches MCP profiles.
 
 WorkOS connects to external MCP servers for domain-specific tool access.
 

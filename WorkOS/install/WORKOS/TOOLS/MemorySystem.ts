@@ -435,7 +435,7 @@ function addMemoryItem(item: TypedItem & { type: "memory" }, path: string, expec
   }
 
   // Deliberate consolidation is the ONE case allowed to net-drop entries
-  // (public issue #1905, @ksjayeshks; ported from LifeOS 8.761.0). Only the INTENT
+  // (public issue #1905, @ksjayeshks; ported from upstream 8.761.0). Only the INTENT
   // is passed: MemoryWriter decides in-lock whether it earns anything, and it never
   // lifts the catastrophic-shrink guard. expectedFingerprint is the stale-base guard
   // (public PR #2097, @hjbrandt): the write refuses if the file changed since the

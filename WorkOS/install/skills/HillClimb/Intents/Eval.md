@@ -37,7 +37,7 @@ bun ~/.claude/skills/HillClimb/Tools/HillClimb.ts baseline <id> --value <agreeme
 
 ## Gotchas
 
-- WorkOS has no label store or calibration tool (upstream LifeOS keeps both in Assay). The labels live only in the climb ledger, so a later climb on the same instrument re-collects them.
+- WorkOS has no label store or calibration tool (upstream keeps both in Assay). The labels live only in the climb ledger, so a later climb on the same instrument re-collects them.
 
 ## References
 

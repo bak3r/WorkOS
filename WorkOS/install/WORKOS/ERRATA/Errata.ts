@@ -13,7 +13,7 @@
  *   bun WORKOS/ERRATA/Errata.ts misses [--json]
  *   bun WORKOS/ERRATA/Errata.ts impact --skill <Name> --since YYYY-MM-DD [--days 14] [--json]
  *
- * The ledger (Schema.ts, Store.ts) is upstream LifeOS 8.761.0's: one JSON line per erratum or patch in
+ * The ledger (Schema.ts, Store.ts) is upstream 8.761.0's: one JSON line per erratum or patch in
  * WORKOS/USER/ERRATA/errata-YYYY-MM.jsonl, verbatim at capture, enriched later by a model, never rewritten.
  * What WorkOS adds, because it has no output ledger:
  *   - A complaint is attributed to a skill by `--skill` (stored as the tag `skill:<Name>`), and a skill's

@@ -10,8 +10,8 @@
  *
  * Scope: ONLY WorkOS-owned files under the config root (payload match, or recorded as
  * added in the install manifest) plus settings.json. LifeOS copies, the developer's files
- * and Claude Code's state are never read or rewritten — before this, a run over a LifeOS
- * root rewrote 116–232 LifeOS files with no backup. Each rewrite is backed up through the
+ * and Claude Code's state are never read or rewritten — before this, a run over an upstream
+ * install's root rewrote 116–232 of its files with no backup. Each rewrite is backed up through the
  * ledger first. A --root outside the config root is taken as given.
  *
  * Usage:

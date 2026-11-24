@@ -1,7 +1,7 @@
 /**
  * Glyphs.ts — the status line's symbols: Nerd Font glyphs, each in a colour that means something.
  *
- * Upstream LifeOS keeps this table in hooks/lib/glyph-core.ts so its plugin mods can carry byte-identical copies.
+ * Upstream keeps this table in hooks/lib/glyph-core.ts so its plugin mods can carry byte-identical copies.
  * WorkOS has no mods, so the table lives here, beside the only code that draws it, and the statusline directory is
  * self-contained. Two ways in:
  * - `icon(name)` for a section that draws a symbol itself.

@@ -10,7 +10,7 @@
  * its own. If `<configRoot>/hooks/<name>` exists and is not WorkOS's (a LifeOS copy
  * Adopt has not moved, an edited LifeOS hook, or the developer's own file), the tool
  * STOPS before writing anything and names the files — run Adopt.ts first, or rename
- * them. (Before this, 92 of 95 WorkOS registrations deduped onto LifeOS's files.)
+ * them. (Before this, 92 of 95 WorkOS registrations deduped onto the upstream install's files.)
  *
  * The skill's Setup workflow shows the user the exact change (from the dry-run
  * counts) and gets explicit permission BEFORE calling this with --apply.

@@ -1,6 +1,6 @@
 # Workflow
 
-Climb one workflow, a skill's intent file, until it does its job more reliably and faster. WorkOS ships no Workflows v2 definitions; upstream LifeOS climbs those too.
+Climb one workflow, a skill's intent file, until it does its job more reliably and faster. WorkOS ships no Workflows v2 definitions; upstream climbs those too.
 
 ## Ideal State
 

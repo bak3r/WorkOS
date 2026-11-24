@@ -484,7 +484,7 @@ export function classifyCommand(tc: ToolCall): Classification {
   // not already allow it, i.e. the tool is ask-listed or unlisted. A blanket
   // allow here overrode those rules (e.g. an Atlassian MCP write against the
   // read-only Jira policy), so MCP always defers to the native prompt.
-  // (upstream LifeOS report by @Steffen025; upstream retired the auto-approver)
+  // (upstream report by @Steffen025; upstream retired the auto-approver)
   if (tc.toolName.startsWith("mcp__")) {
     return { decision: "neutral", reasons: ["mcp-defer-native"] };
   }

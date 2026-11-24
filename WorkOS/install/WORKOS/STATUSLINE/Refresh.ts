@@ -5,7 +5,7 @@
  * exits. The statusline itself only reads files. MaintenanceJobs runs it at session start (job `statusline-refresh`),
  * since a Docker Sandbox has no scheduler; it is safe to run by hand at any time.
  *
- * Upstream LifeOS refreshes weather, tide, cosmos, Claude and Codex usage and a GitHub work queue here every minute.
+ * Upstream refreshes weather, tide, cosmos, Claude and Codex usage and a GitHub work queue here every minute.
  * WorkOS draws none of those: its WORK row reads the local ledger and the WorkContext cache directly, and LoadContext
  * keeps that cache fresh.
  *

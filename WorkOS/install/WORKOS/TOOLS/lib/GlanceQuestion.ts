@@ -2,11 +2,11 @@
  * GlanceQuestion — the shape of a glance question and of a staged-eval producer, for parsing only.
  *
  * WorkOS treats glance rows and the staged `## Evals` block as schema only (ISAFormat § WorkOS runtime
- * scope): an ISA may carry them so it moves between WorkOS and upstream LifeOS unchanged, and nothing in
+ * scope): an ISA may carry them so it moves between WorkOS and upstream unchanged, and nothing in
  * WorkOS runs a glance question or a rubric's subject producer. This module lets IsaTestStrategy.ts parse
  * those blocks and report a malformed one.
  *
- * NOT A SAFETY CHECK. Upstream LifeOS 8.761.0's GlanceQuestion.ts also decides whether a producer command
+ * NOT A SAFETY CHECK. Upstream 8.761.0's GlanceQuestion.ts also decides whether a producer command
  * is read-only (no writes, no secret paths, curl only to public hosts, pinned DNS) before its runner
  * executes it. That check needs the texting guard, the shell walker, SafeFetch and StateSources, and is
  * not ported because WorkOS has no runner. `validateProducer` here only tokenizes and `readOnlyRefusal`

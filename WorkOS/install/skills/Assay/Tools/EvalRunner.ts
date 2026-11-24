@@ -9,7 +9,7 @@
  * (every trial passed: the reliability metric and the regression gate) beside
  * pass@k, with SEM and a 95% CI over per-case means (Stats.ts).
  *
- * Evidence rules (from upstream LifeOS Assay):
+ * Evidence rules (from upstream Assay):
  *   - Deterministic asserts run first; a failed required one skips the judges on
  *     that output and fails the trial. Weights never buy off a required failure.
  *   - A trial with no model answer, or with any judge that returned no verdict,
@@ -23,7 +23,7 @@
  * Suite resolution: USER customizations first (assayUserDir()/Suites), then the
  * skill's own Suites/. Results: WORKOS/MEMORY/STATE/Evals-Results/<suite>/.
  *
- * Slimmed from upstream LifeOS 8.761.0: no judgment-layer engine, no router, no
+ * Slimmed from upstream 8.761.0: no judgment-layer engine, no router, no
  * calibration taste, no image lane. Claude only, through WORKOS/TOOLS/Inference.ts.
  */
 

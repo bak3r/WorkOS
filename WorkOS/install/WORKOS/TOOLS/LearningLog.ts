@@ -2,7 +2,7 @@
 /**
  * LearningLog.ts — the learning record behind the Explain skill. One JSONL row per
  * fundamentals explanation or graded quiz answer, at WORKOS/USER/LEARNING/learning.jsonl.
- * (Upstream LifeOS keeps this as the STATVS `learning` stream; WorkOS has no STATVS.)
+ * (Upstream keeps this as the STATVS `learning` stream; WorkOS has no STATVS.)
  *
  *   bun ~/.claude/WORKOS/TOOLS/LearningLog.ts append --kind explain|quiz --area <slug> \
  *     --title "<text>" --data '<json object>'

@@ -22,7 +22,7 @@
  * parent's. The authoritative marker is the hook's stdin stamp — the harness
  * puts `agent_id` on every hook event fired inside a subagent, and only there.
  * Consumers holding parsed stdin pass it in; the env union stays the fallback.
- * (Ported from upstream LifeOS 8.761.0 subagent.ts v1.2.1: public PR #1958,
+ * (Ported from upstream 8.761.0 subagent.ts v1.2.1: public PR #1958,
  * @theNetworkChuck; issue #2150, @0bsolescence.)
  */
 

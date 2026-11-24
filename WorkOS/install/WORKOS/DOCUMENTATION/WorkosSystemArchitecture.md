@@ -43,7 +43,7 @@ WorkOS is the AI harness that moves your work from its current state to its idea
 
 **Canonical thesis:** `WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md` — read this first when any framing question comes up. This architecture doc describes *how* the OS is built; the thesis doc describes *what* the OS is for.
 
-**Version:** WorkOS 2.0.0 | Algorithm v8.45.0 | Cortex (Memory) v8.4.0
+**Version:** WorkOS 2.0.1 | Algorithm v8.45.0 | Cortex (Memory) v8.4.0
 
 ---
 
@@ -255,7 +255,7 @@ Two granularities of the same fact: the **OS umbrella** rolls up every substanti
 
 The flow per change in this fork: choose the level by hand → bump `WORKOS/VERSION` and the touched component lines by hand → run `WORKOS/TOOLS/IntegrityCheck.ts` (a clean run stamps `MEMORY/STATE/integrity/last-pass.json`) → `WORKOS/TOOLS/CreateUpdate.ts` (write the update file to the registry at `MEMORY/SYSTEMUPDATES/` and prepend `INDEX.md`). `hooks/VersionDrift.hook.ts` nags on unbumped core drift. The release and versioning tools (`ClassifyChange`, `UpdateWorkosVersion`, `Bump*Versions`, `UpdateIndex`, `UpdateKaiRepo`, the `/vb` workflow) are not part of this fork.
 
-**Estate extension (2.0.0, 2026-07-19):** every gated deploy across the estate (sites, apps, services) records an event via `WORKOS/TOOLS/LedgerDeployEvent.ts` → `MEMORY/SYSTEMUPDATES/deploys.jsonl` (project, target, domain, git SHA, project version, ok/fail). Per-project versioning convention: repo-root `VERSION` or `package.json` version, resolved best-effort at deploy time — absence never blocks, the SHA is always recorded. The registry and `deploys.jsonl` are read directly (no dashboard).
+**Estate extension (2.0.0, 2026-07-19):** every gated deploy across the estate (sites, apps, services) records an event via `WORKOS/TOOLS/LedgerDeployEvent.ts` → `deploys.jsonl` in `MEMORY/SYSTEMUPDATES/` (project, target, domain, git SHA, project version, ok/fail; the file is created by the first deploy event). Per-project versioning convention: repo-root `VERSION` or `package.json` version, resolved best-effort at deploy time — absence never blocks, the SHA is always recorded. The registry and `deploys.jsonl` are read directly (no dashboard).
 
 - **Status:** Active subsystem (Ledger 2.0.0, revived 2026-07-19)
 - **Location:** `WORKOS/TOOLS/CreateUpdate.ts` + `WORKOS/TOOLS/IntegrityCheck.ts` + `WORKOS/TOOLS/LedgerDeployEvent.ts` + `hooks/VersionDrift.hook.ts` + `WORKOS/VERSION` + the registry at `MEMORY/SYSTEMUPDATES/` (created at runtime). Release/versioning tools are not shipped.
@@ -327,7 +327,7 @@ The model is the security boundary; the hook is a deterministic gate around it. 
 
 - **Status:** Active (Minimal v3, 2026-05-14 — SmartApprover + PromptInjection consolidated into Safety.hook.ts; shell-aware classifier added)
 - **Location:** `hooks/Safety.hook.ts`, `hooks/lib/safety-classifier.ts`
-- **Tests:** `hooks/lib/safety-classifier.test.ts` (91 cases), `hooks/Safety.smoke.test.ts` (23 cases) — maintainer tree; test files are not in the release payload
+- **Tests:** `safety-classifier.test.ts` (91 cases) and `Safety.smoke.test.ts` (23 cases) — maintainer tree; test files are not in the release payload
 - **Full doc:** `WORKOS/DOCUMENTATION/Security/README.md`
 
 ### Notification System
@@ -455,7 +455,7 @@ System file inventory by pipeline. When you modify a file, trace its pipeline to
 | **Notifications** | Terminal-only — no voice or push channel; results are reported in the session via the response format |
 | **Doc Integrity** | `hooks/DocIntegrity.hook.ts` (SessionEnd) → `hooks/handlers/DocCrossRefIntegrity.ts` + `hooks/handlers/RebuildArchSummary.ts` → `Tools/ArchitectureSummaryGenerator.ts` |
 | **Atlas** | Graph-based current-state asset management system — current state of everything in the ecosystem (canonical: `WORKOS/DOCUMENTATION/Atlas/AtlasSystem.md`, v1 2026-07-21). `WORKOS/ATLAS/` (Atlas.ts CLI + Store.ts + collectors) → SQLite at `~/.local/state/workos/atlas/` (outside git, WAL, per-source observations, gated sync-and-expire) → redacted snapshot; hints via `hooks/AtlasEventCapture.hook.ts` + a scheduled `com.workos.atlas` tick; named queries `owns`/`blast`/`exposed`/`stale`/`unregistered` (claim-16 derived evidence — provider authority API remains the authority). **Credentials are first-class assets** (`kind: credential`, 2026-07-24): the `secrets` collector supplies registry classification plus machine/config-repo holders, and `HOLDS` edges make one relationship answer both directions — `exposed <asset>` for "what would this leak" and `blast credential:X` for "what breaks if I rotate it". Values never enter the graph; `exportSnapshot()` strips credential attrs. Cartography's model, WorkOS-native |
-| **Ledger** | Change-tracking authority (canonical: `WORKOS/DOCUMENTATION/Ledger/LedgerSystem.md`). `WORKOS/TOOLS/CreateUpdate.ts` (update files) + `WORKOS/TOOLS/IntegrityCheck.ts` (integrity stamp) + `hooks/VersionDrift.hook.ts` (drift nag) + `WORKOS/TOOLS/LedgerDeployEvent.ts` (deploy events → `MEMORY/SYSTEMUPDATES/deploys.jsonl`) → registry `MEMORY/SYSTEMUPDATES/` (`YYYY/MM/*.md` + `INDEX.md`). Release/versioning tools are not shipped; bumps are by hand |
+| **Ledger** | Change-tracking authority (canonical: `WORKOS/DOCUMENTATION/Ledger/LedgerSystem.md`). `WORKOS/TOOLS/CreateUpdate.ts` (update files) + `WORKOS/TOOLS/IntegrityCheck.ts` (integrity stamp) + `hooks/VersionDrift.hook.ts` (drift nag) + `WORKOS/TOOLS/LedgerDeployEvent.ts` (deploy events → `deploys.jsonl` in the registry, created on the first event) → registry `MEMORY/SYSTEMUPDATES/` (`YYYY/MM/*.md` + `INDEX.md`). Release/versioning tools are not shipped; bumps are by hand |
 
 ## System Self-Management
 

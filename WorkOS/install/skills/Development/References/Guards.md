@@ -4,7 +4,7 @@ SKILL.md § Safety gates states the rule: nothing non-trivial is built without c
 
 **Code sync refuses (2026-10-24, ISASystem.md § Code sync).** In a project that has an ISA, every change starts and finishes with it, and three checks share one resolver (`WORKOS/TOOLS/IsaGoverning.ts`):
 
-- **Start:** upstream's LifeOSHooks plugin refuses an Edit of a file governed by an ISA until that ISA was read in the session. **WorkOS does not ship that plugin**, so nothing refuses the first edit here; the rule in SKILL.md is the only guard until the finish check.
+- **Start:** upstream's hooks plugin refuses an Edit of a file governed by an ISA until that ISA was read in the session. **WorkOS does not ship that plugin**, so nothing refuses the first edit here; the rule in SKILL.md is the only guard until the finish check.
 - **Finish:** `IsaCodeSyncGate` (first in StopGates, not advisory) blocks a turn that changed governed code with no successful Edit or Write of its ISA in the same turn. No reply wording clears it.
 - **Ship:** upstream's `ReleaseRecord.ts` and CfEnv deploy refuse a release whose ISA did not change with its code. **WorkOS ships neither**: work repos ship through their own merge requests and pipelines, which do not read the ISA.
 

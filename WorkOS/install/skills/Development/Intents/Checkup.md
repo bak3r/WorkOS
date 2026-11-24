@@ -1,6 +1,6 @@
 # Checkup — why is it red, is the ISA still the truth, and what does production say?
 
-A full health check of an app against its ISA. Checkup joins what the repo knows (the ISA, the code, the rows) with what the world reports (in WorkOS: the project's pipelines and merge requests through read-only GitLab, and its issues through read-only Jira; upstream LifeOS also reads its live monitor, Vigil events, Errata complaints and open Achilles findings), says why every red criterion is red, and repairs the ISA side until the ISA tells the truth again. Test runs the criteria and reports; Checkup is the run that acts on the answer.
+A full health check of an app against its ISA. Checkup joins what the repo knows (the ISA, the code, the rows) with what the world reports (in WorkOS: the project's pipelines and merge requests through read-only GitLab, and its issues through read-only Jira; upstream also reads its live monitor, Vigil events, Errata complaints and open Achilles findings), says why every red criterion is red, and repairs the ISA side until the ISA tells the truth again. Test runs the criteria and reports; Checkup is the run that acts on the answer.
 
 ## Ideal State
 

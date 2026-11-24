@@ -14,7 +14,7 @@
  *     FALSE). UNKNOWN is a miss either way (Judge.ts). No bullet is ever ungraded.
  *   - Every assert carries `derived_from: <intent path>#IS-n` or `#AC-n`.
  *
- * Slimmed from upstream LifeOS 8.761.0: only word and character counts compile to code
+ * Slimmed from upstream 8.761.0: only word and character counts compile to code
  * (upstream also counts bullets, headings, links, sentences), and no fixture compiler.
  *
  *   bun IntentRubric.ts rubric <intent.md | skills/<Skill>> [--json]

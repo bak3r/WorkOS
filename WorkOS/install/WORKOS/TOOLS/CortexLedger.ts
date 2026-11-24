@@ -2,7 +2,7 @@
 /**
  * @version 1.2.0
  * CortexLedger — CLI over the hot-layer memory event ledger.
- * WorkOS port of LifeOS 8.761.0 CortexLedger 1.1.1. WorkOS differences: genesis and
+ * WorkOS port of upstream 8.761.0 CortexLedger 1.1.1. WorkOS differences: genesis and
  * adopt anchor through MemoryWriter.anchorUnledgered (one labelled row per pre-ledger
  * file set, idempotent), and verify reports a fold-owned file that neither exists nor
  * has an event as "absent" rather than CRITICAL.

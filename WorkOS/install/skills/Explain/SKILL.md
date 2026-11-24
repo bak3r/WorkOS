@@ -12,7 +12,7 @@ description: Keeps the principal current on the fundamentals of what is going on
 
 # Explain
 
-Keeps the principal up on the fundamentals of what is going on across their projects, work and technical infrastructure, deeply and thoroughly. The principal lives inside many systems at once and cannot hold all of them in mind, so this skill teaches the topic in front of them, explains the parts of any area that it cannot lose, and quizzes the principal so gaps show up before they cost anything. It absorbed the Teach skill when it was ported from upstream LifeOS 8.761.0; WorkOS runs it text-only, with no voice narration.
+Keeps the principal up on the fundamentals of what is going on across their projects, work and technical infrastructure, deeply and thoroughly. The principal lives inside many systems at once and cannot hold all of them in mind, so this skill teaches the topic in front of them, explains the parts of any area that it cannot lose, and quizzes the principal so gaps show up before they cost anything. It absorbed the Teach skill when it was ported from upstream 8.761.0; WorkOS runs it text-only, with no voice narration.
 
 ## Ideal State
 

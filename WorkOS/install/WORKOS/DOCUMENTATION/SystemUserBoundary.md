@@ -68,7 +68,7 @@ The boundary itself — the documented contract by which SYSTEM code reads USER 
 |------|--------|
 | `~/.claude/WORKOS/TOOLS/WorkosConfig.ts` | INTERFACE — typed loader, ships in SYSTEM (after Phase F) |
 | `~/.claude/WORKOS/USER/CONFIG/WORKOS_CONFIG.{json\|yaml\|toml}` | INTERFACE — user-supplied implementation (after Phase F; format pending ISC-56.1) |
-| `~/.claude/WORKOS/USER/CONFIG/settings.user.json` | INTERFACE — user settings overlay (after Phase B) |
+| `WORKOS/USER/CONFIG/settings.user.json` | INTERFACE — user settings overlay (after Phase B); absent on a fresh install, created when you first add an override |
 | `~/.claude/WORKOS/USER/CONFIG/OPERATIONAL_RULES.md` | INTERFACE — user-specific operational rules (after Phase C); @-imported directly from `~/.claude/CLAUDE.md` since CC does not follow transitive @-imports |
 | `~/.claude/WORKOS/USER/INTEGRATIONS/*.yaml` | INTERFACE — typed config for integrations (homebridge, unifi, airgradient, work-system, etc.) |
 

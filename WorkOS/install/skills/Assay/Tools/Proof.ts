@@ -13,7 +13,7 @@
  *   judge  every other Ideal State / Anti-criteria bullet of --intent, and the --ask, each as
  *          one Claude judge call through WORKOS/TOOLS/Inference.ts
  *
- * Verdict rule (upstream LifeOS ProofReceipt.mayPresent, minus earned calibration):
+ * Verdict rule (upstream ProofReceipt.mayPresent, minus earned calibration):
  *   fail              a code check failed. Blocks.
  *   unavailable       a judge returned no verdict. No verdict; never a pass.
  *   admitted-flagged  nothing blocked, but a judge said no. WorkOS judges are uncalibrated
@@ -26,7 +26,7 @@
  * Freshness is by the artifact's sha256, never size or mtime, and each receipt carries the sha256
  * of its own body so a hand edit reads as tampered.
  *
- * Slimmed from upstream LifeOS 8.761.0: text artifacts only (no image, video or page lanes), no
+ * Slimmed from upstream 8.761.0: text artifacts only (no image, video or page lanes), no
  * judgment-layer questions, no label store, no hand-off or send gates.
  *
  * Exit: run 0 pass · 1 fail · 2 unavailable · 3 admitted-flagged or unmeasured · 64 usage.

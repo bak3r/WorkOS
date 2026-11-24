@@ -26,7 +26,7 @@
  * Matching runs on buildShapeTargets() from lib/safety-classifier, so quoting,
  * `bash -c '…'`, env-prefix wrappers, $(…)/backtick substitutions and backslash
  * escapes are seen through exactly as the classifier sees through them. Keep
- * lib/safety-classifier.ts when porting upstream: LifeOS 8.x deleted it, and
+ * lib/safety-classifier.ts when porting from upstream: upstream 8.x deleted it, and
  * losing it would stop this guard loading at all.
  *
  * Registered on its own as PreToolUse:Bash (until 1.1.0 it ran inside the

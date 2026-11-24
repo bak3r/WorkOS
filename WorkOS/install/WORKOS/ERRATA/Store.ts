@@ -11,7 +11,7 @@
  * writers never interleave inside a line; a torn trailing line is skipped on
  * read. Nothing is rewritten in place and no entry is ever deleted.
  *
- * Ported from upstream LifeOS 8.761.0 without its STATVS dual-write: WorkOS has no STATVS record, so the
+ * Ported from upstream 8.761.0 without its STATVS dual-write: WorkOS has no STATVS record, so the
  * ledger is the only store.
  */
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync, unlinkSync } from "fs";

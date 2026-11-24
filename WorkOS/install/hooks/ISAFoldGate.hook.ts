@@ -142,7 +142,7 @@ export async function run(input: HookInput): Promise<object | null> {
   }
 }
 
-// ── the bridge reader (ported from upstream LifeOS 8.761.0 ISAFoldGate 1.4.5 for IsaCodeSyncGate) ───────
+// ── the bridge reader (ported from upstream 8.761.0 ISAFoldGate 1.4.5 for IsaCodeSyncGate) ───────
 // Additive: nothing above reads it, so this gate's own behaviour is unchanged.
 
 /** The tail a Stop gate judges in turn scope; the same 8 MB transcript-evidence reads. */

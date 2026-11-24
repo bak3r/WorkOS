@@ -7,4 +7,4 @@ Which tool checks what. Each intent's Tool contract shows the flags that intent 
 - Real-things registry: `Tools/RealThings.ts --list` (every registered thing and whether its picture exists).
 - Server: `Tools/Present.ts --dir <deck-dir>` (F fullscreen, S speaker view, E in-place edit, `?print-pdf`)
 
-Upstream LifeOS also ships a Keynote builder and its art, media, layout and autoplay tools; WorkOS leaves them out because they need macOS Keynote, ImageMagick, ffmpeg and web egress.
+Upstream also ships a Keynote builder and its art, media, layout and autoplay tools; WorkOS leaves them out because they need macOS Keynote, ImageMagick, ffmpeg and web egress.

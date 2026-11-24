@@ -7,7 +7,7 @@ version: 1.4.2
 
 # Hill Climbing — the one loop WorkOS runs
 
-> **WorkOS scope.** This doc is upstream LifeOS 8.761.0's statement of the loop, kept whole so the two stay comparable. WorkOS runs the climb itself (`skills/HillClimb`, its ledger, keep rule, splits and noise floor) and Assay-lite (`skills/Assay`). It does not ship Errata, Vigil, STATVS, Bunker, the judgment layer or the label store: where this doc reads a signal from one of those, WorkOS has no such signal, and HillClimb reports the source as unavailable (`skills/HillClimb/SKILL.md` § In WorkOS).
+> **WorkOS scope.** This doc is upstream 8.761.0's statement of the loop, kept whole so the two stay comparable. WorkOS runs the climb itself (`skills/HillClimb`, its ledger, keep rule, splits and noise floor) and Assay-lite (`skills/Assay`). It does not ship Errata, Vigil, STATVS, Bunker, the judgment layer or the label store: where this doc reads a signal from one of those, WorkOS has no such signal, and HillClimb reports the source as unavailable (`skills/HillClimb/SKILL.md` § In WorkOS).
 
 WorkOS does one job: it finds where you are, writes down where you want to be, and moves you from one to the other, checking every step. This doc is the single full statement of that loop and of the parts that run it. The thesis (`WorkOsThesis.md`) says why WorkOS exists. The Algorithm doc (`../Algorithm/AlgorithmSystem.md`) says how one run climbs. This doc says how the whole system climbs, and how it gets better at climbing. The HillClimb skill (`skills/HillClimb/`) is the front door that runs this loop on a named target, or on the steepest hill a survey of the records finds.
 

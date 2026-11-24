@@ -21,7 +21,7 @@
  *   - hooks/MemoryHealthGate.hook.ts (Stop chain — runs on every turn end)
  *   - CLI:  bun WORKOS/TOOLS/MemoryHealthCheck.ts
  *
- * WorkOS port of LifeOS 8.761.0 MemoryHealthCheck 1.3.19. Taken: write and refusal
+ * WorkOS port of upstream 8.761.0 MemoryHealthCheck 1.3.19. Taken: write and refusal
  * evidence read from the Cortex ledger (the retired memory-writes.jsonl is graded no
  * more, #1983), unreadable evidence reported instead of silent, the absolute arm of
  * the delta-surface check (#2180), the refused-writes check (#2097), the index-policy

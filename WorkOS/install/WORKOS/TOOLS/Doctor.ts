@@ -38,7 +38,7 @@
  *   bun Doctor.ts --hooks          # per-hook interpreter resolution (public issue #1600)
  *   bun Doctor.ts --reconcile      # hooks on disk vs registered (hooks/retired.json ignored)
  *
- * 1.0.10 (ported from upstream LifeOS 8.761.0, minus the capabilities WorkOS lacks): binaries
+ * 1.0.10 (ported from upstream 8.761.0, minus the capabilities WorkOS lacks): binaries
  * are run with --version under a timeout; the shadow-$HOME search is bounded to known roots;
  * a check that could not finish fails closed (broken, "UNKNOWN") and is never a pass.
  */

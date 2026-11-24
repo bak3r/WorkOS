@@ -4,7 +4,7 @@
     {
       "file": "PreToolGuard.hook.ts",
       "since": "2.0.0",
-      "reason": "Dispatcher for the guards below; DestructiveGuard and PublicPushGate are now registered on their own. Upstream LifeOS deleted it in 8.x."
+      "reason": "Dispatcher for the guards below; DestructiveGuard and PublicPushGate are now registered on their own. Upstream deleted it in 8.x."
     },
     {
       "file": "SystemFileGuard.hook.ts",
@@ -39,7 +39,7 @@
     {
       "file": "ConfigEvalFire.hook.ts",
       "since": "2.0.0",
-      "reason": "Spawned model inference on config edits; upstream LifeOS retired it in 8.x."
+      "reason": "Spawned model inference on config edits; upstream retired it in 8.x."
     },
     {
       "file": "LoopDetector.hook.ts",
@@ -50,7 +50,7 @@
     {
       "file": "SpendAuditor.hook.ts",
       "since": "2.0.0",
-      "reason": "Spawned a detached model-inference audit after heavy turns, which costs Bedrock tokens with no one reading the verdicts; upstream LifeOS retired it in 8.x."
+      "reason": "Spawned a detached model-inference audit after heavy turns, which costs Bedrock tokens with no one reading the verdicts; upstream retired it in 8.x."
     }
   ]
 }

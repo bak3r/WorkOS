@@ -51,14 +51,42 @@ export function newRunId(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-/** The current run id, starting one (and persisting it) when none is active. */
+/** Hours after which an open run counts as abandoned (WORKOS_RUN_MAX_AGE_HOURS, default 24). */
+function maxRunAgeHours(): number {
+  const h = Number(process.env.WORKOS_RUN_MAX_AGE_HOURS);
+  return Number.isFinite(h) && h > 0 ? h : 24;
+}
+
+/**
+ * Is this run id a timestamp older than the max run age? Only ids newRunId() made
+ * can age; a custom id (WORKOS_INSTALL_RUN=<name>) never goes stale. Same rule as
+ * install.sh run_is_stale.
+ */
+export function isStaleRun(id: string, now = Date.now()): boolean {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/.exec(id);
+  if (!m) return false;
+  const t = Date.parse(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`);
+  return Number.isFinite(t) && now - t > maxRunAgeHours() * 3_600_000;
+}
+
+/**
+ * The current run id, starting one (and persisting it) when none is active.
+ * With `create`, an open run older than the max run age is one an earlier install
+ * never closed: joining it would file this install's changes under that run, so one
+ * Rollback would undo both installs (2026-11-24: an October 1.0.0 run was still open
+ * at the 2.0.0 upgrade). That run's backup is left intact and a new run starts.
+ * Without `create` (show, finish, Rollback) the open run is returned as it is.
+ */
 export function currentRun(root: string, create = true): string | null {
   const env = process.env.WORKOS_INSTALL_RUN;
   if (env && RUN_ID_RE.test(env)) return env;
   const f = join(root, BACKUP_DIRNAME, CURRENT_RUN_FILE);
   if (existsSync(f)) {
     const id = readFileSync(f, "utf8").trim();
-    if (RUN_ID_RE.test(id)) return id;
+    if (RUN_ID_RE.test(id) && !(create && isStaleRun(id))) return id;
+    if (create && RUN_ID_RE.test(id)) {
+      console.error(`WorkOS: install run ${id} was never closed — leaving its backup as is and starting a new run.`);
+    }
   }
   if (!create) return null;
   const id = newRunId();

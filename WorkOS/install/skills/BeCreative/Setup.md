@@ -6,7 +6,7 @@ Status: bun ~/.claude/WORKOS/TOOLS/Inference.ts --help >/dev/null && echo ok · 
 
 BeCreative produces ideas that are not the model's most probable answer: it generates several distinct candidates in one pass and surfaces the strongest, or expands a small seed corpus into a larger, measurably more diverse one. Six of its seven intents run on the model you are already talking to, with nothing to set up. `SyntheticDataExpansion` also scores diversity with `Tools/Diversity.ts`, which is offline.
 
-The seventh, `TechnicalCreativity`, asks two Claude tiers for five solutions each and merges them, because one call's "diverse" set shares that call's defaults. Upstream LifeOS splits this across OpenAI and Anthropic; WorkOS runs Anthropic models only, so it splits across `--level max` and `--level high` through `WORKOS/TOOLS/Inference.ts`.
+The seventh, `TechnicalCreativity`, asks two Claude tiers for five solutions each and merges them, because one call's "diverse" set shares that call's defaults. Upstream splits this across OpenAI and Anthropic; WorkOS runs Anthropic models only, so it splits across `--level max` and `--level high` through `WORKOS/TOOLS/Inference.ts`.
 
 ## Fill in
 

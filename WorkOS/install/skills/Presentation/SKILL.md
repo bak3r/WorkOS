@@ -21,7 +21,7 @@ evals:
 
 **Contents:** Ideal State · Intent Routing · Data & Config · Gotchas · Examples
 
-Talks, the slides behind them, and sales pitches, in three modes. Ported from upstream LifeOS 8.761.0 with the HTML path only: WorkOS runs in a Linux sandbox with no Keynote, no image generation and no web egress, so upstream's Keynote, generated-art and media-sourcing lanes are left out.
+Talks, the slides behind them, and sales pitches, in three modes. Ported from upstream 8.761.0 with the HTML path only: WorkOS runs in a Linux sandbox with no Keynote, no image generation and no web egress, so upstream's Keynote, generated-art and media-sourcing lanes are left out.
 
 - **Lecture mode** is a talk the speaker reads aloud from start to finish. The text is the content and the slides are there for pacing: a new slide every 15 to 30 seconds keeps the room watching, and each visual either supports the sentence being read or stays quiet. The source is a talk file (`SCRIPT.md`); the HTML deck is regenerated from it.
 - **Deck mode** is a deck where the slides carry the argument and the speaker glances at short cues. One claim per slide, the archetype chosen from the content, built as an HTML deck on the install's template and served with speaker view.

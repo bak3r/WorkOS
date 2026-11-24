@@ -5,7 +5,7 @@
  *                              existing component is resolved physically (symlinks followed, `..`
  *                              taken from the real parent), never folded lexically first.
  *
- * Ported from upstream LifeOS 8.761.0 LIFEOS/TOOLS/lib/Boundary.ts, confinedPath only. Upstream's
+ * Ported from upstream 8.761.0 lib/Boundary.ts, confinedPath only. Upstream's
  * atomicWrite, withLock and redact live elsewhere in WorkOS (lib/atomic-write.ts) or are not ported.
  * @version 1.0.0
  */

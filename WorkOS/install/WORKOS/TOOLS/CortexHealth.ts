@@ -57,7 +57,7 @@ function validDispatchSummary(value: unknown): boolean {
 
 // `attempts` (primary inference calls; 2 after a timeout retry) is written by MemoryReviewer 1.4.9
 // and optional so rows written before it existed still validate. public issue #1907, @xmasyx
-// (ported from LifeOS 8.761.0 CortexHealth with the reviewer: without it every new run grades "invalid").
+// (ported from upstream 8.761.0 CortexHealth with the reviewer: without it every new run grades "invalid").
 const validAttempts = (row: Record<string, unknown>) => row.attempts === undefined || nonNegativeInteger(row.attempts);
 
 function validReviewerSuccess(row: unknown): row is Record<string, unknown> {

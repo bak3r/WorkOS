@@ -19,7 +19,7 @@ Diverse, non-obvious engineering solutions from two model tiers, each with trade
 
 ## Tool contract
 
-WorkOS runs Anthropic models only, so the split is across tiers, not vendors (upstream LifeOS pairs OpenAI with Anthropic here). Because two tiers share more defaults than two vendors, the second call is told to avoid the conventional approaches. Run both calls in parallel, each asking for 5 solutions with the five fields from the Ideal State:
+WorkOS runs Anthropic models only, so the split is across tiers, not vendors (upstream pairs OpenAI with Anthropic here). Because two tiers share more defaults than two vendors, the second call is told to avoid the conventional approaches. Run both calls in parallel, each asking for 5 solutions with the five fields from the Ideal State:
 
 ```bash
 bun ~/.claude/WORKOS/TOOLS/Inference.ts --level max --timeout 300000 \

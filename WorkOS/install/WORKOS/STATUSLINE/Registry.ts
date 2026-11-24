@@ -24,7 +24,7 @@ const renderRule = (state: State): string => renderLadder(state) ? separator(sta
 
 /**
  * The one table of rows, in frame order. A row removed here takes its section and producer with it.
- * Upstream LifeOS also draws location, weather, tide, life ratings, Synapse inputs, Claude and Codex usage, money,
+ * Upstream also draws location, weather, tide, life ratings, Synapse inputs, Claude and Codex usage, money,
  * cosmos and a quote; WorkOS has no data behind any of them (Bedrock reports no plan usage, and the sandbox has no
  * egress for weather), so those rows were not ported.
  */

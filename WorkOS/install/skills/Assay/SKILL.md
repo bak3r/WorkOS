@@ -20,7 +20,7 @@ description: "Assertion-first eval framework: code asserts, Claude judges, pass^
 
 An eval gives a model an input, then applies **assertions** to its output (Anthropic's definition). A case is `{id, prompt, assert:[...]}`. Each assertion is code (`Tools/Assertions.ts`, free) or a Claude judge (`Tools/Judge.ts`). Cases run several trials and report **pass^k** (every trial passed: the reliability metric and the regression gate) beside **pass@k** (any trial passed), with SEM and a 95% CI (`Tools/Stats.ts`). **Proof** applies the same tiers to one run's output before the principal sees it, and writes a receipt bound to its bytes.
 
-This is Assay-lite: a slim rebuild of upstream LifeOS 8.761.0 Assay for WorkOS, which absorbed the old Evals skill. Upstream also runs a judgment-layer question engine, judges from other vendors, image and video lanes, a label store for earned calibration, and send and hand-off gates. None is ported: WorkOS runs Claude only, through `WORKOS/TOOLS/Inference.ts`, and has no send tools to gate.
+This is Assay-lite: a slim rebuild of upstream 8.761.0 Assay for WorkOS, which absorbed the old Evals skill. Upstream also runs a judgment-layer question engine, judges from other vendors, image and video lanes, a label store for earned calibration, and send and hand-off gates. None is ported: WorkOS runs Claude only, through `WORKOS/TOOLS/Inference.ts`, and has no send tools to gate.
 
 Sources: [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents), [A Statistical Approach to Model Evaluations](https://www.anthropic.com/research/statistical-approach-to-model-evals), [develop tests](https://platform.claude.com/docs/en/docs/build-with-claude/develop-tests).
 

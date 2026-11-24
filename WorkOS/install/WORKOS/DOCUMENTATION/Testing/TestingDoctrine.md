@@ -11,7 +11,7 @@ version: 1.1.13
 
 > Testing is how the Work OS knows what it knows (`WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md`): the hill-climb only counts when each step is verified, and `bun test` is the canonical probe behind every ISC claim. An unverified gap-closure is a guess wearing a checkmark.
 
-> **TL;DR.** Tests for WorkOS run on `bun test`. The shared harness lives at `~/.claude/test/harness.ts` and exports zero-external-dep helpers (`paiTestEnv`, `tempDir`, `claudeFixture`, platform predicates, custom matchers). Tests live in a parallel `~/.claude/test/` tree that mirrors the source API surface — *not* co-located. Coverage is corpus-based: every documented hook, skill workflow, and tool surface gets at least one test file. No retries, no hardcoded ports, no time-based waits, no per-test timeouts. The ISA's `## Test Strategy` `tool: bun test path/to/foo.test.ts` is the canonical bridge from criterion to probe.
+> **TL;DR.** Tests for WorkOS run on `bun test`. The shared harness is specified at `test/harness.ts` under the config root (not included in this install — see Status) and exports zero-external-dep helpers (`paiTestEnv`, `tempDir`, `claudeFixture`, platform predicates, custom matchers). Tests live in a parallel `~/.claude/test/` tree that mirrors the source API surface — *not* co-located. Coverage is corpus-based: every documented hook, skill workflow, and tool surface gets at least one test file. No retries, no hardcoded ports, no time-based waits, no per-test timeouts. The ISA's `## Test Strategy` `tool: bun test path/to/foo.test.ts` is the canonical bridge from criterion to probe.
 
 > **Status:** the harness and `test/` tree described here are not included in this install. Treat this doctrine as the specification the system is converging on: `bun test` remains the canonical probe wherever a test exists, and the harness here is the Phase 1 skeleton (243 lines, 18 exports), not the full Bun-scale harness the table below describes as its inspiration.
 
@@ -31,7 +31,7 @@ The ISA already declares the test surface (Algorithm v6.3.0 doctrine: *"the ISA 
 
 | Pattern | Bun source | WorkOS adoption |
 |---------|-----------|--------------|
-| **Single shared harness, zero external deps** | `test/harness.ts` (1985 lines, 98 exports, header comment forbids external deps) | `~/.claude/test/harness.ts` |
+| **Single shared harness, zero external deps** | `test/harness.ts` (1985 lines, 98 exports, header comment forbids external deps) | `test/harness.ts` under the config root (not shipped) |
 | **Parallel `test/` tree mirroring API surface, not co-location** | `src/bun.js/api/spawn.zig` → `test/js/bun/spawn/*.test.ts` | `hooks/<Hook>.hook.ts` → `test/hooks/<Hook>.hook.test.ts` |
 | **Subprocess testing for CLI behavior** | 591 of 1526 test files spawn `bun` | `Inference.ts`, hook handlers tested via `Bun.spawn` (the former `TheRouter.hook.ts` suite was removed with the hook, 2026-07-11) |
 | **`tempDir` with `DisposableString`** | `test/harness.ts:263-294` | `paiTempDir(prefix, fileMap)` returns `using`-disposable |
@@ -62,7 +62,7 @@ The ISA already declares the test surface (Algorithm v6.3.0 doctrine: *"the ISA 
 
 These are non-negotiable. Violations get caught at the ISA `## Test Strategy` review or at the VERIFY-phase `Max` agent audit (same-vendor second look).
 
-### 1. The harness is `~/.claude/test/harness.ts`. Zero external deps.
+### 1. The harness is `test/harness.ts` under the config root (not shipped yet — see Status). Zero external deps.
 
 It must be importable before `bun install` runs. It depends only on Bun built-ins (`Bun`, `bun:test`, `node:fs`, `node:path`, `node:os`). Adding a dependency to `package.json` for the harness is a CRITICAL FAILURE.
 
@@ -255,7 +255,7 @@ This is strictly stronger than the example form — it catches `ANTHROPIC_API_KE
 
 ## bunfig.toml
 
-WorkOS's test config lives at `~/.claude/bunfig.toml` `[test]` section:
+WorkOS's test config is specified as the `[test]` section of `bunfig.toml` at the config root (not shipped yet — see Status):
 
 ```toml
 [test]
@@ -405,4 +405,4 @@ The checkbox is downstream of a real exit code, never upstream of it. A failing 
 - Bun test docs: <https://bun.sh/docs/cli/test>, <https://bun.sh/docs/test/writing>, <https://bun.sh/docs/test/lifecycle>, <https://bun.sh/docs/test/snapshots>, <https://bun.sh/docs/test/coverage>, <https://bun.sh/docs/test/mocks>
 - Bun's own test doctrine: <https://github.com/oven-sh/bun/blob/main/test/CLAUDE.md>
 - Bun harness source: <https://github.com/oven-sh/bun/blob/main/test/harness.ts>
-- Working scaffold (this ISA's deliverable): `~/.claude/test/harness.ts`, `~/.claude/test/tools/Inference.test.ts`, `~/.claude/bunfig.toml`
+- Working scaffold (this ISA's deliverable, not included in this install): `test/harness.ts`, `test/tools/Inference.test.ts` and `bunfig.toml` at the config root

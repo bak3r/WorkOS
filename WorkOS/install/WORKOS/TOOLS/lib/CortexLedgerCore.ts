@@ -45,7 +45,7 @@
  * flock cannot load, the fallback is an O_EXCL lockfile taken over after
  * LEDGER_FALLBACK_STALE_MS, far longer than any append or compaction holds it.
  *
- * WorkOS port of LifeOS 8.761.0 (Cortex 8.4.0). One addition: appendEventIf, a
+ * WorkOS port of upstream 8.761.0 (Cortex 8.4.0). One addition: appendEventIf, a
  * conditional append evaluated under the lock, which the adoption anchor
  * (CortexLedger.anchorUnledgered) needs to stay one-time under concurrency.
  */

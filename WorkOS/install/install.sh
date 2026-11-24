@@ -58,12 +58,20 @@ set -euo pipefail
 # Repo owner/name is parameterized — there is no default remote; pass
 # WORKOS_REPO=<owner/name> for a network install, or WORKOS_SRC=<dir> (preferred).
 WORKOS_REPO="${WORKOS_REPO:-OWNER/REPO}"
-WORKOS_FALLBACK_TAG="v1.0.0"
+WORKOS_FALLBACK_TAG="v2.0.1"
 if [ -n "${WORKOS_VERSION:-}" ]; then
   WORKOS_TAG="v${WORKOS_VERSION}"
 elif [ -n "${WORKOS_SRC:-}" ] || [ "$WORKOS_REPO" = "OWNER/REPO" ]; then
   # Local install (the normal path in a deny-all sandbox): no network probe.
-  # The tag is only a label here; the files come from WORKOS_SRC.
+  # The tag is only a label here; the files come from WORKOS_SRC, so read the
+  # version that source actually carries. The stamped fallback is only for a
+  # source with no VERSION marker (2026-11-24: a 2.0.0 source was announced as
+  # "Fetching WorkOS v1.0.0" because the label came from the old bootstrap).
+  SRC_VERSION=""
+  if [ -n "${WORKOS_SRC:-}" ] && [ -f "${WORKOS_SRC}/${WORKOS_RELEASE_SUBPATH:-WorkOS}/install/WORKOS/VERSION" ]; then
+    SRC_VERSION="$(tr -d '[:space:]' < "${WORKOS_SRC}/${WORKOS_RELEASE_SUBPATH:-WorkOS}/install/WORKOS/VERSION")"
+  fi
+  WORKOS_TAG="${WORKOS_TAG:-${SRC_VERSION:+v$SRC_VERSION}}"
   WORKOS_TAG="${WORKOS_TAG:-$WORKOS_FALLBACK_TAG}"
 elif [ -z "${WORKOS_TAG:-}" ]; then
   # 1) Redirect probe: github.com/<repo>/releases/latest 302s to .../releases/tag/vX.Y.Z
@@ -138,13 +146,31 @@ printf "  ${LIGHT_BLUE}━━━━━━━━━━━━━━━━━━━
 # <root>/.workos-backup/<run>/ and logged to <root>/WORKOS/install-manifest.jsonl, so
 # `bun Tools/Rollback.ts` can undo the whole install — including this script's part.
 # The run id is WORKOS_INSTALL_RUN, else .workos-backup/current-run, else a new one.
+# A current-run older than WORKOS_RUN_MAX_AGE_HOURS (default 24) is a run an earlier
+# install never closed: joining it would file this install's changes under that run,
+# so one Rollback would undo both installs (2026-11-24: a 1.0.0 run from October was
+# still open at the 2.0.0 upgrade). Such a run is left intact and a new one starts.
+# Same rule as Tools/lib/ledger.ts currentRun.
+run_is_stale() {
+  # Only timestamp ids (YYYY-MM-DDTHH-MM-SS...) can age; a custom id never goes stale.
+  case "$1" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*) ;; *) return 1 ;; esac
+  local hours="${WORKOS_RUN_MAX_AGE_HOURS:-24}" cutoff
+  cutoff="$(date -u -d "${hours} hours ago" +%Y-%m-%dT%H-%M-%S 2>/dev/null \
+    || date -u -v-"${hours}"H +%Y-%m-%dT%H-%M-%S 2>/dev/null || true)"
+  [ -n "$cutoff" ] || return 1
+  # Fixed-width UTC timestamps compare correctly as strings.
+  [[ "${1:0:19}" < "$cutoff" ]]
+}
 json_str() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
 ledger_init() {
   LEDGER_ROOT="$(dirname "$WORKOS_SKILLS_DIR")"
   local cur="$LEDGER_ROOT/.workos-backup/current-run"
   if [ -n "${WORKOS_INSTALL_RUN:-}" ]; then LEDGER_RUN="$WORKOS_INSTALL_RUN"
-  elif [ -f "$cur" ]; then LEDGER_RUN="$(tr -d '[:space:]' < "$cur")"
+  elif [ -f "$cur" ] && ! run_is_stale "$(tr -d '[:space:]' < "$cur")"; then LEDGER_RUN="$(tr -d '[:space:]' < "$cur")"
   else
+    if [ -f "$cur" ]; then
+      warn "Install run $(tr -d '[:space:]' < "$cur") was never closed — leaving its backup as is and starting a new run."
+    fi
     LEDGER_RUN="$(date -u +%Y-%m-%dT%H-%M-%S-000Z)"
     mkdir -p "$LEDGER_ROOT/.workos-backup" && printf '%s\n' "$LEDGER_RUN" > "$cur"
   fi
@@ -245,6 +271,17 @@ if [ -z "$WORKOS_SKILLS_DIR" ]; then
   else WORKOS_SKILLS_DIR="$HOME/.claude/skills"; fi
 fi
 info "Skills dir: ${BOLD}${WORKOS_SKILLS_DIR/#$HOME/~}${RESET}"
+# An existing install marker makes this an UPDATE, not a first install (Step 5).
+INSTALLED_VERSION=""
+INSTALLED_MARKER="$(dirname "$WORKOS_SKILLS_DIR")/WORKOS/VERSION"
+[ -f "$INSTALLED_MARKER" ] && INSTALLED_VERSION="$(tr -d '[:space:]' < "$INSTALLED_MARKER")"
+if [ -n "$INSTALLED_VERSION" ]; then
+  info "Installed WorkOS: ${BOLD}v${INSTALLED_VERSION}${RESET} → this run brings ${BOLD}${WORKOS_TAG}${RESET}"
+elif [ -z "${CLAUDE_CONFIG_DIR:-}" ]; then
+  # No marker and no explicit root: the default ~/.claude may be the wrong place
+  # (in a sandbox the real root is CLAUDE_CONFIG_DIR, often a workspace folder).
+  warn "No WorkOS install found here and CLAUDE_CONFIG_DIR is unset. If WorkOS lives elsewhere, stop and re-run with CLAUDE_CONFIG_DIR=<config root>."
+fi
 TARGET="$WORKOS_SKILLS_DIR/WorkOS"
 if [ -e "$TARGET" ]; then
   info "Existing WorkOS skill found — it will be backed up AFTER the new release is fetched."
@@ -371,15 +408,21 @@ case "$TARGET" in "${LEDGER_ROOT:-/nonexistent}"/*) SKILL_REL="${TARGET#"$LEDGER
 if [ -e "$TARGET" ]; then
   if [ "$DRY_RUN" = "1" ]; then
     run mv "$TARGET" "<config root>/.workos-backup/<run>/$SKILL_REL"
-  elif ledger_added_this_run "$SKILL_REL"; then
-    # Placed by this same install run moments ago — nothing of the user's to keep.
+  elif ledger_added_this_run "$SKILL_REL" && diff -rq -x '*.test.ts' "$SRC_SKILL" "$TARGET" >/dev/null 2>&1; then
+    # Placed by this same install run from this same source — an exact copy of what
+    # is about to be placed again, so deleting it loses nothing. Anything else is
+    # backed up: the ledger alone once deleted a real previous skill when a stale
+    # run made it look "added this run" (2026-11-24).
     rm -rf "$TARGET"
   else
+    SKILL_BACKUP_REL="$SKILL_REL"
+    # A second bootstrap in one run must not nest inside (or clobber) the first backup.
+    [ -e "$LEDGER_BACKUP/$SKILL_BACKUP_REL" ] && SKILL_BACKUP_REL="$SKILL_REL.$(date -u +%Y%m%dT%H%M%S)"
     warn "Existing WorkOS skill — moving ONLY it to .workos-backup/$LEDGER_RUN/ (your other files are untouched)."
-    mkdir -p "$(dirname "$LEDGER_BACKUP/$SKILL_REL")"
-    ledger_line move-to-backup "$SKILL_REL" ".workos-backup/$LEDGER_RUN/$SKILL_REL" dir "previous WorkOS skill"
-    mv "$TARGET" "$LEDGER_BACKUP/$SKILL_REL"
-    PLACEMENT_BACKUP="$LEDGER_BACKUP/$SKILL_REL"
+    mkdir -p "$(dirname "$LEDGER_BACKUP/$SKILL_BACKUP_REL")"
+    ledger_line move-to-backup "$SKILL_REL" ".workos-backup/$LEDGER_RUN/$SKILL_BACKUP_REL" dir "previous WorkOS skill"
+    mv "$TARGET" "$LEDGER_BACKUP/$SKILL_BACKUP_REL"
+    PLACEMENT_BACKUP="$LEDGER_BACKUP/$SKILL_BACKUP_REL"
   fi
 fi
 
@@ -451,6 +494,15 @@ done
 
 # ─── Step 5: Hand off to the agentic setup ───────────────────────
 step "5/5  Onboarding"
+if [ -n "$INSTALLED_VERSION" ]; then
+  # An update: the new skill is placed, and the rest is the Update workflow (overlay,
+  # hooks, settings, scaffold, verify). Launching Setup here would re-run onboarding.
+  [ "$DRY_RUN" = "1" ] && { info "[DRY-RUN] Would hand off to /WorkOS update (v${INSTALLED_VERSION} → ${WORKOS_TAG})"; exit 0; }
+  echo
+  success "New WorkOS skill placed (v${INSTALLED_VERSION} → ${WORKOS_TAG}). Your install is not updated yet."
+  printf "  ${BOLD}Continue with:${RESET}  ${LIGHT_BLUE}/WorkOS update${RESET}  ${DIM}(from its step 3 — the overlay; this run: %s)${RESET}\n\n" "$LEDGER_RUN"
+  exit 0
+fi
 if [ "$DRY_RUN" = "1" ]; then info "[DRY-RUN] Would launch /WorkOS setup"; exit 0; fi
 echo
 success "WorkOS is installed. Now let's set it up for YOU."

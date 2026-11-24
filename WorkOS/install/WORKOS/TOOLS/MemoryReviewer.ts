@@ -30,7 +30,7 @@
  *   bun MemoryReviewer.ts test                       (synthetic smoke test)
  *   bun MemoryReviewer.ts test --live                (real inference smoke — costs subscription)
  *
- * WorkOS port of LifeOS 8.761.0 MemoryReviewer 1.4.9. Taken: failed items parked
+ * WorkOS port of upstream 8.761.0 MemoryReviewer 1.4.9. Taken: failed items parked
  * with their payload and replayed (ParkedReplay), per-kind auto-apply thresholds,
  * the stale-base fingerprint, consolidation intent, one timeout retry at 300 s,
  * the multi-event exchange fix (#2238), dry runs that leave nothing behind (#2073),

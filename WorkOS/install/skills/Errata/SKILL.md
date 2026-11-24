@@ -17,7 +17,7 @@ evals:
 
 The complaint ledger. Errata keeps one JSON line per moment the principal was unhappy with WorkOS or one of its skills (or pleased with it), in their own words at capture, enriched later by a model, never rewritten in place: corrections and enrichments are appended patches that fold onto the entry when it is read. The ledger lives in `WORKOS/USER/ERRATA/errata-YYYY-MM.jsonl` and the engine in `WORKOS/ERRATA/` (`Errata.ts` is the CLI). Its readers are HillClimb (the survey's pain signal and the before-and-after `verify`), Development's Checkup, and SuggestSkills.
 
-Errata-lite, ported from upstream LifeOS 8.761.0's ledger (Schema.ts and Store.ts unchanged in shape, so a ledger can move between the two). Not ported: capture from the conversation by a hook, trained triage into Upgrades records, mining past sessions, and sending feedback upstream. Entries are filed only through `/er`. Because WorkOS has no output ledger, a skill's complaint rate is complaints per Skill-tool call (`WORKOS/MEMORY/SKILLS/execution.jsonl`), and a complaint is tied to a skill only when `--skill` names it.
+Errata-lite, ported from upstream 8.761.0's ledger (Schema.ts and Store.ts unchanged in shape, so a ledger can move between the two). Not ported: capture from the conversation by a hook, trained triage into Upgrades records, mining past sessions, and sending feedback upstream. Entries are filed only through `/er`. Because WorkOS has no output ledger, a skill's complaint rate is complaints per Skill-tool call (`WORKOS/MEMORY/SKILLS/execution.jsonl`), and a complaint is tied to a skill only when `--skill` names it.
 
 ## Ideal State
 

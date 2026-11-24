@@ -70,7 +70,7 @@ These files are Tier D AND have no other writer. {{PRINCIPAL_NAME}} writes direc
 | `USER/TELOS/TELOS.md` + sub-files (GOALS, MISSION, STRATEGIES, NARRATIVES, CHALLENGES, WRONG, MODELS), work goals | Goal and belief revision is deliberate work; planned P2 TELOS Reviewer will propose changes via the `Telos` skill Update workflow, not direct edit |
 | `USER/CONFIG/memory-review.json` | Cadence config for the memory system itself; principal-curated to avoid recursive auto-tuning |
 | `USER/CONFIG/CREDENTIALS/**` | Security boundary — credentials never autonomic |
-| `USER/SECURITY/SecurityPosture.md` | Manually curated documentation |
+| `USER/SECURITY/**` (e.g. a security-posture doc, if you keep one; only the README ships) | Manually curated documentation |
 | `USER/INTEGRATIONS/*.yaml` | Per-skill config; principal-curated |
 | `USER/WORK/config.yaml` | Work-hub config; principal-curated |
 | `USER/CUSTOMIZATIONS/**` | Per-skill customizations; principal-curated |

@@ -418,3 +418,76 @@ describe("OverlaySystem upgrade", () => {
     expect(Object.fromEntries(Object.entries(after).filter(([k]) => !k.includes("manifest")))).toEqual(Object.fromEntries(Object.entries(want).filter(([k]) => !k.includes("manifest"))));
   });
 });
+
+const read = (root: string, rel: string) => readFileSync(join(root, rel), "utf8");
+
+describe("stale install runs (2026-11-24 upgrade incident)", () => {
+  const OLD_RUN = "2026-10-22T11-34-21-523Z";
+
+  test("isStaleRun ages only timestamp ids", async () => {
+    const { isStaleRun } = await import("./lib/ledger");
+    const now = Date.parse("2026-11-24T12:00:00Z");
+    expect(isStaleRun(OLD_RUN, now)).toBe(true);
+    expect(isStaleRun("2026-11-24T11-00-00-000Z", now)).toBe(false);
+    expect(isStaleRun("my-custom-run", now)).toBe(false);
+  });
+
+  test("a writing tool does not join a run an earlier install left open", async () => {
+    const { currentRun } = await import("./lib/ledger");
+    const root = mk("stale-ts");
+    put(root, ".workos-backup/current-run", OLD_RUN + "\n");
+    expect(currentRun(root, false)).toBe(OLD_RUN); // show/finish/Rollback still see it
+    const run = currentRun(root)!;
+    expect(run).not.toBe(OLD_RUN);
+    expect(read(root, ".workos-backup/current-run").trim()).toBe(run);
+  });
+
+  test("InstallRun start refuses a root with no WorkOS in it", () => {
+    const root = mk("no-workos");
+    const r = Bun.spawnSync(["bun", join(import.meta.dir, "InstallRun.ts"), "start", "--config-root", root]);
+    expect(r.exitCode).toBe(1);
+    expect(existsSync(join(root, ".workos-backup"))).toBe(false);
+  });
+
+  test("bootstrap over a stale run backs the old skill up, starts a new run, hands off to update", () => {
+    const root = mk("stale-sh");
+    const src = mk("src");
+    put(src, "WorkOS/SKILL.md", "new skill\n");
+    put(src, "WorkOS/install/WORKOS/VERSION", "2.0.0\n");
+    put(root, "WORKOS/VERSION", "1.0.0\n");
+    put(root, "skills/WorkOS/SKILL.md", "old skill\n");
+    put(root, ".workos-backup/current-run", OLD_RUN + "\n");
+    // The October run "added" skills/WorkOS — exactly what made the old bootstrap rm -rf it.
+    put(root, "WORKOS/install-manifest.jsonl",
+      JSON.stringify({ ts: "2026-10-22T11:34:21Z", run: OLD_RUN, tool: "install.sh", action: "add", path: "skills/WorkOS", kind: "dir" }) + "\n");
+    const r = Bun.spawnSync(["bash", join(import.meta.dir, "..", "install", "install.sh")], {
+      env: { ...process.env, WORKOS_SRC: src, CLAUDE_CONFIG_DIR: root, CLAUDECODE: "1", WORKOS_INSTALL_RUN: "" },
+    });
+    const out = r.stdout.toString() + r.stderr.toString();
+    expect(r.exitCode).toBe(0);
+    expect(out).toContain("Fetching WorkOS v2.0.0");
+    expect(out).toContain("/WorkOS update");
+    const run = read(root, ".workos-backup/current-run").trim();
+    expect(run).not.toBe(OLD_RUN);
+    expect(read(root, `.workos-backup/${run}/skills/WorkOS/SKILL.md`)).toBe("old skill\n");
+    expect(read(root, "skills/WorkOS/SKILL.md")).toBe("new skill\n");
+  });
+
+  test("bootstrap re-run in the same run only deletes an exact copy of the source", () => {
+    const root = mk("rerun-sh");
+    const src = mk("src2");
+    put(src, "WorkOS/SKILL.md", "new skill\n");
+    put(src, "WorkOS/install/WORKOS/VERSION", "2.0.0\n");
+    put(root, "WORKOS/VERSION", "1.0.0\n");
+    put(root, "skills/WorkOS/SKILL.md", "edited after placement\n");
+    const run = new Date().toISOString().replace(/[:.]/g, "-");
+    put(root, ".workos-backup/current-run", run + "\n");
+    put(root, "WORKOS/install-manifest.jsonl",
+      JSON.stringify({ ts: "x", run, tool: "install.sh", action: "add", path: "skills/WorkOS", kind: "dir" }) + "\n");
+    const r = Bun.spawnSync(["bash", join(import.meta.dir, "..", "install", "install.sh")], {
+      env: { ...process.env, WORKOS_SRC: src, CLAUDE_CONFIG_DIR: root, CLAUDECODE: "1", WORKOS_INSTALL_RUN: "" },
+    });
+    expect(r.exitCode).toBe(0);
+    expect(read(root, `.workos-backup/${run}/skills/WorkOS/SKILL.md`)).toBe("edited after placement\n");
+  });
+});

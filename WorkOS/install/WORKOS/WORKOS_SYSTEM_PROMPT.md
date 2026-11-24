@@ -5,7 +5,7 @@ convention: pai-freshness-v1
 last_reviewed: 2026-05-22T08:05:00Z
 last_reviewed_by: {{PRINCIPAL_NAME}}
 version: 4.0.0
-upstream_base: LifeOS system prompt v4.4.3 (LifeOS 8.761.0)
+upstream_base: system prompt v4.4.3 (upstream 8.761.0)
 ---
 
 # WorkOS Constitutional Rules

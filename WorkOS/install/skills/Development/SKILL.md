@@ -16,7 +16,7 @@ evals:
 
 The thin actor between an ISA and its code. The ISA holds the rigor: what done means, every criterion, every criterion's eval. Assay is how each criterion is verified, and the only eval system a build may use, at the cheapest honest tier: a code assert when the criterion is literal, a judged suite case when it needs reading, the principal for taste. Development builds, tests and modifies until the code and the ISA agree.
 
-**In WorkOS.** Ported from upstream LifeOS 8.761.0. WorkOS deploys nothing and ships no release tool (`ReleaseRecord.ts`, CfEnv), no cross-vendor code review (`Review.ts`), no router, no row engine (Bunker) and no Vigil or Achilles; Errata is the lite ledger (`skills/Errata`). Work repos ship through their own merge requests and pipelines; the independent look at a change is a fresh Opus agent that did not write it (§ Safety gates); Test Strategy rows run by their own commands (`Intents/Test.md`); and Checkup reads pipelines, merge requests and issues through the read-only GitLab and Jira tools.
+**In WorkOS.** Ported from upstream 8.761.0. WorkOS deploys nothing and ships no release tool (`ReleaseRecord.ts`, CfEnv), no cross-vendor code review (`Review.ts`), no router, no row engine (Bunker) and no Vigil or Achilles; Errata is the lite ledger (`skills/Errata`). Work repos ship through their own merge requests and pipelines; the independent look at a change is a fresh Opus agent that did not write it (§ Safety gates); Test Strategy rows run by their own commands (`Intents/Test.md`); and Checkup reads pipelines, merge requests and issues through the read-only GitLab and Jira tools.
 
 ## Ideal State
 

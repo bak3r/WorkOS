@@ -30,7 +30,7 @@ Rows marked *(prose)* are not yet carried by `hooks/AlgorithmNudge.hook.ts`: the
 
 ## Source provenance
 
-Ported from upstream LifeOS Algorithm 8.45.0 into WorkOS Algorithm 8.45.0 (see `changelog.md`); the current Algorithm version is in `LATEST`. The sixteen completion criteria and everyday execution contracts remain in the resident file.
+Ported from upstream Algorithm 8.45.0 into WorkOS Algorithm 8.45.0 (see `changelog.md`); the current Algorithm version is in `LATEST`. The sixteen completion criteria and everyday execution contracts remain in the resident file.
 
 ## Telemetry & records
 

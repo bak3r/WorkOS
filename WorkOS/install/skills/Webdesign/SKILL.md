@@ -54,7 +54,7 @@ Verification and the quality loop:
 
 - Browser evidence uses Interceptor's `verify` bundle, including all its isolation and safety requirements. An unavailable verifier leaves the result explicitly unverified.
 - Capture the rendered page with `Tools/VerifyDesign.ts` or `skills/Interceptor/Tools/Capture.sh`.
-- WorkOS has no ArtDirection critique panel (upstream LifeOS scores the capture with a cross-vendor panel). Read each captured PNG and judge it against `References/FrontendDesignPhilosophy.md` and the intent's Ideal State: a named register, none of the forbidden defaults, balance, hierarchy, nothing overflowing. Fix the named defects and capture again until it passes or the shortfall is reported.
+- WorkOS has no ArtDirection critique panel (upstream scores the capture with a cross-vendor panel). Read each captured PNG and judge it against `References/FrontendDesignPhilosophy.md` and the intent's Ideal State: a named register, none of the forbidden defaults, balance, hierarchy, nothing overflowing. Fix the named defects and capture again until it passes or the shortfall is reported.
 - In a headless sandbox with no browser, the code checks are the evidence, labelled as not a browser check, and the hand-back says the visual pass is still owed and what to look at.
 - Public-site builds and launch completion also load `References/SiteLaunch.md`; component edits and standalone mockups do not require registration.
 

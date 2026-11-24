@@ -151,7 +151,7 @@ Tab painting was consolidated into one hook, `TabState.hook.ts`, on 2026-07-10 �
 
 ### Color Constants
 
-ALL run-state colors and glyphs live in `WORKOS/TOOLS/ascent.ts` — `ASCENT[state].tabBg/tabFg` (dark register) and `color` (brights), plus `TAB_ACTIVITY` for the ⚡/⏳/✅/💤 glyphs. Never restate the hex values in a consumer or in docs; `hooks/TabTitleComposition.test.ts` pins the staging. `hooks/lib/tab-constants.ts` keeps only `ACTIVE_TAB_BG` (#002B80), the idle entry, and retired legacy entries for stale state files.
+ALL run-state colors and glyphs live in `WORKOS/TOOLS/ascent.ts` — `ASCENT[state].tabBg/tabFg` (dark register) and `color` (brights), plus `TAB_ACTIVITY` for the ⚡/⏳/✅/💤 glyphs. Never restate the hex values in a consumer or in docs; `TabTitleComposition.test.ts` (not in the release payload) pins the staging. `hooks/lib/tab-constants.ts` keeps only `ACTIVE_TAB_BG` (#002B80), the idle entry, and retired legacy entries for stale state files.
 
 **Key Point:** `active_bg` is always set to `#002B80` (dark blue). State colors are applied to `inactive_bg` only.
 

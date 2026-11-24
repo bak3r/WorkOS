@@ -21,7 +21,7 @@ bun ~/.claude/WORKOS/ERRATA/Errata.ts enrich [--limit N]          # Claude low t
 bun ~/.claude/WORKOS/ERRATA/Errata.ts list --json                  # enriched entries carry enrichment.class
 ```
 
-Upstream LifeOS also runs a trained triage that files Upgrades records on its own; WorkOS does not, so triage is the summary above and the principal's decision.
+Upstream also runs a trained triage that files Upgrades records on its own; WorkOS does not, so triage is the summary above and the principal's decision.
 
 ## Evals
 

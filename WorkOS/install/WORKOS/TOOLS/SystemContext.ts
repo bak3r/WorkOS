@@ -1,4 +1,4 @@
-/** Live, read-only discovery for system context. No index cache or model calls. Ported from upstream LifeOS 8.761.0 in WorkOS 2.0.0 (the Unify skill's input set). */
+/** Live, read-only discovery for system context. No index cache or model calls. Ported from upstream 8.761.0 in WorkOS 2.0.0 (the Unify skill's input set). */
 import { readFileSync, readdirSync, realpathSync, statSync, existsSync } from 'node:fs';
 import { resolve, join, relative, isAbsolute, sep } from 'node:path';
 import { createHash } from 'node:crypto';

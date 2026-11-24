@@ -631,7 +631,9 @@ export async function proposeHealingFixture(c: HypothesisCandidate, log: string[
     log.push("hook-replay harness not present in this install — skipping healing-fixture proposal");
     return null;
   }
-  const { runFixture } = await import("../../test/lib/hook-replay");
+  // Import by the computed path, never a literal specifier: a literal one is resolved
+  // at build/typecheck time, so `bun build` failed on every install without test/.
+  const { runFixture } = await import(replayPath);
   const evidence = [
     `Failure class: ${c.class_id}`,
     `Recurrence: ${c.cluster_size} events`,

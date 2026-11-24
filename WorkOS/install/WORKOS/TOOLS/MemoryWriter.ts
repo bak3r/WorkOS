@@ -33,7 +33,7 @@
  * rendered document, the file write is a byte copy of it, and a failed append
  * aborts the write untouched. CortexLedger.ts folds/verifies/heals.
  *
- * WorkOS port of LifeOS 8.761.0 MemoryWriter 1.3.19 (from WorkOS 1.0.x, which
+ * WorkOS port of upstream 8.761.0 MemoryWriter 1.3.19 (from WorkOS 1.0.x, which
  * logged writes to OBSERVABILITY/memory-writes.jsonl). That log is retired: the
  * ledger is the one record of accepted and refused writes, and its readers
  * (MemoryDeltaSurface, MemoryInsights, MemoryHealthCheck) read the ledger. Two
