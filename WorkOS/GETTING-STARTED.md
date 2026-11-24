@@ -86,7 +86,7 @@ The one hard requirement is **bun ≥ 1.2.21**: hooks and tools parse YAML with 
 
 ## jq — JSON in shell hooks
 
-**Powers:** the shell hooks that parse JSON, including the command-compression rewrite.
+**Powers:** the shell hooks that parse JSON.
 
 - **Install:** `brew install jq` (Linux: `sudo apt-get install jq`)
 - **Auth:** none.
@@ -99,7 +99,6 @@ These are narrower — tied to one terminal, one platform, or one opt-in workflo
 
 | Tool | Powers | Install |
 |------|--------|---------|
-| `rtk` | Transparent command compression on the Bash pre-tool hook — compresses what the model *watches* (git status, test and build runs), never what it *reads*. Skips silently without it (also needs `jq`). | `brew install rtk`, or take the release binary. **Do not run `rtk init -g`**: that installs rtk's own global hook alongside WorkOS's `ContextReduction.hook.sh` and you get two rewriters on the same command. rtk also keeps a local `history.db` of proxied commands, and its telemetry is opt-in — `rtk telemetry disable` makes that explicit. |
 | `kitten` | Terminal tab naming and the retro banner, on the kitty terminal only. | ships with kitty |
 
 ## Optional npm dependencies

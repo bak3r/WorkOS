@@ -1,4 +1,4 @@
-# WorkOS 1.0.2 — the work operating system
+# WorkOS 2.0.0 — the work operating system
 
 > **WorkOS is the AI harness that moves your work from current state to ideal state — an intent engineering platform. The DA is the principal's AI assistant.**
 > Canonical thesis: `WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md`. Everyone running WorkOS names their own DA.
@@ -7,7 +7,7 @@
 # Sandbox opt-in (`ActivateImports.ts --with-system-prompt`): imports the constitution for plain `claude` sessions (sbx TUI); the `workos` launcher then skips its own copy.
 # @WORKOS/WORKOS_SYSTEM_PROMPT.md
 # Identity @-imports below are activated by the agentic `/WorkOS setup` (via `skills/WorkOS/Tools/ActivateImports.ts`) once the principal scaffolds USER files.
-# Claude Code does not follow transitive @-imports, so each must be listed here directly.
+# Claude Code follows nested @-imports only to a limited depth; identity files are listed here directly so the startup set is explicit in one place (upstream public issue #2233, @jacobo-ortiz).
 # @WORKOS/USER/TELOS/PRINCIPAL_TELOS.md
 # @WORKOS/USER/PRINCIPAL/PRINCIPAL_IDENTITY.md
 # @WORKOS/USER/DIGITAL_ASSISTANT/DA_IDENTITY.md
@@ -18,7 +18,7 @@
 
 Constitutional rules, the unified response format, verification doctrine, hard prohibitions, security protocol, and operational rules all live in the system prompt: `WORKOS/WORKOS_SYSTEM_PROMPT.md`. The `workos` launcher appends it to Claude Code's system prompt; a sandbox install can instead @-import it above, so plain `claude` sessions get it too (never both). When this file and the system prompt disagree, the system prompt wins.
 
-This file is the **routing table** — it tells you where everything lives. The only mandatory startup `@`-import shipped with public WorkOS is `ARCHITECTURE_SUMMARY`. The five identity files (`PRINCIPAL_TELOS`, `PRINCIPAL_IDENTITY`, `DA_IDENTITY`, `PROJECTS`, `OPERATIONAL_RULES`) are commented out above — the agentic `/WorkOS setup` (via `skills/WorkOS/Tools/ActivateImports.ts`) uncomments them once the principal's USER scaffold is populated. Claude Code does not follow transitive `@`-imports from inside imported files, so each identity file must be listed here at top level. Everything below is **on-demand** lookup. Paths are relative to `~/.claude/` unless noted.
+This file is the **routing table** — it tells you where everything lives. The only mandatory startup `@`-import shipped with public WorkOS is `ARCHITECTURE_SUMMARY`. The five identity files (`PRINCIPAL_TELOS`, `PRINCIPAL_IDENTITY`, `DA_IDENTITY`, `PROJECTS`, `OPERATIONAL_RULES`) are commented out above — the agentic `/WorkOS setup` (via `skills/WorkOS/Tools/ActivateImports.ts`) uncomments them once the principal's USER scaffold is populated. Claude Code follows nested `@`-imports only to a limited depth; identity files are listed here directly so the startup set is explicit in one place. Everything below is **on-demand** lookup. Paths are relative to `~/.claude/` unless noted.
 
 ## WorkOS System (paths under `WORKOS/DOCUMENTATION/` unless noted)
 
@@ -32,7 +32,7 @@ This file is the **routing table** — it tells you where everything lives. The 
 - Skills — `Skills/SkillSystem.md`
 - Hooks — `Hooks/HookSystem.md`
 - Agents — `Agents/AgentSystem.md`
-- Security — `Security/README.md`
+- Security — `Security/README.md` (defensive architecture) · conceptual model `Security/SecurityModel.md`
 - Notifications — `Notifications/NotificationSystem.md`
 - Observability — `Observability/ObservabilitySystem.md`
 - Ledger (change tracking: versioning, update registry, integrity gate, deploy events) — `Ledger/LedgerSystem.md`
@@ -82,4 +82,4 @@ Populated during `/WorkOS setup`. Typical layout:
 
 ## Project-Specific Rules
 
-Drop project-scoped CLAUDE.md files alongside each project (e.g. `~/code/your-project/CLAUDE.md`) for rules that only apply inside that codebase. Claude Code merges them with this global file when sessions start in that directory. Use them for invariants that bite repeatedly — "always use the X helper, never bare Y" — so the rule lives next to the code it governs.
+A project's own `CLAUDE.md` loads only when the session starts in that directory. `workos` changes to the install root by default, so launch with `workos --local` from the project directory to get it (upstream public issue #2176, @selinium).

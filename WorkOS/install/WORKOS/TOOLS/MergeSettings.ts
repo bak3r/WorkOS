@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
 
 /**
+ * @version 1.3.17
  * Deep-merges a system settings JSON value with a user overlay.
  * Objects merge recursively while preserving system key order.
  * New user-only object keys are appended after system keys at each level.
  * Scalars and arrays replace by default, with user values winning conflicts.
  * Arrays can opt into append via { "__merge": "append", "values": [...] }.
+ * Any key can be dropped from the output via { "__merge": "remove" } in the overlay.
  * Merge annotations are consumed and never emitted in the output.
  */
 
@@ -15,6 +17,7 @@ import path from "node:path";
 import os from "node:os";
 import { atomicWriteText } from "./lib/atomic-write";
 import { homedir } from "node:os";
+import { getClaudeDir, workosPath } from "./Paths"; // public issue #1974 @sabo961, PR #1918 @PigLardLord
 
 /**
  * Snapshot of the last merge output, written alongside every successful
@@ -23,23 +26,18 @@ import { homedir } from "node:os";
  * edits that haven't been merged yet never read as "drift" and never get
  * clobbered back into the overlay (the 2026-07-11 hooks-BPE incident).
  */
-export const MERGE_SNAPSHOT_PATH = path.join(
-  os.homedir(),
-  ".claude",
-  "WORKOS",
-  "MEMORY",
-  "STATE",
-  "settings-merge-snapshot.json",
-);
+export const MERGE_SNAPSHOT_PATH = workosPath("MEMORY", "STATE", "settings-merge-snapshot.json");
 
 type CliMode =
   | { kind: "output"; path: string }
   | { kind: "check"; path: string };
 
-type CliOptions = {
+export type CliOptions = {
   systemPath: string;
   userPath: string;
   mode: CliMode;
+  /** --allow-hook-loss: write even when the merge drops hooks the live file still registers. */
+  allowHookLoss?: boolean;
 };
 
 type Difference = {
@@ -69,8 +67,13 @@ export function isAppendAnnotation(value: any): value is AppendAnnotation {
   );
 }
 
+/** `{ "__merge": "remove" }` in the overlay drops the key from the output, the system layer's value included. */
+export function isRemoveAnnotation(value: any): boolean {
+  return isObjectRecord(value) && value.__merge === "remove" && Object.keys(value).length === 1;
+}
+
 function hasInvalidMergeAnnotation(value: any): boolean {
-  return isObjectRecord(value) && hasOwnKey(value, "__merge") && !isAppendAnnotation(value);
+  return isObjectRecord(value) && hasOwnKey(value, "__merge") && !isAppendAnnotation(value) && !isRemoveAnnotation(value);
 }
 
 function cloneJsonValue(value: any): any {
@@ -95,7 +98,15 @@ export function applyArrayMerge(systemValue: any, userValue: AppendAnnotation): 
   }
 
   if (Array.isArray(systemValue)) {
-    return [...cloneJsonValue(systemValue), ...cloneJsonValue(userValue.values)];
+    // An appended value the system layer already carries adds nothing; keep only the first copy.
+    const seen = new Set(systemValue.map((item) => JSON.stringify(item)));
+    const added = userValue.values.filter((item) => {
+      const key = JSON.stringify(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return [...cloneJsonValue(systemValue), ...cloneJsonValue(added)];
   }
 
   throw new Error(
@@ -143,6 +154,68 @@ export function guardPermissionOverlays(system: any, user: any, merged: any): st
   return warnings;
 }
 
+/**
+ * Keys the INSTALLER writes straight into the merged settings.json (InstallHooks, the statusline
+ * and spinner deployers) rather than into either source layer. The shipped settings.system.json
+ * omits them on purpose, so a regeneration from system ⊕ user must carry them forward from the
+ * existing output or the first SessionStart after the user creates an overlay silently removes
+ * every hook (in-family audit, round 15, 7.52.0 cut). A layer that DOES define the key wins.
+ */
+export const INSTALLER_OWNED_KEYS = ["hooks", "statusLine", "spinnerVerbs", "spinnerTipsOverride"] as const;
+
+/**
+ * system ⊕ user, plus the installer-owned keys of `existing` that neither layer defines.
+ *
+ * `hooks` is special (local patch 2026-11-24, upstream #2820 / #2829): when the overlay defines
+ * it but the system layer does not, the overlay is merged ON TOP of the installed hooks in
+ * `existing` instead of replacing them. Before this, one backported hook edit made the overlay
+ * own `hooks`, and the next regeneration kept only the events the overlay listed.
+ */
+export function mergeSettingsPreserving(system: any, user: any, existing: any): any {
+  const merged = mergeSettings(system, user);
+  if (existing && typeof existing === "object") {
+    for (const k of INSTALLER_OWNED_KEYS) {
+      const inSystem = isObjectRecord(system) && k in system;
+      const inUser = isObjectRecord(user) && k in user;
+      if (!inSystem && !inUser && k in existing) {
+        merged[k] = existing[k];
+      } else if (k === "hooks" && !inSystem && inUser && isObjectRecord(existing[k]) && isObjectRecord(user[k])) {
+        merged[k] = mergeSettings(existing[k], user[k]);
+      }
+    }
+  }
+  return merged;
+}
+
+/**
+ * Every hook registration in a settings object, as "event | matcher | command" strings.
+ * A hook event that is not an array (an unresolved annotation) contributes nothing, so a
+ * merge that turns an event into an object counts as losing all of its hooks.
+ */
+export function hookRegistrations(settings: any): Set<string> {
+  const out = new Set<string>();
+  const hooks = isObjectRecord(settings) ? settings.hooks : undefined;
+  if (!isObjectRecord(hooks)) return out;
+  for (const [event, groups] of Object.entries(hooks)) {
+    if (!Array.isArray(groups)) continue;
+    for (const group of groups) {
+      const matcher = isObjectRecord(group) && typeof group.matcher === "string" ? group.matcher : "";
+      const list = isObjectRecord(group) && Array.isArray(group.hooks) ? group.hooks : [];
+      for (const h of list) {
+        const cmd = isObjectRecord(h) ? (h.command ?? h.url ?? h.prompt ?? JSON.stringify(h)) : JSON.stringify(h);
+        out.add(`${event} | ${matcher} | ${cmd}`);
+      }
+    }
+  }
+  return out;
+}
+
+/** Hook registrations in `existing` that `merged` no longer carries. */
+export function lostHookRegistrations(existing: any, merged: any): string[] {
+  const after = hookRegistrations(merged);
+  return [...hookRegistrations(existing)].filter((h) => !after.has(h));
+}
+
 export function mergeSettings(system: any, user: any): any {
   if (isAppendAnnotation(user)) {
     return applyArrayMerge(system, user);
@@ -159,6 +232,7 @@ export function mergeSettings(system: any, user: any): any {
 
     for (const key of Object.keys(system)) {
       if (hasOwnKey(user, key)) {
+        if (isRemoveAnnotation(user[key])) continue;
         merged[key] = mergeSettings(system[key], user[key]);
       } else {
         merged[key] = cloneJsonValue(system[key]);
@@ -166,11 +240,25 @@ export function mergeSettings(system: any, user: any): any {
     }
 
     for (const key of Object.keys(user)) {
+      if (isRemoveAnnotation(user[key])) continue;
       if (!hasOwnKey(system, key)) {
         merged[key] = mergeSettings(undefined, user[key]);
       }
     }
 
+    return merged;
+  }
+
+  // A user-only object (no system counterpart) still has to resolve the annotations nested
+  // inside it. Cloning it whole copied { "__merge": "append" } wrappers into settings.json,
+  // and Claude Code ignored every hook event they sat under. Local patch 2026-11-24,
+  // upstream #2886 / #2891.
+  if (system === undefined && isObjectRecord(user)) {
+    const merged: Record<string, any> = {};
+    for (const key of Object.keys(user)) {
+      if (isRemoveAnnotation(user[key])) continue;
+      merged[key] = mergeSettings(undefined, user[key]);
+    }
     return merged;
   }
 
@@ -492,7 +580,7 @@ function formatErrorMessage(error: unknown): string {
 function usage(): string {
   return [
     "Usage:",
-    "  bun MergeSettings.ts --system SYSTEM --user USER --output OUTPUT",
+    "  bun MergeSettings.ts --system SYSTEM --user USER --output OUTPUT [--allow-hook-loss]",
     "  bun MergeSettings.ts --system SYSTEM --user USER --check EXISTING",
   ].join("\n");
 }
@@ -502,6 +590,7 @@ function parseArgs(argv: string[]): CliOptions {
   let userPath: string | undefined;
   let outputPath: string | undefined;
   let checkPath: string | undefined;
+  let allowHookLoss = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
@@ -531,6 +620,8 @@ function parseArgs(argv: string[]): CliOptions {
       }
       checkPath = value;
       index += 1;
+    } else if (flag === "--allow-hook-loss") {
+      allowHookLoss = true;
     } else {
       throw new Error(`Unknown flag: ${flag}\n${usage()}`);
     }
@@ -555,6 +646,7 @@ function parseArgs(argv: string[]): CliOptions {
   return {
     systemPath,
     userPath,
+    allowHookLoss,
     mode:
       outputPath !== undefined
         ? { kind: "output", path: outputPath }
@@ -568,6 +660,27 @@ function countObjectKeys(value: any): number {
   }
 
   return 0;
+}
+
+/**
+ * Before an --output run overwrites the live settings.json, run SettingsBackport so any edit made
+ * to the generated file since the last merge lands in the user overlay first. Applies only when
+ * the run targets the config root's own three files (the ones SettingsBackport reads); a merge
+ * aimed at a scratch path or test layers is left alone. Returns a refusal message when the
+ * backport fails, so the write never happens with an edit still unrecorded.
+ */
+export function backportBeforeOverwrite(options: CliOptions): string | null {
+  if (options.mode.kind !== "output") return null;
+  const root = getClaudeDir();
+  const own =
+    path.resolve(options.mode.path) === path.resolve(root, "settings.json") &&
+    path.resolve(options.systemPath) === path.resolve(root, "settings.system.json") &&
+    path.resolve(options.userPath) === path.resolve(root, "WORKOS", "USER", "CONFIG", "settings.user.json");
+  if (!own || !existsSync(options.mode.path) || !existsSync(MERGE_SNAPSHOT_PATH)) return null;
+  const res = Bun.spawnSync(["bun", path.join(import.meta.dir, "SettingsBackport.ts")], { stdout: "pipe", stderr: "pipe" });
+  if (res.exitCode === 0) return null;
+  const why = `${res.stderr.toString()}${res.stdout.toString()}`.trim().split("\n").slice(-3).join(" | ");
+  return `refusing to overwrite ${options.mode.path}: backporting its hand edits failed (exit ${res.exitCode}${why ? `: ${why}` : ""}). Run bun WORKOS/TOOLS/SettingsBackport.ts --dry-run to see the drift.`;
 }
 
 async function runCli(argv: string[]): Promise<number> {
@@ -588,7 +701,7 @@ async function runCli(argv: string[]): Promise<number> {
   // sat dead for days. Warn loudly whenever a root-level copy exists that is
   // not the canonical file. This runs BEFORE the fresh-install no-op guard:
   // canonical-absent + root-stray-present is exactly the footgun case.
-  const rootStray = path.join(os.homedir(), ".claude", "settings.user.json");
+  const rootStray = path.join(getClaudeDir(), "settings.user.json");
   if (existsSync(rootStray) && path.resolve(rootStray) !== path.resolve(options.userPath)) {
     process.stderr.write(
       `⚠️  MergeSettings: ${rootStray} exists but is NOT read by the merge.\n` +
@@ -602,15 +715,53 @@ async function runCli(argv: string[]): Promise<number> {
   // invokes this with a system+user settings layer a fresh skill-only install has not
   // established yet. If either input is absent there is nothing to merge — no-op
   // cleanly (exit 0) instead of throwing on the missing input file.
+  // The no-op is for generation only. --check is a verification: with an input absent
+  // nothing was compared, so it exits non-zero and says so (S093: it used to pass).
   if (!existsSync(options.systemPath) || !existsSync(options.userPath)) {
+    if (options.mode.kind === "check") {
+      const missing = [options.systemPath, options.userPath].filter((p) => !existsSync(p));
+      process.stderr.write(`MergeSettings: cannot check ${path.resolve(options.mode.path)}: input layer absent (${missing.join(", ")}) — nothing was compared\n`);
+      return 1;
+    }
     process.stdout.write("MergeSettings: input(s) absent (system/user settings layer not established) — nothing to merge\n");
     return 0;
   }
 
   try {
+    // Regenerating the live settings.json first folds any hand edit made since the last merge
+    // into the user overlay, whoever triggers the run, so the overwrite can never lose it.
+    // Before this only SessionStart ran the backport, and a mid-session regeneration dropped
+    // hooks added to settings.json alone (Moshi's removal on 09-28, a StopFailure hook 10-15).
+    const backportRefusal = backportBeforeOverwrite(options);
+    if (backportRefusal) {
+      process.stderr.write(`MergeSettings: ${backportRefusal}\n`);
+      return 1;
+    }
     const system = await parseJsonFileOrThrow(options.systemPath);
     const user = await parseJsonFileOrThrow(options.userPath);
-    const merged = mergeSettings(system, user);
+    // Both modes carry the installer-owned keys forward from the file at mode.path: --check
+    // verifies what --output would write to that same file, so it must preserve them too.
+    let existingOutput: unknown = null;
+    if (existsSync(options.mode.path)) {
+      try { existingOutput = await parseJsonFileOrThrow(options.mode.path); } catch { existingOutput = null; }
+    }
+    const merged = mergeSettingsPreserving(system, user, existingOutput);
+
+    // Never silently drop a live hook (local patch 2026-11-24, upstream #2820 / #2829 / #2886).
+    // A hook removed by hand from settings.json is already absent from `existingOutput`, so it
+    // never trips this. Only a merge that would take away a hook still registered does.
+    if (options.mode.kind === "output" && !options.allowHookLoss) {
+      const lost = lostHookRegistrations(existingOutput, merged);
+      if (lost.length > 0) {
+        process.stderr.write(
+          `MergeSettings: refusing to overwrite ${options.mode.path}: the merge would remove ${lost.length} hook registration(s) it still has:\n` +
+            lost.slice(0, 20).map((h) => `   - ${h}\n`).join("") +
+            (lost.length > 20 ? `   … and ${lost.length - 20} more\n` : "") +
+            `   settings.json was NOT changed. To remove a hook on purpose, delete it from settings.json too, or re-run with --allow-hook-loss.\n`,
+        );
+        return 1;
+      }
+    }
 
     const permWarnings = guardPermissionOverlays(system, user, merged);
     for (const warning of permWarnings) {
@@ -652,10 +803,15 @@ async function runCli(argv: string[]): Promise<number> {
       // Record the merge base for SettingsBackport's three-way diff.
       // Best-effort: a failed snapshot write must never fail the merge itself
       // (backport skips safely when the snapshot is missing/stale).
-      try {
-        atomicWriteText(MERGE_SNAPSHOT_PATH, outputJson);
-      } catch {
-        process.stderr.write(`⚠️  could not write merge snapshot to ${MERGE_SNAPSHOT_PATH}\n`);
+      // Only when the output IS the config root's settings.json: a merge aimed at a scratch path
+      // (a release-gate probe, a dry run) must not plant a snapshot anywhere, least of all inside
+      // a payload under test (in-family audit, round 16, 7.52.0 cut).
+      if (path.resolve(options.mode.path) === path.resolve(getClaudeDir(), "settings.json")) {
+        try {
+          atomicWriteText(MERGE_SNAPSHOT_PATH, outputJson);
+        } catch {
+          process.stderr.write(`⚠️  could not write merge snapshot to ${MERGE_SNAPSHOT_PATH}\n`);
+        }
       }
 
       process.stdout.write(

@@ -30,6 +30,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * Never contacts Jira or GitLab. Always exits 0; failures log but never propagate.
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, appendFileSync } from "fs";
 import { basename, join } from "path";
 import { loadWorkConfig } from "../../hooks/lib/work-config";
@@ -51,7 +52,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 declare const Bun: { spawn: (cmd: string[], opts?: any) => any };
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const WORK_DIR = join(WORKOS_DIR, "MEMORY", "WORK");
 const OBS_DIR = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY");
 const OBS_LOG = join(OBS_DIR, "worksweep.jsonl");
@@ -426,7 +427,7 @@ function sweepBpeCadence(sw: Sweep): void {
   const body = [
     "As model capability rises, the healthy line (right amount of scaffolding) DROPS — but the actual line keeps climbing, because adding feels productive and pruning feels like nothing. The gap widens unless subtraction is scheduled. This is that schedule.",
     "",
-    `Run: Skill("BitterPillEngineering", "audit") over the ${BPE_AUDIT_TARGETS}.`,
+    `Run: Skill("BitterLessonEngineering", "audit") over the ${BPE_AUDIT_TARGETS}.`,
     `Cadence: every ${BPE_CADENCE_DAYS} days. Last audit: ${days === null ? "never" : days + " days ago"}.`,
     "Then stamp it: bun ~/.claude/WORKOS/TOOLS/WorkSweep.ts --stamp-bpe to reset the clock.",
     "",

@@ -13,6 +13,7 @@
  * down the prior unit first. (public PR #1692, @takanorinishida)
  */
 
+import { workosPath } from "./Paths";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { homedir } from "node:os";
@@ -23,8 +24,8 @@ const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
 const LABEL = "com.workos.worksweep";
 const IS_LINUX = process.platform === "linux";
 
-const SERVICE_TEMPLATE_PATH = join(HOME, ".claude", "WORKOS", "TOOLS", "com.workos.worksweep.service.template");
-const TIMER_TEMPLATE_PATH = join(HOME, ".claude", "WORKOS", "TOOLS", "com.workos.worksweep.timer.template");
+const SERVICE_TEMPLATE_PATH = workosPath("TOOLS", "com.workos.worksweep.service.template");
+const TIMER_TEMPLATE_PATH = workosPath("TOOLS", "com.workos.worksweep.timer.template");
 const SYSTEMD_USER_DIR = join(HOME, ".config", "systemd", "user");
 const TARGET_SERVICE = join(SYSTEMD_USER_DIR, `${LABEL}.service`);
 const TARGET_TIMER = join(SYSTEMD_USER_DIR, `${LABEL}.timer`);

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 2.1.0
+ * @version 2.2.0
  * MemoryReviewFire — Stop hook that owns the WHOLE memory-review cadence.
  *
  * Consolidation (2026-07-11, thinking-system BPE strip): the old design split
@@ -11,9 +11,15 @@
  *
  *   On every primary-session Stop:
  *     1. THIS SESSION's turn_count += 1, last_message_at = now
- *     2. If this session's turn_count >= turn_threshold AND minutes since the
- *        GLOBAL last_review >= min_minutes_between → spawn MemoryReviewer.ts
- *        detached, reset this session's counter, stamp the global clock.
+ *     2. If this session's turn_count >= turn_threshold — OR the GLOBAL last
+ *        review is older than max_hours_since_review and this session has moved
+ *        at all — AND minutes since the GLOBAL last_review >= min_minutes_between
+ *        → spawn MemoryReviewer.ts detached, reset this session's counter, stamp
+ *        the global clock.
+ *
+ * The time-based safety net and the merge of last_review_at are ported from
+ * LifeOS 8.761.0 (MemoryReviewFire 2.3.3, public issue #1893). Not ported: the
+ * lost-window compensation (#1908) and the texting-thread counter (Tex).
  *
  * Per-session cadence (public issue #1711, @jacobo-ortiz): the turn counter used
  * to live in the single global review-state.json, so two concurrent sessions
@@ -38,13 +44,13 @@
  * Failure mode: any error logs to stderr and exits 0 (never block Stop).
  */
 
+import { getClaudeDir } from "./lib/paths";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { dirname, join, resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 import { isSubagentContext as isSubagent } from './lib/subagent';
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const STATE_PATH = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/review-state.json");
 const SESSION_STATE_DIR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/STATE/memory-review");
 const CONFIG_PATH = pathResolve(CLAUDE_ROOT, "WORKOS/USER/CONFIG/memory-review.json");
@@ -70,14 +76,16 @@ const INITIAL_STATE: ReviewState = {
   schema_version: 1,
 };
 
-function loadConfig(): { turn_threshold: number; min_minutes_between: number } {
-  const fallback = { turn_threshold: 8, min_minutes_between: 30 };
+function loadConfig(): { turn_threshold: number; min_minutes_between: number; max_hours_since_review: number } {
+  const fallback = { turn_threshold: 8, min_minutes_between: 30, max_hours_since_review: 24 };
   try {
     if (!existsSync(CONFIG_PATH)) return fallback;
     const raw = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
     return {
       turn_threshold: typeof raw.turn_threshold === "number" ? raw.turn_threshold : fallback.turn_threshold,
       min_minutes_between: typeof raw.min_minutes_between === "number" ? raw.min_minutes_between : fallback.min_minutes_between,
+      max_hours_since_review:
+        typeof raw.max_hours_since_review === "number" ? raw.max_hours_since_review : fallback.max_hours_since_review,
     };
   } catch {
     return fallback;
@@ -256,14 +264,27 @@ function main(): void {
 
     // Turn threshold: per session (has this conversation moved enough?).
     // Minute floor: global (the inference-volume guard across all sessions).
-    const due =
-      session.turn_count_since_last_review >= config.turn_threshold &&
-      minutesSince(global.last_review_at, nowMs) >= config.min_minutes_between;
+    const minutesSinceReview = minutesSince(global.last_review_at, nowMs);
+    const turnsDue = session.turn_count_since_last_review >= config.turn_threshold;
+
+    // Time-based safety net (public issue #1893, @waveman2020-sudo): the turn
+    // threshold is per session, so a principal who works in many short sessions
+    // never reaches it in any single one and the reviewer starves indefinitely
+    // despite heavy cumulative activity. Once max_hours_since_review have passed
+    // since the GLOBAL last review, partial progress in this session is enough.
+    // The global minute floor below still gates the actual fire, so this can
+    // widen when a review is due but can never produce a burst. A null
+    // last_review_at (never reviewed) reads as infinitely stale in both terms.
+    const staleDue =
+      session.turn_count_since_last_review >= 1 &&
+      minutesSinceReview >= config.max_hours_since_review * 60;
+
+    const due = (turnsDue || staleDue) && minutesSinceReview >= config.min_minutes_between;
 
     if (due) {
       const turnsReviewed = session.turn_count_since_last_review;
       const { spawned, reason } = spawnReviewer(turnsReviewed, transcriptPath);
-      logFire({ ts: now, turns_since_last_review: turnsReviewed, spawned, reason, session_id: sessionId, transcript_path: transcriptPath });
+      logFire({ ts: now, turns_since_last_review: turnsReviewed, trigger: turnsDue ? "turns" : "stale", spawned, reason, session_id: sessionId, transcript_path: transcriptPath });
       session.turn_count_since_last_review = 0;
       session.last_review_at = now;
       global.last_review_at = now;
@@ -275,6 +296,11 @@ function main(): void {
     // Mirror for the statusline / MemoryStatus / MemoryHealthCheck.
     // Schema is unchanged; the turn count reflects whichever session wrote last
     // and is display-only, while last_review_at above is the real rate cap.
+    // Merge, never clobber: MemoryReviewer.stampLastReviewAt (PR #2032) also
+    // writes last_review_at when a run completes, possibly between this hook's
+    // load and save. Keep whichever stamp is later.
+    const onDisk = loadState().last_review_at;
+    if (onDisk && (!global.last_review_at || Date.parse(onDisk) > Date.parse(global.last_review_at))) global.last_review_at = onDisk;
     global.turn_count_since_last_review = session.turn_count_since_last_review;
     global.last_message_at = now;
     saveState(global);

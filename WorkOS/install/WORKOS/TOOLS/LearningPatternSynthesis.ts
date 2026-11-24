@@ -32,11 +32,11 @@
  *   bun run LearningPatternSynthesis.ts --hypothesize --window 14d --dry-run
  */
 
+import { getClaudeDir } from "./Paths";
 import { parseArgs } from "util";
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
-import { homedir } from "node:os";
 import { getPrincipalName } from "../../hooks/lib/identity";
 import {
   FRUSTRATION_PATTERNS, SUCCESS_PATTERNS,
@@ -48,7 +48,7 @@ import {
 // Configuration
 // ============================================================================
 
-const CLAUDE_DIR = path.join(homedir(), ".claude");
+const CLAUDE_DIR = getClaudeDir();
 const WORKOS_DIR = path.join(CLAUDE_DIR, "WORKOS");
 const MEMORY_DIR = path.join(WORKOS_DIR, "MEMORY");
 const LEARNING_DIR = path.join(MEMORY_DIR, "LEARNING");

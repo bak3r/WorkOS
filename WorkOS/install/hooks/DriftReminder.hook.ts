@@ -36,10 +36,10 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * Failure mode: any error logs to stderr and exits 0, never blocking prompts.
  */
 
+import { getWorkosDir } from "./lib/paths";
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { firstBannedHit } from "./lib/banned-vocab";
-import { homedir } from "node:os";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -70,7 +70,7 @@ const DEFAULT_LINE_CAP = 15;
 // The principal asking for depth lifts the cap. Their explicit call outranks the
 // default; nothing else does.
 const DEPTH_RE = /\b(extensive|thorough|comprehensive|exhaustive|deep[\s-]?dive|in[\s-]depth|detailed|long[\s-]form|full (?:analysis|report|breakdown|write[\s-]?up)|go deep|be verbose|everything (?:you|we) (?:know|have))\b/i;
-const WORKOS_DIR = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const LAST_RESPONSE_PATH = join(WORKOS_DIR, "MEMORY", "STATE", "last-response.txt");
 const STATE_PATH = join(WORKOS_DIR, "MEMORY", "STATE", "drift-reminder.json");
 const INITIAL_STATE: DriftState = {

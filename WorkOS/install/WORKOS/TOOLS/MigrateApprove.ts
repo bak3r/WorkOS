@@ -29,6 +29,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun MigrateApprove.ts --reset                    Clear queue (use carefully)
  */
 
+import { getClaudeDir, getWorkosDir } from "./Paths";
 import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { homedir } from "node:os";
@@ -41,7 +42,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const QUEUE_FILE = join(WORKOS_DIR, "MEMORY", "MIGRATION", "migration-proposals.jsonl");
 const COMMITTED_LOG = join(WORKOS_DIR, "MEMORY", "MIGRATION", "committed.jsonl");
 
@@ -91,7 +92,7 @@ function resolveTargetPath(target: string): string {
   }
   if (target === "memory/feedback") {
     // Feedback memories live outside WorkOS dir in projects/${HARNESS_USER_DIR}/memory/
-    return join(HOME, ".claude", "projects", "${HARNESS_USER_DIR}", "memory");
+    return join(getClaudeDir(), "projects", "${HARNESS_USER_DIR}", "memory");
   }
   return join(WORKOS_DIR, target);
 }

@@ -34,7 +34,7 @@ const REGISTRY_PATH = join(import.meta.dir, "models.ts");
  *   - vendored / third-party code (we don't own its model refs)
  *   - frozen records (historical doctrine, eval run artifacts, ISA evidence)
  *   - test fixtures (intentionally use old/new IDs)
- *   - recognition/price maps (cost-aggregator, Evals graders) — these list many
+ *   - recognition/price maps (cost-aggregator, Assay judges) — these list many
  *     historical IDs on purpose; a missing entry falls through, it isn't drift
  *   - the registry + its own docs (they cite old IDs to explain themselves)
  */
@@ -52,7 +52,7 @@ export const SCAN_EXCLUDES = [
   "/test/",              // test fixtures intentionally use old/new IDs
   ".test.ts",            // ditto for co-located tests (e.g. Inference.verification.test.ts,
                          // whose mock modelUsage envelopes pin arbitrary IDs by design)
-  "Evals/",              // evals PIN a model on purpose — reproducible apples-to-apples comparison; aliasing would break the eval
+  "Assay/",              // evals PIN a model on purpose — reproducible apples-to-apples comparison; aliasing would break the eval
   "cost-aggregator",     // historical price table keyed by past model IDs
   "Schema/Fixtures",     // generated Data Plane snapshots — regenerated from the (aliased) manifests
   "WORKOS/TOOLS/models.ts", // the registry cites superseded IDs in comments

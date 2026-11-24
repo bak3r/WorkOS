@@ -118,7 +118,7 @@ Runs hourly from `hooks/MaintenanceJobs.hook.ts` (see **Scheduling**). Sub-sweep
 | **Stale flagging** | `in-progress` item not updated in 7d | adds the `stale` label |
 | **Project check** | project in `USER/PROJECTS.md` with no commit in 14d | `project-check` item (slug on the project name) |
 | **Goal derivation** | active goal in `USER/TELOS/PRINCIPAL_TELOS.md` → `## Active Goals` with no open goal item | `goal` item (slug `goal:<id>`) |
-| **BPE cadence** | no BitterPillEngineering audit stamp in 30d | one `reminder` item |
+| **BPE cadence** | no BitterLessonEngineering audit stamp in 30d | one `reminder` item |
 
 Then it re-renders TASKLIST.md and appends one JSON line to `MEMORY/OBSERVABILITY/worksweep.jsonl`. No LLM, no network. `--dry-run` writes nothing (it prints what it would create and whether TASKLIST.md would change); `--max-create N` (default 50) caps session items per run; `--since Nh` widens the window; `--stamp-bpe` resets the BPE clock.
 
@@ -185,6 +185,8 @@ Docker Sandboxes guarantee no systemd, so the recurring jobs run from `hooks/Mai
 | proposal-gc | 20h | `ProposalGC.ts --auto` |
 | worksweep | 1h | `WorkSweep.ts` |
 | commitment-sweep | 20h | `CommitmentSweep.ts` |
+| observability-prune | 20h | in-process: archives whole stale logs in `MEMORY/OBSERVABILITY` (30-day window; see `HookSystem.md` § MaintenanceJobs) |
+| ledger-compact | 168h | `CortexLedger.ts maintain`: checkpoint + compact the memory ledger once 200 rows follow its last checkpoint |
 
 A job runs only when a session starts after its interval has elapsed. The systemd timers (`InstallWorkSweep.ts`, `InstallCommitmentSweep.ts`, via `Services.ts`) remain as optional extras for a Linux host with a user systemd session; running both is harmless because every ledger write is slug-idempotent.
 

@@ -24,14 +24,14 @@
  * @version 1.0.0
  */
 
+import { getWorkosDir } from "./Paths";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { invariant } from "./Invariant";
 
-const WORKOS_DIR = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const DEPLOYS_PATH = join(WORKOS_DIR, "MEMORY", "SYSTEMUPDATES", "deploys.jsonl");
 
 interface DeployEvent {

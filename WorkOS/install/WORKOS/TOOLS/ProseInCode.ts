@@ -23,14 +23,15 @@
  * Exit 0 = clean, 1 = hits found, 2 = self-test failed.
  */
 
+import { getClaudeDir } from "./Paths";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { homedir } from "node:os";
 
-const ROOT = join(homedir(), ".claude");
+const ROOT = getClaudeDir();
 const DEFAULT_SCAN = ["hooks", "WORKOS/TOOLS", "WORKOS/ATLAS", "skills"];
 
-const SKIP_DIRS = new Set(["node_modules", ".git", "Plugins", "WORKOS_RELEASES", "archive", "dist", "build", "MEMORY"]);
+// "install": skills/WorkOS/install/ is the release payload the bootstrap carries, not the live system (IntegrityCheck's findFiles prunes it too).
+const SKIP_DIRS = new Set(["node_modules", ".git", "Plugins", "WORKOS_RELEASES", "archive", "dist", "build", "MEMORY", "install", ".workos-backup"]);
 
 type Kind = "HISTORY" | "SUPERSEDED" | "TOMBSTONE";
 

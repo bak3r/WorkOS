@@ -1,6 +1,6 @@
 ---
-version: 1.3.2
-last_updated: 2026-08-11
+version: 1.3.3
+last_updated: 2026-10-28
 convention: pai-freshness-v1
 source_of_truth: WORKOS/TOOLS/ascent.ts
 ---
@@ -34,7 +34,7 @@ Every surface derives from the same bracket, so a Kitty tab can never contradict
 
 ```
 ISA frontmatter phase:  ─┐
-claims closed / total   ─┼─►  deriveAscent()  ─►  AscentState  ─►  ASCENT[state]
+criteria closed / total ─┼─►  deriveAscent()  ─►  AscentState  ─►  ASCENT[state]
 tracked / active        ─┤                                          │
 live tool stream        ─┘                                           │
                                                                     ├─► Kitty tab (icon, colour)
@@ -51,16 +51,16 @@ The theme is climbing a hill you had to name first — the Algorithm's own loop.
 | State | What it means | How it's derived |
 |---|---|---|
 | **Traverse** | Live work with no ISA — moving, no route declared | untracked + live |
-| **Marking** | Articulating what done means — claims not yet on the hill | tracked + live + no claims parsed, or `phase: scoping`/`marking` |
+| **Marking** | Articulating what done means — criteria not yet on the hill | tracked + live + no criteria parsed, or `phase: scoping`/`marking` |
 | **Ascending** | On the wall — exploring, building, delegating; everything that moves the climb | tool stream exploring/building/delegating, or `phase: climbing` with no stream |
 | **Anchoring** | Weighting a hold before trusting it — probes running, evidence landing | tool stream verifying |
 | **Camped** | Quiet mid-hill — resumable, not dead | tracked + gone quiet |
-| **Cairn** | Closed out — every claim held; the marker proving the route went | closed ≥ total, `phase: learn`, or `phase: complete` |
+| **Cairn** | Closed out — every criterion held; the marker proving the route went | closed ≥ total, `phase: learn`, or `phase: complete` |
 | *Idle* | Nothing running (not a run state; never a column) | untracked + quiet (hidden) |
 
-**Anchoring is the verification doctrine in one word.** A climber weights a hold before trusting it; a claim closes on evidence, never on "should work."
+**Anchoring is the verification doctrine in one word.** A climber weights a hold before trusting it; a criterion closes on evidence, never on "should work."
 
-**Colors are a staged gradient (2026-08-12), in two registers.** Traverse is gray — off the scheme because no route is declared — then the arc escalates blue → green (marking → ascending → anchoring → cairn). Camped sits off the ramp on a dim slate: a run can camp at any point, so its color can't honestly encode progress; 💤 carries the pause. The bright `color` is the status-line register; Kitty tabs read `tabBg`, the same hue darkened. The tab title also carries an activity glyph from `TAB_ACTIVITY` (⚡ working · ⏳ waiting on the principal · ✅ done · 💤 quiet) — state says where in the climb, activity says whether anything is moving. Values live only in the table; `hooks/TabTitleComposition.test.ts` pins both registers.
+**Colors are a staged gradient (2026-08-12), in two registers.** Traverse is gray — off the scheme because no route is declared — then the arc escalates blue → green (marking → ascending → anchoring → cairn). Camped sits off the ramp on a dim slate: a run can camp at any point, so its color can't honestly encode progress; 💤 carries the pause. The bright `color` is the status-line register; Kitty tabs read `tabBg`, the same hue darkened. The tab title also carries an activity glyph from `TAB_ACTIVITY` (⚡ working · ⏳ waiting on the principal · ✅ done · 💤 quiet) — state says where in the climb, activity says whether anything is moving. Values live only in the table; `hooks/TabTitleComposition.test.ts` (not in the release payload) pins both registers.
 
 ## What the model writes
 
@@ -83,7 +83,7 @@ Found 2026-07-30, when the new gate's first run enumerated the rest of the class
 4. **Both ISA nudge rows were silent for a week** — `AlgorithmNudge`'s `ACTIVE_PHASES` held the retired 8-station enum, so no run resolved as live and `stale-isa` never fired (last fire 2026-07-23; `toolCallsSinceISAEditAbs` = 0 across all 392 recorded sessions). Its sibling `hasRegisteredRun` counted the `native-<uuid>` placeholder as a registered run, so `late-isa` had never fired once. A nudge that doesn't fire breaks nothing visibly — nothing fails, so nothing tells you.
 5. **The session-sync hook and `WorkSweep` each carried `["execute","verify","learn","complete"]`** — a modern `climbing` run read as an abandoned scaffold, so it was skipped for issue creation.
 
-For consumers that hold only a phase string and no claim counts, `phaseBracket()` and `phaseHasWorkStarted()` are the sanctioned readers — feeding a countless row to `deriveAscent` correctly reports `marking`, which is the wrong answer to "has work started?".
+For consumers that hold only a phase string and no criterion counts, `phaseBracket()` and `phaseHasWorkStarted()` are the sanctioned readers — feeding a countless row to `deriveAscent` correctly reports `marking`, which is the wrong answer to "has work started?".
 
 ### The row's `ascent` blob is derived state that we store
 

@@ -10,12 +10,11 @@
  * ported from public PR #1698, @elhoim
  */
 
+import { getClaudeDir, workosPath } from "./Paths";
 import { join } from "path";
 import * as systemd from "./lib/SystemdUser";
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const STATE_DIR = join(HOME, ".claude", "WORKOS", "MEMORY", "STATE");
+const STATE_DIR = workosPath("MEMORY", "STATE");
 const LABEL = "com.workos.commitmentsweep";
 
 async function linuxSpec(): Promise<systemd.UnitSpec> {
@@ -24,9 +23,9 @@ async function linuxSpec(): Promise<systemd.UnitSpec> {
   return {
     label: LABEL,
     description: "WorkOS commitment sweep",
-    exec: [bunPath, join(HOME, ".claude", "WORKOS", "TOOLS", "CommitmentSweep.ts")],
+    exec: [bunPath, workosPath("TOOLS", "CommitmentSweep.ts")],
     logPath: join(STATE_DIR, "com.workos.commitmentsweep.log"),
-    workingDirectory: join(HOME, ".claude"),
+    workingDirectory: getClaudeDir(),
     schedule: { kind: "calendar", hour: 7, minute: 0 },
   };
 }

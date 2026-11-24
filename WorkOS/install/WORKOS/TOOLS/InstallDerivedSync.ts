@@ -10,12 +10,11 @@
  * ported from public PR #1698, @elhoim
  */
 
+import { getClaudeDir, workosPath } from "./Paths";
 import { existsSync, realpathSync } from "fs";
 import { join } from "path";
 import * as systemd from "./lib/SystemdUser";
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
 const LABEL = "com.workos.derivedsync";
 
 async function linuxSpec(): Promise<systemd.UnitSpec> {
@@ -23,13 +22,13 @@ async function linuxSpec(): Promise<systemd.UnitSpec> {
   if (!bunPath) throw new Error("bun not found in PATH - install bun first");
   // WORKOS/USER is a symlink into the private config repo, and watching the
   // link rather than its target would never fire on a write to the real file.
-  const userDir = realpathSync(join(HOME, ".claude", "WORKOS", "USER"));
+  const userDir = realpathSync(workosPath("USER"));
   return {
     label: LABEL,
     description: "WorkOS derived-file sync",
-    exec: [bunPath, join(HOME, ".claude", "WORKOS", "TOOLS", "DerivedSync.ts")],
-    logPath: join(HOME, ".claude", "WORKOS", "MEMORY", "OBSERVABILITY", "derived-sync-systemd.log"),
-    workingDirectory: join(HOME, ".claude"),
+    exec: [bunPath, workosPath("TOOLS", "DerivedSync.ts")],
+    logPath: workosPath("MEMORY", "OBSERVABILITY", "derived-sync-systemd.log"),
+    workingDirectory: getClaudeDir(),
     schedule: {
       kind: "watch",
       // A missing directory is dropped: systemd refuses to start a .path unit

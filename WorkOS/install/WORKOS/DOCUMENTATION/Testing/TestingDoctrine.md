@@ -74,7 +74,7 @@ Mirror the source path, not co-locate. Map:
 |--------|------|
 | `hooks/<Hook>.hook.ts` | `test/hooks/<Hook>.hook.test.ts` |
 | `skills/<Skill>/Tools/<Tool>.ts` | `test/skills/<Skill>/Tools/<Tool>.test.ts` |
-| `skills/ISA/Workflows/Scaffold.md` | `test/skills/ISA/Workflows/Scaffold.test.ts` (workflow contract test) |
+| `skills/ISA/Intents/Scaffold.md` | `test/skills/ISA/Intents/Scaffold.test.ts` (workflow contract test) |
 | `WORKOS/TOOLS/Inference.ts` | `test/tools/Inference.test.ts` |
 
 Snapshot files at `test/<surface>/__snapshots__/<name>.test.ts.snap`.
@@ -227,7 +227,7 @@ test("reverse is self-inverse", () => {
 
 Property tests live alongside example tests in the same `test/` tree, with `.property.test.ts` suffix to distinguish. Failing properties emit shrunk counterexamples that auto-promote to permanent regression cases — pin the seed in a comment when you copy the counterexample into an example test (`// fc seed: 0x...`).
 
-**In substantial work**, every pure-function ISC SHOULD have at least one property-form ISC row in `## Test Strategy`. The granularity rule applies: each property is one binary probe (passes when the property holds across all `numRuns` invocations). The new ISC type is `bun-property` — see `WORKOS/DOCUMENTATION/ISA/ISAFormat.md` § ISC Type Vocabulary for schema, and `skills/Hardening/Workflows/PropertyTest.md` for candidate detection and the ten property categories (round-trip, idempotency, commutativity, associativity, identity, conservation, model-based, metamorphic, state-machine, oracle).
+**In substantial work**, every pure-function ISC SHOULD have at least one property-form ISC row in `## Test Strategy`. The granularity rule applies: each property is one binary probe (passes when the property holds across all `numRuns` invocations). The new ISC type is `bun-property` — see `WORKOS/DOCUMENTATION/ISA/ISAFormat.md` § ISC Type Vocabulary for schema, and `skills/Hardening/Intents/PropertyTest.md` for candidate detection and the ten property categories (round-trip, idempotency, commutativity, associativity, identity, conservation, model-based, metamorphic, state-machine, oracle).
 
 **Worked Anti-ISC universal-form example.** The example-shaped Rule #10 anti-ISC catches one named variable. The universal-form version catches the API-key class:
 
@@ -312,11 +312,11 @@ When a single Algorithm run spans multiple context windows — Ralph Loop, Maest
 
 `tests.json` is optional for single-window runs (the ISA already carries the probes). It earns its place only when the run will cross a context boundary.
 
-### Relationship to the Evals skill
+### Relationship to the Assay skill
 
-`Skill("Evals")` evaluates *agent transcripts* — multi-turn conversations, tool-call sequences, model-vs-model comparisons. `bun test` evaluates *code correctness* — does this function return the right value, does this hook write the right output, does this CLI exit with the right code.
+`Skill("Assay")` evaluates *agent transcripts* — multi-turn conversations, tool-call sequences, model-vs-model comparisons. `bun test` evaluates *code correctness* — does this function return the right value, does this hook write the right output, does this CLI exit with the right code.
 
-They're complementary. An Algorithm run on a complex feature might use both: `bun test` for the code-correctness ISCs, `Skill("Evals")` for the "did the agent answer well" ISCs. Neither replaces the other.
+They're complementary. An Algorithm run on a complex feature might use both: `bun test` for the code-correctness ISCs, `Skill("Assay")` for the "did the agent answer well" ISCs. Neither replaces the other.
 
 ### Relationship to Interceptor
 
@@ -375,7 +375,7 @@ The rule is mechanical: the `tool` column starts with `bun test`, so `[ ]` → `
 
 - **A pure function** ("slugify is idempotent") → `bun test`. It's code correctness, checked in-process.
 - **A rendered page** ("the toggle flips the theme on a phone viewport") → Interceptor. `bun test` can't see a DOM.
-- **An agent's answer quality** ("the summary keeps every key fact") → `Skill("Evals")`. That's judging a transcript, not asserting a return value.
+- **An agent's answer quality** ("the summary keeps every key fact") → `Skill("Assay")`. That's judging a transcript, not asserting a return value.
 
 Reaching for `bun test` on a DOM claim, or Interceptor on a pure function, is the wrong instrument — the claim would close on evidence that doesn't actually test it.
 
@@ -400,7 +400,7 @@ The checkbox is downstream of a real exit code, never upstream of it. A failing 
 
 ## Cross-references
 
-- Algorithm doctrine on ISA-as-test-harness: `~/.claude/WORKOS/ALGORITHM/v8.20.2.md` § Doctrine (line 17)
+- Algorithm doctrine on ISA-as-test-harness: `~/.claude/WORKOS/ALGORITHM/v{LATEST}.md` (version in `WORKOS/ALGORITHM/LATEST`) § Doctrine
 - ISA format spec: `~/.claude/WORKOS/DOCUMENTATION/ISA/ISAFormat.md`
 - Bun test docs: <https://bun.sh/docs/cli/test>, <https://bun.sh/docs/test/writing>, <https://bun.sh/docs/test/lifecycle>, <https://bun.sh/docs/test/snapshots>, <https://bun.sh/docs/test/coverage>, <https://bun.sh/docs/test/mocks>
 - Bun's own test doctrine: <https://github.com/oven-sh/bun/blob/main/test/CLAUDE.md>

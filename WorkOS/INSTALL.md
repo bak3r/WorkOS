@@ -151,7 +151,7 @@ bun <configRoot>/WORKOS/TOOLS/workos.ts -s <configRoot>/WORKOS/WORKOS_SYSTEM_PRO
 
 WorkOS installs in **two layers**, and you present them that way.
 
-**Core** (steps 4–7, always together) IS WorkOS: the skill + the full **skill library** + the WORKOS runtime (Algorithm, docs, tools, statusline binary, version) + the USER tree + the system prompt and its `workos` launch command. One consent installs all of Core; declining means not installing WorkOS.
+**Core** (steps 4–7, always together) IS WorkOS: the skill + the full **skill library** + the WORKOS runtime (Algorithm, docs, tools, statusline, version) + the USER tree + the system prompt and its `workos` launch command. One consent installs all of Core; declining means not installing WorkOS.
 
 **Enhancements** are **à la carte** — offer them and let your human pick some, all, or none. Each is independently installed, idempotent, and reversible:
 

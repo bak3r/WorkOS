@@ -33,13 +33,13 @@
  */
 
 // public issue #1747, @umair-a11y — isAbsolute()/sep instead of hardcoded "/"
+import { getClaudeDir } from "./Paths";
 import { resolve as pathResolve, isAbsolute, sep } from "node:path";
-import { homedir } from "node:os";
 import { getPrincipalName } from "../../hooks/lib/identity";
 
 // ── Constants ──
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 
 export type Tier = "A" | "B" | "C" | "D";
 

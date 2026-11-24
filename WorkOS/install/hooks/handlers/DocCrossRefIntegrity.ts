@@ -41,7 +41,7 @@
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
-import { paiPath, getWorkosDir, getClaudeDir } from '../lib/paths';
+import { paiPath, getWorkosDir, getClaudeDir, getHooksDir } from '../lib/paths';
 import { inference } from '../../WORKOS/TOOLS/Inference';
 import type { ParsedTranscript } from '../../WORKOS/TOOLS/TranscriptParser';
 
@@ -69,7 +69,7 @@ interface DriftItem {
 
 const SYSTEM_DIR = getWorkosDir();
 const DOCS_DIR = join(SYSTEM_DIR, 'DOCUMENTATION');
-const HOOKS_DIR = join(getClaudeDir(), 'hooks');
+const HOOKS_DIR = getHooksDir();
 const HANDLERS_DIR = join(HOOKS_DIR, 'handlers');
 const LIB_DIR = join(HOOKS_DIR, 'lib');
 const TAG = '[DocAutoUpdate]';

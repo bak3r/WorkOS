@@ -28,13 +28,14 @@
  * Designed to be called hourly by a scheduler. Zero AI cost — pure data aggregation.
  */
 
+import { getWorkosDir, workosPath, getHooksDir, getSkillsDir } from "./Paths";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 import { homedir } from "node:os";
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const OBS_DIR = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY");
 const LEDGER_PATH = join(OBS_DIR, "anthropic-cost.jsonl");
 const CALL_SITES_PATH = join(OBS_DIR, "anthropic-call-sites.json");
@@ -57,7 +58,7 @@ interface CostSnapshot {
   call_sites: {
     total: number;
     bypass: number;    // should NOT bill API but do
-    legit: number;     // CF Workers, opt-in Evals
+    legit: number;     // CF Workers, known-legit paths
     new_since_baseline: string[];
   };
   alerts: string[];
@@ -132,10 +133,10 @@ async function fetchApiSpend(): Promise<{ month_used_usd: number | null; source:
 
 // Paths we scan (source-of-truth for WorkOS-local billing risk)
 const SCAN_ROOTS = [
-  join(HOME, ".claude", "WORKOS", "TOOLS"),
-  join(HOME, ".claude", "WORKOS", "USER"),
-  join(HOME, ".claude", "skills"),
-  join(HOME, ".claude", "hooks"),
+  workosPath("TOOLS"),
+  workosPath("USER"),
+  getSkillsDir(),
+  getHooksDir(),
 ];
 
 // Paths to exclude from scan
@@ -162,7 +163,6 @@ const RISK_PATTERNS = [
 const LEGIT_HINTS: Record<string, string> = {
   "CostTracker.ts": "this tool — scans itself for patterns",
   "hooks/handlers/UpdateCounts.ts": "OAuth usage cache (not billing inference)",
-  "skills/Evals/": "opt-in API billing, gated by EVALS_ALLOW_API_BILLING=1",
   "WORKOS/TOOLS/Inference.ts": "canonical inference tool — deletes ANTHROPIC_API_KEY before spawn",
 };
 

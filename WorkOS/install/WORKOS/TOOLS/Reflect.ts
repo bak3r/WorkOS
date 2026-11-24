@@ -41,11 +41,11 @@
  * written. A malformed record is never appended — that is the corpus gate.
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { homedir } from "node:os";
 
-const WORKOS = process.env.WORKOS_DIR ?? join(homedir(), ".claude", "WORKOS");
+const WORKOS = getWorkosDir();
 const REFLECTIONS = join(WORKOS, "MEMORY", "LEARNING", "REFLECTIONS", "algorithm-reflections.jsonl");
 const SPEND_AUDIT = join(WORKOS, "MEMORY", "OBSERVABILITY", "spend-audit.jsonl");
 const SUBAGENT_EVENTS = join(WORKOS, "MEMORY", "OBSERVABILITY", "subagent-events.jsonl");

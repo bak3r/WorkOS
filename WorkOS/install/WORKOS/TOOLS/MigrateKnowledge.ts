@@ -25,15 +25,15 @@
  *   bun MigrateKnowledge.ts --apply         # WRITE (after a git checkpoint)
  */
 
+import { workosPath } from "./Paths";
 import { readdirSync, readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
-import { resolve as pathResolve, join as pathJoin } from "node:path";
-import { homedir } from "node:os";
+import { join as pathJoin } from "node:path";
 import {
   parseNote, serializeNote, normalize, validate,
   DIR_TO_TYPE, slugFromPath, type CanonicalType,
 } from "./KnowledgeSchema";
 
-const KNOWLEDGE_DIR = pathResolve(homedir(), ".claude/WORKOS/MEMORY/KNOWLEDGE");
+const KNOWLEDGE_DIR = workosPath("MEMORY", "KNOWLEDGE");
 const DIRS = ["People", "Companies", "Ideas", "Research", "Blogs"] as const;
 
 interface NoteOutcome {

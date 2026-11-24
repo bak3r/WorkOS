@@ -1,0 +1,56 @@
+{
+  "$note": "Hooks WorkOS no longer ships. InstallHooks removes any settings.json registration whose command runs one of these files, so an updated install stops running them; OverlaySystem moves an untouched copy of the file to the backup (an edited one stays on disk) and Doctor ignores what is left. An entry with `events` retires only the registrations on those events; the file still ships and stays registered elsewhere. Never list a hook that hooks.json still registers on a listed event.",
+  "retired": [
+    {
+      "file": "PreToolGuard.hook.ts",
+      "since": "2.0.0",
+      "reason": "Dispatcher for the guards below; DestructiveGuard and PublicPushGate are now registered on their own. Upstream LifeOS deleted it in 8.x."
+    },
+    {
+      "file": "SystemFileGuard.hook.ts",
+      "since": "2.0.0",
+      "reason": "Fails open without a DENY_LIST.txt, which WorkOS does not ship."
+    },
+    {
+      "file": "BashSystemWriteGuard.hook.ts",
+      "since": "2.0.0",
+      "reason": "Fails open without a DENY_LIST.txt, which WorkOS does not ship."
+    },
+    {
+      "file": "ISAStaleWriteGuard.hook.ts",
+      "since": "2.0.0",
+      "reason": "Claude Code itself refuses a Write to a file that changed since it was read."
+    },
+    {
+      "file": "CommunicationSkillGuard.hook.ts",
+      "since": "2.0.0",
+      "reason": "Guards email-send tools WorkOS does not ship."
+    },
+    {
+      "file": "EgressClassGuard.hook.ts",
+      "since": "2.0.0",
+      "reason": "Gates Tier-2 vendor egress; WorkOS ships no non-Anthropic route."
+    },
+    {
+      "file": "ContextReduction.hook.sh",
+      "since": "2.0.0",
+      "reason": "Needs the rtk binary, which WorkOS does not ship."
+    },
+    {
+      "file": "ConfigEvalFire.hook.ts",
+      "since": "2.0.0",
+      "reason": "Spawned model inference on config edits; upstream LifeOS retired it in 8.x."
+    },
+    {
+      "file": "LoopDetector.hook.ts",
+      "events": ["PostToolUse"],
+      "since": "2.0.0",
+      "reason": "Registered twice in 1.0.x. It runs on PostToolUse inside PostToolObserver now, and its standalone entry ignores PostToolUse, so the old registration only started an extra process per tool call."
+    },
+    {
+      "file": "SpendAuditor.hook.ts",
+      "since": "2.0.0",
+      "reason": "Spawned a detached model-inference audit after heavy turns, which costs Bedrock tokens with no one reading the verdicts; upstream LifeOS retired it in 8.x."
+    }
+  ]
+}

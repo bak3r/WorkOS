@@ -28,13 +28,12 @@
  * token, so filtering here keeps the scan precise. Tune ALLOWLIST/STOPWORDS with
  * --show-tokens.
  */
+import { getClaudeDir } from "./Paths";
 import { readFileSync, writeFileSync, existsSync, appendFileSync, readdirSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 
-const HOME = process.env.HOME || homedir();
-const CLAUDE = join(HOME, ".claude");
+const CLAUDE = getClaudeDir();
 const ENV_PATH = join(CLAUDE, ".env");
 // USER/SECURITY, not skills/_WORKOS: writing into <your-release-skill>/ created the
 // dev-tree marker on public installs, disabling seven installer tools (public

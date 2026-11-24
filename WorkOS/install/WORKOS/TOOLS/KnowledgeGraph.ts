@@ -30,6 +30,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun KnowledgeGraph.ts find architecture
  */
 
+import { getWorkosDir } from "./Paths";
 import { parseArgs } from "util";
 import * as fs from "fs";
 import * as path from "path";
@@ -47,7 +48,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 // ============================================================================
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || path.join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const KNOWLEDGE_DIR = path.join(WORKOS_DIR, "MEMORY", "KNOWLEDGE");
 const DOMAINS = ["People", "Companies", "Ideas", "Research"];
 const SKIP_FILES = new Set(["_index.md", "_schema.md", "_log.md"]);

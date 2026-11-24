@@ -63,11 +63,21 @@ const manifestCache = new Map<string, LifeosManifest>();
 
 /** All `lifeos-*.sha256` manifests in Tools/data (WORKOS_LIFEOS_MANIFESTS overrides, for tests). */
 export function loadLifeosManifests(dir = process.env.WORKOS_LIFEOS_MANIFESTS || join(import.meta.dir, "..", "data")): LifeosManifest {
-  const hit = manifestCache.get(dir);
+  return loadManifests(dir, "lifeos");
+}
+
+/** All `workos-*.sha256` manifests: the files each past WorkOS release shipped (WORKOS_RELEASE_MANIFESTS overrides, for tests). */
+export function loadWorkosManifests(dir = process.env.WORKOS_RELEASE_MANIFESTS || join(import.meta.dir, "..", "data")): LifeosManifest {
+  return loadManifests(dir, "workos");
+}
+
+function loadManifests(dir: string, product: "lifeos" | "workos"): LifeosManifest {
+  const key = `${product}:${dir}`;
+  const hit = manifestCache.get(key);
   if (hit) return hit;
   const m: LifeosManifest = { versions: [], byPath: new Map(), templates: new Map() };
   if (existsSync(dir)) {
-    for (const f of readdirSync(dir).filter((n) => /^lifeos-.*\.sha256$/.test(n)).sort()) {
+    for (const f of readdirSync(dir).filter((n) => n.startsWith(`${product}-`) && n.endsWith(".sha256")).sort()) {
       for (const line of readFileSync(join(dir, f), "utf8").split("\n")) {
         if (!line || line.startsWith("#")) {
           const v = line.match(/^# version (\S+)/);
@@ -93,7 +103,7 @@ export function loadLifeosManifests(dir = process.env.WORKOS_LIFEOS_MANIFESTS ||
       }
     }
   }
-  manifestCache.set(dir, m);
+  manifestCache.set(key, m);
   return m;
 }
 
@@ -109,7 +119,7 @@ export function lifeosPayloadPaths(rel: string): string[] {
  * segment hashes alone (no template text ships): walk the literal segments, inferring each
  * token's value from where the next segment's hash lines up.
  */
-export function matchTemplate(buf: Buffer, tpl: Tpl): boolean {
+export function matchTemplate(buf: Buffer, tpl: Tpl, found?: Map<string, string>): boolean {
   const { toks, segs } = tpl;
   const segOk = (i: number, at: number): boolean => {
     const s = segs[i];
@@ -119,8 +129,12 @@ export function matchTemplate(buf: Buffer, tpl: Tpl): boolean {
   };
   if (!segOk(0, 0)) return false;
   const vals = new Map<string, Buffer>();
+  const done = (): boolean => {
+    for (const [t, v] of vals) found?.set(t, v.toString("utf8"));
+    return true;
+  };
   const dfs = (i: number, pos: number): boolean => {
-    if (i === toks.length) return pos === buf.length;
+    if (i === toks.length) return pos === buf.length && done();
     const known = vals.get(toks[i]);
     if (known) {
       if (!buf.subarray(pos, pos + known.length).equals(known)) return false;
@@ -152,6 +166,28 @@ export function lifeosMatch(rel: string, buf: Buffer, m = loadLifeosManifests())
   return { known, equal: false };
 }
 
+// ── WorkOS releases ───────────────────────────────────────────────────
+
+/** Root-relative path → its key in a WorkOS release manifest. */
+export function workosReleaseKey(rel: string): string {
+  return rel.startsWith("skills/WorkOS/") ? `WorkOS/${rel.slice("skills/WorkOS/".length)}` : `install/${rel}`;
+}
+
+/**
+ * Is `buf` the file some past WorkOS release shipped at `rel` (raw, or with WorkOS's
+ * placeholders filled in)? `known`: a release shipped this path at all. `values`: the
+ * placeholder values the copy carries, when it matched a templated file.
+ */
+export function workosReleaseMatch(rel: string, buf: Buffer, m = loadWorkosManifests()): { known: boolean; equal: boolean; values: Map<string, string> } {
+  const key = workosReleaseKey(rel);
+  const values = new Map<string, string>();
+  const set = m.byPath.get(key);
+  if (!set) return { known: false, equal: false, values };
+  if (set.has(sha(buf))) return { known: true, equal: true, values };
+  for (const t of m.templates.get(key) ?? []) if (matchTemplate(buf, t, values)) return { known: true, equal: true, values };
+  return { known: true, equal: false, values };
+}
+
 // ── WorkOS payload ────────────────────────────────────────────────────
 
 export const WORKOS_TOKENS = ["{{PRINCIPAL_NAME}}", "{{PRINCIPAL_FULL_NAME}}", "{{DA_NAME}}", "{{DA_FULL_NAME}}", "{{WORKOS_VERSION}}"];
@@ -170,8 +206,13 @@ const tplCache = new Map<string, RegExp | null>();
 
 /** Same bytes as the payload, or the payload with WorkOS's identity placeholders filled in. */
 export function workosContentMatches(payloadFile: string, buf: Buffer): boolean {
+  return workosFillValues(payloadFile, buf) !== null;
+}
+
+/** The placeholder values `buf` fills into the payload file (empty: same bytes), or null when it is not that file. */
+export function workosFillValues(payloadFile: string, buf: Buffer): Map<string, string> | null {
   const src = readFileSync(payloadFile);
-  if (src.equals(buf)) return true;
+  if (src.equals(buf)) return new Map();
   let re = tplCache.get(payloadFile);
   if (re === undefined) {
     const text = src.toString("latin1");
@@ -193,7 +234,16 @@ export function workosContentMatches(payloadFile: string, buf: Buffer): boolean 
     }
     tplCache.set(payloadFile, re);
   }
-  return !!re && re.test(buf.toString("latin1"));
+  const hit = re?.exec(buf.toString("latin1"));
+  if (!hit) return null;
+  const names = new Map<string, string>();
+  let n = 0;
+  for (const tok of src.toString("latin1").match(/\{\{(?:PRINCIPAL_NAME|PRINCIPAL_FULL_NAME|DA_NAME|DA_FULL_NAME|WORKOS_VERSION)\}\}/g) ?? []) {
+    if (!names.has(tok)) names.set(tok, `t${n++}`);
+  }
+  const values = new Map<string, string>();
+  for (const [tok, g] of names) values.set(tok, Buffer.from(hit.groups![g], "latin1").toString("utf8"));
+  return values;
 }
 
 // ── classification ────────────────────────────────────────────────────

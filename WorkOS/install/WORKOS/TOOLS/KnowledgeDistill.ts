@@ -29,14 +29,14 @@
  * ============================================================================
  */
 
+import { getWorkosDir } from "./Paths";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
-import { homedir } from "os";
 import { createHash } from "crypto";
 import { addUpgrade } from "./Upgrades";
 import { addItem } from "./lib/work-ledger";
 
-const BASE = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const BASE = getWorkosDir();
 const KNOWLEDGE = join(BASE, "MEMORY", "KNOWLEDGE");
 const DIGESTS = join(BASE, "MEMORY", "DIGESTS");
 const STATE_FILE = join(BASE, "MEMORY", "STATE", "distill.json");

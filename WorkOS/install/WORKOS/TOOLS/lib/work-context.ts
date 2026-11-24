@@ -22,7 +22,7 @@
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getWorkosDir } from "../../../hooks/lib/paths";
+import { getWorkosDir } from "../Paths";
 import { atomicWriteJSON } from "./atomic-write";
 import type { WorkConfig } from "../../../hooks/lib/work-config";
 import { daysUntil, isClosed, type WorkItem } from "./work-ledger";

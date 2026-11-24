@@ -45,6 +45,7 @@
  * TRIGGER: Stop
  */
 
+import { getWorkosDir } from "./lib/paths";
 import { readHookInput } from "./lib/hook-io";
 import {
   parseTurnEvents,
@@ -55,9 +56,8 @@ import {
 import { appendFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { createHash } from "crypto";
-import { homedir } from "node:os";
 
-const WORKOS = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS = getWorkosDir();
 const OBS_PATH = join(WORKOS, "MEMORY", "OBSERVABILITY", "verification-gate.jsonl");
 const STATE_PATH = join(WORKOS, "MEMORY", "STATE", "verification-gate-blocked.json");
 

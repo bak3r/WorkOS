@@ -27,7 +27,7 @@
  *   unmet    — not done and not accounted for → blocks
  *
  * Consumers (do not break these):
- *   - skills/Evals/Tools/ProposeFromFailures.ts — reads asks[].ask, asks[].status,
+ *   - (upstream) skills/Assay case drafting reads asks[].ask, asks[].status,
  *     deferred[].item, deferred[].reason, session, ts
  *   - <your-release-skill>/Workflows/AlgorithmAudit.md — reads all_met, slug
  *
@@ -42,12 +42,12 @@
  * @version 1.0.0
  */
 
+import { getWorkosDir } from "./Paths";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
-const WORKOS_DIR = process.env.WORKOS_DIR || join(homedir(), ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const LOG_PATH = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY", "ask-fidelity.jsonl");
 
 const BLOCKING = "unmet";

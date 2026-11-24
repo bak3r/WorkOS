@@ -14,12 +14,10 @@
  * to OBSERVABILITY for the historical record.
  */
 
+import { workosPath } from "./lib/paths";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CHECK = join(HOME, ".claude/WORKOS/TOOLS/MemoryHealthCheck.ts");
+const CHECK = workosPath("TOOLS", "MemoryHealthCheck.ts");
 
 try {
   const out = execFileSync("bun", [CHECK], {

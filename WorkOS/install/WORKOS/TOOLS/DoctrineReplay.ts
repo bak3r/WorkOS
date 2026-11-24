@@ -19,11 +19,11 @@
  *   bun DoctrineReplay.ts sample [--n 24] [--out <path>]   # emit manifest JSON
  *   bun DoctrineReplay.ts sample --json                    # manifest to stdout only
  */
+import { workosPath } from "./Paths";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 
-const WORK_DIR = join(homedir(), ".claude/WORKOS/MEMORY/WORK");
+const WORK_DIR = workosPath("MEMORY", "WORK");
 
 type ISAMeta = {
   slug: string;

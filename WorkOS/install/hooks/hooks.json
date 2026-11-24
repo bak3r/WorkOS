@@ -6,7 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/ContextReduction.hook.sh"
+            "command": "$HOME/.claude/hooks/DestructiveGuard.hook.ts"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/PublicPushGate.hook.ts"
           }
         ]
       },
@@ -25,15 +29,6 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/TabState.hook.ts"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|Write|Edit|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/PreToolGuard.hook.ts"
           }
         ]
       }
@@ -98,15 +93,6 @@
         ]
       },
       {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts"
-          }
-        ]
-      },
-      {
         "matcher": "Write",
         "hooks": [
           {
@@ -115,16 +101,8 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/CheckpointPerISC.hook.ts",
             "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/ConfigEvalFire.hook.ts"
           },
           {
             "type": "command",
@@ -151,16 +129,8 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/CheckpointPerISC.hook.ts",
             "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/ConfigEvalFire.hook.ts"
           },
           {
             "type": "command",
@@ -187,16 +157,8 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/ISAStaleWriteGuard.hook.ts"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/CheckpointPerISC.hook.ts",
             "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/ConfigEvalFire.hook.ts"
           },
           {
             "type": "command",
@@ -230,11 +192,6 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/PostToolObserver.hook.ts"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/LoopDetector.hook.ts",
-            "timeout": 5
           }
         ]
       },
@@ -469,10 +426,6 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/SpendAuditor.hook.ts"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/StopGates.hook.ts"
           },
           {
@@ -487,6 +440,16 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/MemoryHealthGate.hook.ts",
             "timeout": 15,
+            "async": true
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/MemoryIndexRefresh.hook.ts",
+            "timeout": 60,
             "async": true
           }
         ]

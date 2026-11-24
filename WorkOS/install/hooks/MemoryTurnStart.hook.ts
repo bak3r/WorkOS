@@ -28,6 +28,7 @@
 
 // tickCadence removed 2026-07-11: MemoryReviewFire (Stop) owns the whole
 // cadence now — counting, decision, and firing in one place.
+import { getClaudeDir } from "./lib/paths";
 import { run as loadMemory } from "./LoadMemory.hook";
 import { run as deltaSurface } from "./MemoryDeltaSurface.hook";
 import { getRelevantContext } from "../WORKOS/TOOLS/MemoryRetriever";
@@ -35,7 +36,6 @@ import { clearLedger as clearSystemDelta } from "./SystemChangeSurface.hook";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve as pathResolve } from "node:path";
-import { homedir } from "node:os";
 import { isSubagentContext as isSubagent } from './lib/subagent';
 
 // ── Hot-layer injection gate (2026-07-11, context-window cleanup #1) ─────────
@@ -45,7 +45,7 @@ import { isSubagentContext as isSubagent } from './lib/subagent';
 // prompts without an injection (compaction backstop — a post-compact window
 // must re-see memory within a bounded number of turns). The 🧠 delta line and
 // the cadence tick remain every-turn: the visible contract is unchanged.
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const STATE_DIR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/STATE/memory-inject");
 const PRINCIPAL_MEMORY = pathResolve(CLAUDE_ROOT, "WORKOS/USER/PRINCIPAL/PRINCIPAL_MEMORY.md");
 const DA_MEMORY = pathResolve(CLAUDE_ROOT, "WORKOS/USER/DIGITAL_ASSISTANT/DA_MEMORY.md");
@@ -122,7 +122,9 @@ async function readStdin(): Promise<string> {
   // corpus, or trivial prompt) injects nothing.
   if (prompt.trim().length > 0) {
     try {
-      const ground = getRelevantContext(prompt, { topK: 5, threshold: 0.20 });
+      // allowStaleIndex (MemoryRetriever 1.5.1): the prompt never waits on a freshness walk or a
+      // rebuild; the async Stop hook MemoryIndexRefresh refreshes the index after the turn.
+      const ground = getRelevantContext(prompt, { topK: 5, threshold: 0.20, allowStaleIndex: true });
       if (ground.markdownBlock) {
         process.stdout.write(`<workos-ground>\n${ground.markdownBlock}\n</workos-ground>\n`);
       }

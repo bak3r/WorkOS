@@ -15,13 +15,14 @@
  *   bun DocCheck.ts --quiet      # only report issues, no OK lines
  */
 
+import { getClaudeDir } from './Paths';
 import { readFileSync, statSync, existsSync, readdirSync } from 'fs';
 import { join, resolve, dirname, relative } from 'path';
 import { execSync } from 'child_process';
 import { homedir } from "node:os";
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_DIR = join(HOME, '.claude');
+const CLAUDE_DIR = getClaudeDir();
 const WORKOS_DIR = join(CLAUDE_DIR, 'WORKOS');
 const HOOKS_DIR = join(CLAUDE_DIR, 'hooks');
 

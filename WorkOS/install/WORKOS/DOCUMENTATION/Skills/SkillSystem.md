@@ -249,12 +249,12 @@ science_cycle_time: meso
 | Level | Cycle Time | Formality | Example Skills |
 |-------|------------|-----------|----------------|
 | `micro` | Seconds-Minutes | Implicit (internalized) | Most skills |
-| `meso` | Hours-Days | Explicit when stuck | Evals, Research, Development |
+| `meso` | Hours-Days | Explicit when stuck | Assay, Research, Development |
 | `macro` | Weeks-Months | Formal documentation | Major architecture work |
 
 **Skills That Implement Science:**
 - **Development** - TDD is Science (test = goal, code = experiment, pass/fail = analysis)
-- **Evals** - Prompt optimization through systematic experimentation
+- **Assay** - Evals of prompts and outputs: code asserts, Claude judges, pass^k, Proof receipts
 - **Research** - Investigation through hypotheses and evidence gathering
 - **Council** - Debate as parallel hypothesis testing
 

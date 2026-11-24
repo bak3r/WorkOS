@@ -13,6 +13,7 @@
  * Interceptor tabs without opening new ones; refresh failure is non-fatal.
  */
 
+import { workosPath } from "./Paths";
 import { readFileSync, writeFileSync, existsSync, statSync, renameSync, readdirSync } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
 import { spawn } from "node:child_process";
@@ -20,16 +21,16 @@ import { homedir } from "node:os";
 import { ASCENT, ASCENT_BRACKETS, PHASE_TO_ASCENT, type AscentState } from "./ascent";
 
 const HOME = process.env.HOME || homedir();
-const TOOLS_DIR = resolve(HOME, ".claude/WORKOS/TOOLS");
+const TOOLS_DIR = workosPath("TOOLS");
 const TEMPLATE_HTML = join(TOOLS_DIR, "ISARender/template.html");
 const TEMPLATE_CSS = join(TOOLS_DIR, "ISARender/template.css");
 // Brand logo: user override via WORKOS_BRAND_LOGO_PATH env var (absolute path),
 // else system default under PAI/ASSETS/, else inert (empty src).
 const BRAND_LOGO_PATH_OVERRIDE = process.env.WORKOS_BRAND_LOGO_PATH ?? "";
 
-const BRAND_LOGO_PATH_DEFAULT = resolve(HOME, ".claude/WORKOS/ASSETS/pai-logo.png");
-const WORK_DIR = resolve(HOME, ".claude/WORKOS/MEMORY/WORK");
-const WORK_JSON = resolve(HOME, ".claude/WORKOS/MEMORY/STATE/work.json");
+const BRAND_LOGO_PATH_DEFAULT = workosPath("ASSETS", "pai-logo.png");
+const WORK_DIR = workosPath("MEMORY", "WORK");
+const WORK_JSON = workosPath("MEMORY", "STATE", "work.json");
 
 // Lifecycle stages come from the one ascent table (WORKOS/TOOLS/ascent.ts) — the same
 // four brackets an ISA can declare, in the same order, under the same names the Kitty tab

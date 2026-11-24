@@ -19,10 +19,10 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * NEEDS TRANSCRIPT: No (uses last_assistant_message from stdin, transcript fallback)
  */
 
+import { getWorkosDir } from './lib/paths';
 import { readHookInput, parseTranscriptFromInput } from './lib/hook-io';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import { homedir } from "node:os";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -44,7 +44,7 @@ async function main() {
 
   if (lastResponse) {
     try {
-      const paiDir = process.env.WORKOS_DIR || join(homedir(), '.claude', 'WORKOS');
+      const paiDir = getWorkosDir();
       const cachePath = join(paiDir, 'MEMORY', 'STATE', 'last-response.txt');
       writeFileSync(cachePath, lastResponse.slice(0, 2000), 'utf-8');
     } catch (err) {

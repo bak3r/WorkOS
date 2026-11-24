@@ -7,16 +7,15 @@
  * render all variants with --test.
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { spawnSync } from "child_process";
 // Bun's built-in YAML (bun >= 1.2.21): no npm package, so a deny-all sandbox
 // without node_modules still loads this file.
 const parseYaml = (s: string): any => Bun.YAML.parse(s);
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CLAUDE_DIR = join(HOME, ".claude");
+const CLAUDE_DIR = getClaudeDir();
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Terminal Width Detection
@@ -99,7 +98,7 @@ const WORKOS_NAVY = rgb(30, 58, 138);     // dark navy (mid blocks)
 const WORKOS_BRIGHT = rgb(37, 99, 235);   // bright blue (top cap)
 
 // WorkOS wordmark — single source of truth for the header text, kept identical
-// to the status line (WORKOS_StatusLine.sh: ${WORKOS_P}Wo${WORKOS_A}rk${WORKOS_I}OS).
+// to the WORKOS_P/A/I blues in STATUSLINE/Ansi.ts (the status line itself now draws the name in one blue).
 // Mixed-case, split Wo/rk/OS across the same three blues. Every banner design uses
 // this so the mark reads the same in the banner and the status line.
 const workosWordmark = (): string =>

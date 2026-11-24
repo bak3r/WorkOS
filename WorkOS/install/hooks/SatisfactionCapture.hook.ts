@@ -36,6 +36,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * precision-first phrase matching only, verbatim complaint as the summary.
  */
 
+import { getWorkosDir } from './lib/paths';
 import { appendFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
@@ -45,7 +46,6 @@ import { getISOTimestamp, getPSTComponents } from './lib/time';
 import { captureFailure } from '../WORKOS/TOOLS/FailureCapture';
 import { addUpgrade } from '../WORKOS/TOOLS/Upgrades';
 import { addRatingPulse } from './lib/isa-utils';
-import { homedir } from "node:os";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -77,7 +77,7 @@ interface RatingEntry {
 
 // ── Constants ──
 
-const BASE_DIR = process.env.WORKOS_DIR || join(homedir(), '.claude', 'WORKOS');
+const BASE_DIR = getWorkosDir();
 const SIGNALS_DIR = join(BASE_DIR, 'MEMORY', 'LEARNING', 'SIGNALS');
 const RATINGS_FILE = join(SIGNALS_DIR, 'ratings.jsonl');
 const LAST_RESPONSE_CACHE = join(BASE_DIR, 'MEMORY', 'STATE', 'last-response.txt');

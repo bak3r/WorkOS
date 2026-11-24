@@ -31,6 +31,7 @@
  * No subprocess spawns. No network. No imports from skills/. Pure file I/O.
  */
 
+import { getWorkosDir } from "./lib/paths";
 import {
   appendFileSync,
   existsSync,
@@ -40,7 +41,6 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import {
@@ -54,13 +54,7 @@ import { SECRET_VALUE_SHAPES } from "./lib/egress-class-core";
 const STDIN_CAP_BYTES = 2 * 1024 * 1024;
 const CACHE_MAX_BYTES = 10 * 1024 * 1024;
 
-const HOME = homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR
-  ? process.env.WORKOS_DIR.replace(/^~(?=\/|$)/, HOME).replace(
-      /^\$\{?HOME\}?(?=\/|$)/,
-      HOME,
-    )
-  : join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const STATE_DIR = join(WORKOS_DIR, "MEMORY", "STATE");
 const OBS_DIR = join(WORKOS_DIR, "MEMORY", "OBSERVABILITY");
 const CACHE_PATH = join(STATE_DIR, "permission-cache.json");

@@ -29,6 +29,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   bun ~/.claude/WORKOS/TOOLS/TelosFreshness.ts --bump <slug>   → mark a section fresh
  */
 
+import { getWorkosDir } from "./Paths";
 import { readFileSync, writeFileSync, existsSync, statSync } from "fs";
 import { getDAName } from "../../hooks/lib/identity"
 
@@ -43,7 +44,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const TELOS_PATH = join(WORKOS_DIR, "USER", "TELOS", "TELOS.md");
 const DA_IDENTITY_PATH = join(WORKOS_DIR, "USER", "DIGITAL_ASSISTANT", "DA_IDENTITY.md");
 const PRINCIPAL_IDENTITY_PATH = join(WORKOS_DIR, "USER", "PRINCIPAL", "PRINCIPAL_IDENTITY.md");

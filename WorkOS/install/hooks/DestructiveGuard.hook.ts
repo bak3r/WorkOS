@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.0.0
+ * @version 1.0.1
  * DestructiveGuard.hook.ts — hard-blocks destructive and credential-exfil Bash shapes.
  *
  * Why this exists: Safety.hook.ts only runs on PermissionRequest, which never
@@ -25,10 +25,13 @@
  *
  * Matching runs on buildShapeTargets() from lib/safety-classifier, so quoting,
  * `bash -c '…'`, env-prefix wrappers, $(…)/backtick substitutions and backslash
- * escapes are seen through exactly as the classifier sees through them.
+ * escapes are seen through exactly as the classifier sees through them. Keep
+ * lib/safety-classifier.ts when porting upstream: LifeOS 8.x deleted it, and
+ * losing it would stop this guard loading at all.
  *
- * FAIL-OPEN on internal error (same isolation contract as the other PreToolGuard
- * checks); the patterns are pure regexes over the command string.
+ * Registered on its own as PreToolUse:Bash (until 1.1.0 it ran inside the
+ * retired PreToolGuard dispatcher). FAIL-OPEN on bad stdin or an internal error;
+ * the patterns are pure regexes over the command string.
  */
 
 import { readFileSync } from "node:fs";
@@ -94,7 +97,7 @@ export function findDestructive(command: string): string | null {
   return null;
 }
 
-/** Pure check for PreToolGuard dispatch. Returns a block decision or null (allow). */
+/** Pure check. Returns a block decision or null (allow). */
 export function check(input: HookInput): { block: true; message: string } | null {
   const command = input?.tool_input?.command;
   if (typeof command !== "string" || !command.trim()) return null;
@@ -117,7 +120,12 @@ if (import.meta.main) {
   } catch {
     process.exit(0);
   }
-  const result = check(input);
+  let result: ReturnType<typeof check> = null;
+  try {
+    result = check(input);
+  } catch {
+    process.exit(0);
+  }
   if (result?.block) {
     process.stderr.write(result.message);
     process.exit(2);

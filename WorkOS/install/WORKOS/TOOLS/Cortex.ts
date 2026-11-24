@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
+import { workosPath } from "./Paths";
 import { existsSync, lstatSync, opendirSync, readFileSync, realpathSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
-import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { createCaptureEnvelope, isEnvelopeValidAt } from "./CaptureEnvelope";
 
@@ -280,7 +280,7 @@ export async function runCortex(args: string[], runtime: CortexRuntime = {}): Pr
   if(command==="search"&&parsed.positionals.length!==1) return fail(command,EXIT.INVALID_INPUT,"invalid_input","search requires exactly one query");
   if(command==="timeline"&&parsed.positionals.length) return fail(command,EXIT.INVALID_INPUT,"invalid_input","timeline accepts no positional arguments");
   if((command==="get"||command==="export")&&(parsed.positionals.length===0||parsed.positionals.length>LIMITS.IDS)) return fail(command,EXIT.INVALID_INPUT,"invalid_input",`${command} requires one or more explicit IDs (maximum ${LIMITS.IDS})`);
-  const requestedRoot=resolve(runtime.memoryRoot??opt(parsed,"--memory-root")??process.env.CORTEX_MEMORY_ROOT??join(homedir(),".claude/WORKOS/MEMORY"));
+  const requestedRoot=resolve(runtime.memoryRoot??opt(parsed,"--memory-root")??process.env.CORTEX_MEMORY_ROOT??workosPath("MEMORY"));
   let memoryRoot=requestedRoot, records:CortexRecord[];try{const corpus=enumerateCanonicalCorpus(requestedRoot);memoryRoot=corpus.root;records=corpus.records;}catch(error){if(error instanceof IntegrityError)return fail(command,EXIT.INVALID_INPUT,"integrity_error",error.message);return fail(command,EXIT.INTERNAL,"internal_error",error instanceof Error?error.message:String(error));}
   if(command==="status")return ok(command,{canonical:{root:memoryRoot,records:records.length},mode:"local-read-only",indexes:[]});
   if(command==="rebuild"){const canonical=canonicalCorpusDigest(records);const rebuilt=canonicalCorpusDigest(JSON.parse(JSON.stringify(records)));return ok(command,{format:"workos-cortex-canonical-rebuild/v1",canonical_digest:canonical,rebuilt_digest:rebuilt,equivalent:canonical===rebuilt,records:records.length,indexes:[]});}

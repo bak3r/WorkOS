@@ -54,7 +54,7 @@ Path-default-first, fail-closed, mark-only-the-exceptions:
 ## Enforcement
 
 - **Single vendor by construction** — no non-Anthropic inference tool or agent ships in this fork, so there is no second route to gate.
-- `hooks/EgressClassGuard.hook.ts` + `hooks/lib/egress-class-core.ts` — the upstream PreToolUse Bash gate that blocked over-ceiling payloads to the (now removed) broker route. It logs to `WORKOS/MEMORY/OBSERVABILITY/egress-decisions.jsonl`.
+- `EgressClassGuard` — the upstream PreToolUse Bash gate that blocked over-ceiling payloads to the (now removed) broker route; retired in WorkOS 2.0.0 (`hooks/retired.json`). `hooks/lib/egress-class-core.ts` stays, because `Safety.hook.ts` takes its secret-value shapes from it.
 - `WORKOS/USER/CONFIG/data-classification.json` — path-default glob table.
 - The sandbox's deny-all egress policy is the outer wall: anything not explicitly allowed cannot leave.
 

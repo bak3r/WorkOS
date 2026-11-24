@@ -57,12 +57,12 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  * - Typical execution: <100ms
  */
 
+import { getWorkosDir } from './lib/paths';
 import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { getISOTimestamp, getPSTDate } from './lib/time';
 import { getLearningCategory } from './lib/learning-utils';
 import { findArtifactPath, findActiveSessionByUUID } from './lib/isa-utils';
-import { homedir } from "node:os";
 
 // Normalize env path vars that Claude Code injects without shell expansion (WorkOS#1404)
 for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
@@ -71,7 +71,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 }
 
 
-const BASE_DIR = process.env.WORKOS_DIR || join(homedir(), '.claude', 'WORKOS');
+const BASE_DIR = getWorkosDir();
 const MEMORY_DIR = join(BASE_DIR, 'MEMORY');
 const WORK_DIR = join(MEMORY_DIR, 'WORK');
 const LEARNING_DIR = join(MEMORY_DIR, 'LEARNING');

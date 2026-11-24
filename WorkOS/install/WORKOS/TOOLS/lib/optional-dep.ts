@@ -30,15 +30,13 @@ export interface OptionalDep {
 
 /** The npm packages WorkOS tools use, by install dir relative to the config root. Doctor's `npm-deps` reads this. */
 export const NPM_DEPS: ReadonlyArray<{ pkg: string; feature: string; dir: string }> = [
-  { pkg: "yaml", feature: "Evals suite/case writers (SuiteManager, FailureToTask, GenerateCases, ProposeFromFailures)", dir: "." },
+  { pkg: "yaml", feature: "Assay case drafts (FailureToCase)", dir: "." },
   { pkg: "handlebars", feature: "Prompting templates (RenderTemplate, ValidateTemplate)", dir: "skills/Prompting/Tools" },
   { pkg: "graphology", feature: "Memory graph (MemoryGraph.ts)", dir: "WORKOS/TOOLS" },
   { pkg: "graphology-communities-louvain", feature: "Memory graph (MemoryGraph.ts)", dir: "WORKOS/TOOLS" },
   { pkg: "graphology-metrics", feature: "Memory graph (MemoryGraph.ts)", dir: "WORKOS/TOOLS" },
   { pkg: "js-tiktoken", feature: "Token X-ray (TokenXray.ts)", dir: "WORKOS/TOOLS/TokenXray" },
   { pkg: "apify-client", feature: "Apify skill", dir: "skills/Apify" },
-  { pkg: "@langwatch/scenario", feature: "Evals multi-turn scenarios (ScenarioRunner)", dir: "skills/Evals" },
-  { pkg: "@ai-sdk/anthropic", feature: "Evals multi-turn scenarios (ScenarioRunner)", dir: "skills/Evals" },
 ];
 
 /**

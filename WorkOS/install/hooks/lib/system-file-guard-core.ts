@@ -10,14 +10,13 @@
  * The hook adds the side effects on top.
  */
 
+import { getClaudeDir } from "./paths";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { isContained, isPatternAllowlisted, relativeToClaudeRoot } from "./containment-zones";
 
-const HOME = process.env.HOME ?? homedir();
-const CLAUDE_ROOT = join(HOME, ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 const DEFAULT_DENY_LIST_PATH = join(CLAUDE_ROOT, "WORKOS/USER/SECURITY/DENY_LIST.txt");
 // USER/SECURITY, not skills/_WORKOS: on a public install, running the shipped
 // DeriveDenyHashes used to CREATE <your-release-skill>/, whose existence is exactly

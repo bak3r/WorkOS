@@ -30,6 +30,7 @@
  * PERFORMANCE: <50ms (two JSON reads + stat per registered path)
  */
 
+import { getClaudeDir } from './lib/paths';
 import {
   existsSync, readFileSync, chmodSync, statSync, appendFileSync,
   mkdirSync, openSync, readSync, closeSync, realpathSync,
@@ -37,7 +38,7 @@ import {
 import { join } from 'path';
 import { homedir } from 'os';
 
-const CLAUDE_DIR = join(homedir(), '.claude');
+const CLAUDE_DIR = getClaudeDir();
 const OBS_DIR = join(CLAUDE_DIR, 'WORKOS', 'MEMORY', 'OBSERVABILITY');
 const LOG_FILE = join(OBS_DIR, 'hook-healer.jsonl');
 const SETTINGS_FILES = ['settings.json', 'settings.local.json'];

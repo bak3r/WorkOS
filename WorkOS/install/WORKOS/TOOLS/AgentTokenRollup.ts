@@ -18,11 +18,11 @@
  *   bun AgentTokenRollup.ts --json          # machine-readable
  */
 
+import { getClaudeDir } from './Paths';
 import { readdirSync, existsSync, statSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 
-const PROJECTS = join(homedir(), '.claude', 'projects');
+const PROJECTS = join(getClaudeDir(), 'projects');
 
 interface Usage {
   input_tokens?: number;

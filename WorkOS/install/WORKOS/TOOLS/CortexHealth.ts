@@ -55,9 +55,14 @@ function validDispatchSummary(value: unknown): boolean {
   return byTypeTotal === value.total && (value.proposals_auto_applied as number) <= ((value.by_type.proposal as number | undefined) ?? 0);
 }
 
+// `attempts` (primary inference calls; 2 after a timeout retry) is written by MemoryReviewer 1.4.9
+// and optional so rows written before it existed still validate. public issue #1907, @xmasyx
+// (ported from LifeOS 8.761.0 CortexHealth with the reviewer: without it every new run grades "invalid").
+const validAttempts = (row: Record<string, unknown>) => row.attempts === undefined || nonNegativeInteger(row.attempts);
+
 function validReviewerSuccess(row: unknown): row is Record<string, unknown> {
-  if (!isPlainObject(row) || !hasExactKeys(row, ["ts", "ok", "runId", "transcript", "exchanges", "inference_duration_ms", "parse_ok", "dispatch_summary"])) return false;
-  return row.ok === true && row.parse_ok === true && typeof row.runId === "string" && row.runId.length > 0 &&
+  if (!isPlainObject(row) || !hasExactKeys(row, ["ts", "ok", "runId", "transcript", "exchanges", "inference_duration_ms", "parse_ok", "attempts", "dispatch_summary"], ["ts", "ok", "runId", "transcript", "exchanges", "inference_duration_ms", "parse_ok", "dispatch_summary"])) return false;
+  return row.ok === true && row.parse_ok === true && validAttempts(row) && typeof row.runId === "string" && row.runId.length > 0 &&
     typeof row.ts === "string" && Number.isFinite(Date.parse(row.ts)) && typeof row.transcript === "string" && row.transcript.length > 0 &&
     nonNegativeInteger(row.exchanges) && nonNegativeFinite(row.inference_duration_ms) && validDispatchSummary(row.dispatch_summary);
 }
@@ -66,8 +71,8 @@ function validReviewerSuccess(row: unknown): row is Record<string, unknown> {
 // curate). Fail-closed: anything claiming skipped that doesn't match this exact
 // shape stays "invalid" (critical), so a broken extractor can't dress up as a skip.
 function validReviewerSkip(row: unknown): row is Record<string, unknown> {
-  if (!isPlainObject(row) || !hasExactKeys(row, ["ts", "ok", "runId", "transcript", "exchanges", "inference_duration_ms", "parse_ok", "skipped", "error"], ["ts", "ok", "runId", "exchanges", "inference_duration_ms", "parse_ok", "skipped"])) return false;
-  return row.ok === true && row.parse_ok === true && row.skipped === true && row.exchanges === 0 &&
+  if (!isPlainObject(row) || !hasExactKeys(row, ["ts", "ok", "runId", "transcript", "exchanges", "inference_duration_ms", "parse_ok", "skipped", "attempts", "error"], ["ts", "ok", "runId", "exchanges", "inference_duration_ms", "parse_ok", "skipped"])) return false;
+  return row.ok === true && row.parse_ok === true && row.skipped === true && row.exchanges === 0 && validAttempts(row) &&
     typeof row.runId === "string" && row.runId.length > 0 && typeof row.ts === "string" && Number.isFinite(Date.parse(row.ts)) &&
     (row.transcript === null || row.transcript === undefined || typeof row.transcript === "string") &&
     (row.error === undefined || typeof row.error === "string");

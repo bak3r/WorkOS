@@ -22,12 +22,11 @@
  *   3  action required: detect-only migrations are pending; NOTHING was modified
  */
 
+import { getClaudeDir } from "./Paths";
 import { existsSync, readFileSync, lstatSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 
-const HOME = process.env.HOME ?? homedir();
-const CLAUDE_ROOT = join(HOME, ".claude");
+const CLAUDE_ROOT = getClaudeDir();
 
 interface MigrationContext {
   claudeRoot: string;
@@ -142,25 +141,14 @@ const MIGRATIONS: Migration[] = [
   },
   {
     id: "m-006",
-    name: "Phase E — SystemFileGuard hook registered",
+    name: "Phase E — SystemFileGuard hook registered (retired in WorkOS 2.0.0)",
     detectOnly: true,
-    isApplied: ({ claudeRoot }) => {
-      const settingsPath = join(claudeRoot, "settings.json");
-      if (!existsSync(settingsPath)) return false;
-      try {
-        const settings = JSON.parse(readFileSync(settingsPath, "utf8")) as {
-          hooks?: { PreToolUse?: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }> };
-        };
-        const preTool = settings.hooks?.PreToolUse ?? [];
-        return preTool.some((entry) =>
-          (entry.hooks ?? []).some((h) => (h.command ?? "").includes("SystemFileGuard.hook.ts")),
-        );
-      } catch {
-        return false;
-      }
-    },
+    // SystemFileGuard was retired in WorkOS 2.0.0 (hooks/retired.json): it failed open
+    // with no DENY_LIST.txt, and InstallHooks now removes its registration. Nothing is
+    // left to migrate, so this always reads as applied.
+    isApplied: () => true,
     apply: () => {
-      throw new Error("m-006 apply not implemented — hook entry must be added to settings.system.json (public template), then SessionStart's MergeSettings regenerates settings.json. Detected-as-missing requires manual remediation on a public WorkOS install.");
+      throw new Error("m-006 has nothing to apply: SystemFileGuard was retired in WorkOS 2.0.0.");
     },
   },
   {

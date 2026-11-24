@@ -30,13 +30,14 @@
  * Subagent skip: the per-turn surface is for the principal's primary session.
  */
 
+import { getClaudeDir } from "./lib/paths";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { resolve as pathResolve, dirname } from "node:path";
-import { homedir } from "node:os";
 import { isSubagentContext as isSubagent } from './lib/subagent';
 
-const CLAUDE_ROOT = pathResolve(homedir(), ".claude");
-const WRITES_LOG = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-writes.jsonl");
+const CLAUDE_ROOT = getClaudeDir();
+// MemoryWriter records every write in the Cortex ledger (Cortex 8.4.0); OBSERVABILITY/memory-writes.jsonl is retired.
+const WRITES_LOG = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/LEDGER/cortex-events.jsonl");
 const CURSOR = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-delta-cursor.json");
 const HEALTH_LOG = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/OBSERVABILITY/memory-health.jsonl");
 const FRESHNESS_CACHE = pathResolve(CLAUDE_ROOT, "WORKOS/USER/CACHE/freshness.json");
@@ -46,11 +47,17 @@ const HEARTBEAT = pathResolve(CLAUDE_ROOT, "WORKOS/MEMORY/STATE/delta-surface-he
 const AUTONOMIC_WRITER = "MemorySystem.add";
 const FRESHNESS_MAX_AGE_MS = 24 * 60 * 60 * 1000; // older cache → warn, don't lie
 const LINE_HARD_CAP = 180;
+// The ledger carries non-write kinds (checkpoint, memory/adopt, memory/restore,
+// memory/rejected, memory/redact) in the same stream; only a set is a write. Rows
+// with no kind are legacy memory-writes.jsonl rows, still counted if the log is
+// pointed back.
+const WRITE_KIND = "memory/set";
 
 interface WriteRow {
   ts: string;
   file: string;
   updated_by?: string;
+  kind?: string;
   accepted?: number;
   additions?: string[];
   evictions?: string[];
@@ -182,6 +189,7 @@ export function run(): string | null {
         try { row = JSON.parse(line); } catch { continue; }
         if (!row.ts) continue;
         if (row.updated_by !== AUTONOMIC_WRITER) continue;
+        if (row.kind !== undefined && row.kind !== WRITE_KIND) continue;
         const isTestRow = (row.additions ?? []).some((e) => /SmokeTest|smoke-test/i.test(e));
         if (isTestRow) continue;
         lastAutonomic = row; // chronological — last one wins

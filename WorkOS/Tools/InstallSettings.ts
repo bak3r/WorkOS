@@ -12,7 +12,9 @@
  * Semantics match the sibling installers (DeployCore/InstallHooks):
  *   - settings.json absent → write the expanded template whole.
  *   - settings.json present → merge (lib/settings-merge.ts): permissions allow/deny/ask
- *     are UNIONED (the developer's rules are never removed), env keys and other top-level
+ *     are UNIONED (the developer's rules are never removed; the only exception is an exact
+ *     match of a rule WorkOS itself retired in install/settings.retired.json, listed as
+ *     `permissionRulesToRetire` in the dry run and removed only on --apply), env keys and other top-level
  *     keys are added only when absent, model / availableModels / theme / plugin keys are
  *     never added or changed, and security-relevant keys (skip*PermissionPrompt, autoMode,
  *     defaultMode, allowedHttpHookUrls, includeGitInstructions, autoMemoryEnabled,
@@ -28,7 +30,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { atomicWriteText } from "./lib/atomic-write";
 import { Ledger } from "./lib/ledger";
-import { planSettingsMerge, securityKeysIn } from "./lib/settings-merge";
+import { planSettingsMerge, retirePermissions, securityKeysIn } from "./lib/settings-merge";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { detectDevTree } from "./InstallEngine";
@@ -128,10 +130,21 @@ if (!existsSync(targetPath)) {
   if (!args.apply && plan.permissions.allow.length + plan.permissions.deny.length + plan.permissions.ask.length > 0) {
     report.permissionRulesToAdd = plan.permissions;
   }
-  if (args.apply && plan.changed) {
+  // Rules an earlier release shipped and this one retired (install/settings.retired.json).
+  // The union above never removes anything, so without this an updated install would keep
+  // them forever. Listed in the dry run; removed only on --apply.
+  const retiredPath = join(args.skillRoot, "install", "settings.retired.json");
+  const retiredRules = existsSync(retiredPath) ? JSON.parse(readFileSync(retiredPath, "utf8")).permissions ?? {} : {};
+  const toRules = (xs: unknown) => (Array.isArray(xs) ? xs.map((x: { rule: string }) => x.rule) : []);
+  const { merged: final, removed } = retirePermissions(plan.merged, {
+    allow: toRules(retiredRules.allow), deny: toRules(retiredRules.deny), ask: toRules(retiredRules.ask),
+  });
+  const removedCount = removed.allow.length + removed.deny.length + removed.ask.length;
+  if (removedCount > 0) report[args.apply ? "permissionRulesRetired" : "permissionRulesToRetire"] = removed;
+  if (args.apply && (plan.changed || removedCount > 0)) {
     new Ledger(args.configRoot, "InstallSettings").beforeWrite(targetPath, "settings-key",
-      `merged: keys ${plan.addedKeys.join(",") || "-"}; env ${plan.addedEnv.join(",") || "-"}; permissions +${plan.permissions.allow.length}/${plan.permissions.deny.length}/${plan.permissions.ask.length}`);
-    atomicWriteText(targetPath, JSON.stringify(plan.merged, null, 2) + "\n");
+      `merged: keys ${plan.addedKeys.join(",") || "-"}; env ${plan.addedEnv.join(",") || "-"}; permissions +${plan.permissions.allow.length}/${plan.permissions.deny.length}/${plan.permissions.ask.length}, -${removedCount} retired`);
+    atomicWriteText(targetPath, JSON.stringify(final, null, 2) + "\n");
   } else if (args.apply) {
     report.note = "nothing to add — no write, no backup";
   }

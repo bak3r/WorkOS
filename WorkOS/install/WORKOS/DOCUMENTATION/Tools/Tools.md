@@ -173,6 +173,50 @@ bun ~/.claude/WORKOS/TOOLS/GetTranscript.ts "https://www.youtube.com/watch?v=VID
 
 ---
 
+## LearningLog.ts - Learning Record for the Explain Skill
+
+**Location:** `~/.claude/WORKOS/TOOLS/LearningLog.ts`
+
+Append-only JSONL record of fundamentals explanations and graded quiz answers, at `WORKOS/USER/LEARNING/learning.jsonl`. The Explain skill's ExplainFundamentals and QuizFundamentals intents are its only writers; upstream LifeOS keeps the same rows as the STATVS `learning` stream.
+
+**Usage:**
+```bash
+bun ~/.claude/WORKOS/TOOLS/LearningLog.ts append --kind explain|quiz --area <slug> --title "<text>" --data '<json object>'
+bun ~/.claude/WORKOS/TOOLS/LearningLog.ts tail [--area <slug>] [--n 500]
+```
+
+Exits 1 on a usage error, 2 when the record cannot be read or written. No command edits or removes a row.
+
+---
+
+## Errata.ts - The Complaint Ledger (Errata-lite)
+
+**Location:** `~/.claude/WORKOS/ERRATA/Errata.ts`, with `Schema.ts`, `Store.ts` and `Enrich.ts`. The front door is `Skill("Errata")` and `/er`.
+
+One JSON line per complaint, bug, correction, feature request or praise in `WORKOS/USER/ERRATA/errata-YYYY-MM.jsonl`, the principal's words verbatim, corrections and enrichments appended as patches. `record`, `list`, `show`, `stats`, `enrich` (Claude low tier), and the three queries other tools read: `skills` and `impact` (complaints per Skill-tool call, from `WORKOS/MEMORY/SKILLS/execution.jsonl`; HillClimb survey and verify) and `misses` (false passes: a complaint against a file whose Proof receipt said presentable). `ERRATA_DIR`, `ERRATA_STATE_DIR` and `ERRATA_EXECUTION_FILE` point it at a scratch ledger. Ported from upstream LifeOS 8.761.0's ledger; capture hooks, trained triage and mining are not ported.
+
+---
+
+## Skill checks - IntentLint, IntentPreserve, SkillContents, SkillCoverage, SkillHygieneGate
+
+**Location:** `~/.claude/WORKOS/TOOLS/`. The code checks `Skill("CreateSkill")` runs on every skill it touches. Ported from upstream LifeOS 8.761.0.
+
+| Tool | What it checks | Run |
+|------|----------------|-----|
+| `IntentLint.ts` | the intent standard: Ideal State and Anti-criteria first, routing reaches every file, contents lines, the short-description cap | `bun WORKOS/TOOLS/IntentLint.ts skills/<Skill> [--strict]` |
+| `IntentPreserve.ts` | nothing load-bearing (code spans, guard lines, fenced commands) was lost against a git revision | `bun WORKOS/TOOLS/IntentPreserve.ts --base HEAD skills/<Skill>` |
+| `SkillContents.ts` | writes or checks the `**Contents:**` line of long files | `bun WORKOS/TOOLS/SkillContents.ts --help` |
+| `SkillCoverage.ts` | whether an existing skill already covers a need, before a new one is made | `bun WORKOS/TOOLS/SkillCoverage.ts "<need>"` |
+| `SkillHygieneGate.ts` | the skills tree is publishable-clean: no identity strings, home paths or vendored deps, and only the permitted frontmatter keys | `bun WORKOS/TOOLS/SkillHygieneGate.ts [--skill <Name>] [--root <dir>] [--no-deny-list]` |
+
+`ContextLoad.ts` is the deterministic section loader for skills that ship a `Context.json` (Webdesign, ISA): `bun WORKOS/TOOLS/ContextLoad.ts <Skill> load <bundle>|list|search "<query>"` returns the named sections with their source hashes.
+
+`lib/IsaTestStrategy.ts` parses an ISA's `## Test Strategy` rows and staged `## Evals` block for the Development tools (`IsaCheck.ts`, `Inventory.ts`), with `lib/IsaTemplate.ts` and `lib/RetryEintr.ts`. Its `lib/GlanceQuestion.ts` is a parse-only stand-in: it checks a glance question's shape but does **not** judge whether a producer command is safe to run, because nothing in WorkOS runs one (`PRODUCER_SAFETY_CHECKED = false`; a test fails if anything else imports it). Port upstream's module before building any runner.
+
+`--root` points the hygiene gate at a copy of the tree, such as `WorkOS/install` in the source repository. Without `WORKOS/USER/SECURITY/DENY_LIST.txt` only the generic checks run, and the gate exits 2 unless `--no-deny-list` says that is expected. Supporting modules: `lib/IntentSections.ts`, `lib/SkillCatalog.ts` (the short-description cap), and `lib/Boundary.ts` (path confinement only).
+
+---
+
 ## MemoryRetriever.ts - Compressed Knowledge Retrieval
 
 **Location:** `~/.claude/WORKOS/TOOLS/MemoryRetriever.ts`
@@ -356,37 +400,6 @@ brew install trufflehog
 - Uses entropy detection + regex patterns
 - Verifies findings when possible (calls APIs to check if keys are valid)
 - No API key required (standalone CLI tool)
-
----
-
-## RTK — Context Reduction Proxy
-
-**Location:** `~/.local/bin/rtk` (installed via `curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh`)
-
-**Repository:** [github.com/rtk-ai/rtk](https://github.com/rtk-ai/rtk) (MIT license)
-
-Transparent CLI proxy that compresses the output of a few high-volume commands before it reaches Claude Code's context. Integrated via a PreToolUse hook that rewrites matching commands to their `rtk` equivalents before execution.
-
-**`rtk` is an OPTIONAL dependency, not bundled by the installer.** Without `rtk` on PATH the hook is an inert passthrough — it never errors and never blocks a command. To enable it, install rtk separately (see Location above). This is deliberate: the installer ships no third-party binary.
-
-**Scope (2026-07-13 shrink):** the hook rewrites **only** `git` (status/diff/log/commit/push/pull/branch/fetch/stash/show), `gh` (pr/issue/run/api/release), and an `interceptor screenshot --save` output redirect. An earlier build carried a ~15-family rewrite table (cargo, vitest, pytest, go, docker, kubectl, npm, pnpm, tsc, eslint, prettier, prisma, ruff, mypy); those were removed because they are not this system's stack (bun/TS) and the table was dead weight.
-
-**What it does NOT touch (INVARIANT):** read-path commands whose stdout the model reasons over as evidence — `rg`/`grep`, `cat`/`head`, `ls`/`tree`/`find`, `diff`, `curl`/`wget`, `psql`/`aws`. rtk's parse-fail there falls back to a different binary (`rg`→BSD grep) and can silently corrupt results. Compress what the model *watches* (VCS status, gh metadata), never what it *reads*. Incident: 2026-06-10 Vector ISA miss.
-
-**Measured value (this install):** `git status` ≈69% smaller, `gh pr diff` ≈65%, `git log` ≈42%. `rtk gain` reports a much larger lifetime figure, but most of that is direct/manual rtk usage of read-path commands (curl, grep, ls) that the hook does **not** rewrite — the hook's own contribution is the git/gh subset.
-
-**Key Commands:**
-```bash
-rtk gain              # rtk's own token-savings ledger (all rtk usage, not just the hook)
-rtk --help            # supported subcommands
-```
-
-**Technical Details:**
-- Rust binary, zero runtime dependencies
-- 3-tier parsing: JSON → regex → passthrough (graceful degradation)
-- SQLite tracking database at `~/.config/rtk/history.db`
-- Hook requires `jq` (for JSON stdin parsing) in addition to `rtk`
-- Regression gate: `cd ~/.claude/hooks && bun test ContextReduction.test.ts`
 
 ---
 
@@ -600,6 +613,16 @@ Probes the external tools WorkOS doctrine assumes but the core install does not 
 
 Five states per capability: `live` / `broken` / `declined` / `stale` / `off`. `off` is an optional capability with no local configuration — the read-only work context (`glab`, `jira`) is off until `GITLAB_HOST`/glab or `JIRA_URL` exist; `--network` adds Jira's `GET /rest/api/3/myself`. The manifest is a **TTL'd cache, never truth** — it carries a salted integrity hash and readers re-verify doctrine-critical capabilities live at point-of-use. `declined` is a first-class permanent, silent opt-out. Diagnostic register only — no scores, no percentages.
 
+**What "live" means (Doctor 1.0.10 rules, ported from upstream LifeOS 8.761.0):**
+- **A binary is probed, not just found.** `rg`, `magick`, `ffmpeg` (`-version`), `yt-dlp`, `fabric`, `jq` and `glab` are run with `--version` under a 3 s timeout, so a wedged or non-runnable binary reads `broken` with the reason. `yt-dlp` is date-versioned and reads `broken` when it is over 180 days old. A `fabric-ai` binary with no `fabric` is reported (callers exec `fabric`), not hidden.
+- **Unconfigured optional capabilities read `off`, never `broken`.** Optional ones (Interceptor with no browser, ImageMagick, ffmpeg, yt-dlp, fabric, `glab`, Jira, npm packages) are re-probed every run, so they turn live once set up. A present-but-misconfigured one is still `broken`.
+- **The orphan-memory search is bounded.** The shadow-`$HOME` scan looks only under the config root, `~/Projects`, `~/LocalProjects`, `~/code`, `~/Developer`, `~/src` and the `~/...` paths named in `USER/PROJECTS.md` — never all of `$HOME`; on macOS it also skips the privacy-protected folders (Desktop, Documents, Downloads, Movies, Pictures, Music) and prints the `find` command to run by hand.
+- **A check that could not finish is unknown, never a pass.** An incomplete shadow-`$HOME` search, an identity scan that cannot load `InstallEngine.ts`, an unreadable `settings.json` or one with no hook commands, an unresolvable `$VAR` in a hook command, and a missing, unreadable or integrity-less manifest all fail closed: the row is `broken` with `UNKNOWN` (or `unknown`) in the detail, `--verify` exits 2 with `INTEGRITY UNKNOWN`, and `--statusline` shows a warning. Doctor has no separate `unknown` state; the statusline and `AlgorithmNudge` read only `broken`.
+- **Smaller:** a probe may name its own fix command; an offline pass cannot clear a still-fresh network failure (`[network verdict kept]`); a hook command run through an interpreter needs only the file and exec bit, not a `#!` line; native binaries (ELF, Mach-O) need no shebang; more Chrome/Chromium paths are recognised (`google-chrome-stable`, `/opt/google/chrome/chrome`, `chromium-browser`, macOS `Chromium.app`).
+- **Not ported (the capability does not exist here):** Cloudflare, voice, codex, the `userdata-mounts` check, Windows probing, and the scaffold-identity check (needs `isScaffoldSentinel`, which WorkOS identity code does not have).
+
+`--reconcile` is unchanged: it compares the hook files on disk with what `settings.json` registers (following dispatcher imports) and ignores files listed in `hooks/retired.json`.
+
 **Usage:**
 ```bash
 # Probe (offline checks), human table
@@ -622,6 +645,23 @@ bun ~/.claude/WORKOS/TOOLS/Doctor.ts ack             # acknowledge the current b
 **When to Use:**
 - "run the doctor", "check capabilities", "why is browser verification not working"
 - Post-install (INSTALL.md step 8.5) and any time something feels off
+
+---
+
+## StatusLine.ts + STATUSLINE/ - The Status Line
+
+**Location:** `~/.claude/WORKOS/TOOLS/StatusLine.ts` (switch), `~/.claude/WORKOS/STATUSLINE/` (renderer, see its README)
+
+The status line is one Bun process (`STATUSLINE/Render.ts`) behind the `WORKOS/WORKOS_StatusLine.sh` entry point. A render only reads files and replays an unchanged frame. `STATUSLINE/Refresh.ts` refreshes its one shared cache from MaintenanceJobs. `StatusLineClip.ts` and `StatusLineAbbrev.ts` are its clipping and name-shortening helpers.
+
+```bash
+bun ~/.claude/WORKOS/TOOLS/StatusLine.ts status        # on | off
+bun ~/.claude/WORKOS/TOOLS/StatusLine.ts off           # new sessions draw no statusline (block kept)
+bun ~/.claude/WORKOS/TOOLS/StatusLine.ts on            # put it back
+```
+
+**When to Use:**
+- "/statusline off", "hide the statusline", "turn the statusline back on"
 
 ---
 

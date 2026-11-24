@@ -31,6 +31,7 @@
  * Exit 0 even when stores are missing (a fresh install is a valid, empty corpus);
  * non-zero only on an unexpected internal error.
  */
+import { getClaudeDir } from "../../../WORKOS/TOOLS/Paths";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 
@@ -227,7 +228,7 @@ function main(): void {
   const warnings: string[] = [];
   const missing: string[] = [];
 
-  const root = arg("--root") ?? process.env.SKILLSCAN_MEMORY_ROOT ?? join(process.env.HOME ?? ".", ".claude");
+  const root = arg("--root") ?? process.env.SKILLSCAN_MEMORY_ROOT ?? getClaudeDir();
   const days = intArg("--days", 45, 1, 3650, warnings);
   const maxRating = intArg("--max-rating", 4, 1, 10, warnings);
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);

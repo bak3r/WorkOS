@@ -15,13 +15,13 @@
  * unset or unreadable. Fails open: any error is swallowed and the turn proceeds
  * without the line — a timestamp is nice-to-have, never worth blocking.
  */
+import { getSettingsPath } from "./lib/paths";
 import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
 
 try {
   let TZ = "UTC";
   try {
-    const s = JSON.parse(readFileSync(`${homedir()}/.claude/settings.json`, "utf8"));
+    const s = JSON.parse(readFileSync(getSettingsPath(), "utf8"));
     if (s?.principal?.timezone) TZ = s.principal.timezone;
   } catch {
     // keep UTC

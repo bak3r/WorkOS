@@ -53,7 +53,7 @@ Private, user-owned data that ships in the user's own private repo and is mounte
 |------|--------|
 | `~/.claude/.env`, `.env.*` | USER (secrets) |
 | `~/.claude/WORKOS/USER/**` (symlink → `~/.config/WORKOS/USER/**`) | USER (identity, TELOS work goals, projects, integrations, contacts, work context, customizations) |
-| `~/.claude/WORKOS/MEMORY/**` (symlink → `~/.config/WORKOS/USER/MEMORY/**`, post-Phase-G.2, 2026-05-23) | USER (work history, knowledge graph, learning signals, observability logs, research, reflections, relationships). Durable subset (KNOWLEDGE, WORK/<slug>/ISA.md, RELATIONSHIP, WISDOM, PLANS, RESEARCH, STATE/work.json, BOOKMARKS, REFERENCE, SKILLS, PROJECT, TEAMS, SYSTEMUPDATES, VERIFICATION) is git-tracked in the user's private USER-data repo; ephemeral subset (OBSERVABILITY JSONLs, _BROWSER_STATE, LEARNING signals, SECURITY artifacts, VOICE event log, STATE caches, per-skill runtime state, PULSE_DATA, SCRATCHPAD, RAW, AUTO, CALLS, INBOX, ARCHIVE, DATA, WORK/<slug>/* intermediates) gitignored from the private repo, local-only. |
+| `~/.claude/WORKOS/MEMORY/**` (symlink → `~/.config/WORKOS/USER/MEMORY/**`, post-Phase-G.2, 2026-05-23) | USER (work history, knowledge graph, learning signals, observability logs, research, reflections, relationships). Durable subset (LEDGER, the Cortex memory ledger and its archive/, minus its `*.lock`, `*.lock.excl`, `*.tmp` and `torn-*.txt`; KNOWLEDGE, WORK/<slug>/ISA.md, RELATIONSHIP, WISDOM, PLANS, RESEARCH, STATE/work.json, BOOKMARKS, REFERENCE, SKILLS, PROJECT, TEAMS, SYSTEMUPDATES, VERIFICATION) is git-tracked in the user's private USER-data repo; ephemeral subset (OBSERVABILITY JSONLs, _BROWSER_STATE, LEARNING signals, SECURITY artifacts, VOICE event log, STATE caches, per-skill runtime state, PULSE_DATA, SCRATCHPAD, RAW, AUTO, CALLS, INBOX, ARCHIVE, DATA, WORK/<slug>/* intermediates) gitignored from the private repo, local-only. |
 | `~/.claude/WORKOS/Backups/**` | USER (backup state) |
 | `~/.claude/skills/_<name>/**` (underscore-prefixed) | USER (private/proprietary skills) |
 | `~/.claude/jobs/**` (user-instance scheduled tasks) | USER |
@@ -105,7 +105,7 @@ The USER tree is its own private git repo at `~/.config/WORKOS/USER/`; the SYSTE
 
 The boundary is enforced at write time.
 
-1. **Write-time (`SystemFileGuard.hook.ts`, Phase E).** Invoked by the `hooks/PreToolGuard.hook.ts` PreToolUse dispatcher on Write/Edit; blocks writes to SYSTEM files when the new content matches deny-list patterns. Fail-safe-open on hook errors. Primary defense — catches drift the moment it would land.
+1. **Write-time — retired in WorkOS 2.0.0.** `SystemFileGuard.hook.ts` (Phase E) blocked writes to SYSTEM files whose new content matched deny-list patterns. WorkOS ships no `DENY_LIST.txt`, so the guard always failed open, and it was retired with its `PreToolGuard` dispatcher (`hooks/retired.json`). There is no write-time check now; `bun WORKOS/TOOLS/CheckFileBoundary.ts` still runs the same check on demand.
 
 (Upstream's PR-time `DenyListCheck` and release-time `ShadowRelease` gates are maintainer machinery that this fork does not run.)
 

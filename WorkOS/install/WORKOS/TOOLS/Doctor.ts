@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @version 1.0.0
+ * @version 1.0.10
  * Doctor — WorkOS capability prober and manifest writer.
  *
  * Probes the external tools that WorkOS doctrine depends on (browser
@@ -36,19 +36,27 @@
  *   bun Doctor.ts --verify         # integrity-check the manifest (exit 2 on tamper)
  *   bun Doctor.ts --reclaim        # merge + retire shadow-$HOME trees (public issue #1485)
  *   bun Doctor.ts --hooks          # per-hook interpreter resolution (public issue #1600)
+ *   bun Doctor.ts --reconcile      # hooks on disk vs registered (hooks/retired.json ignored)
+ *
+ * 1.0.10 (ported from upstream LifeOS 8.761.0, minus the capabilities WorkOS lacks): binaries
+ * are run with --version under a timeout; the shadow-$HOME search is bounded to known roots;
+ * a check that could not finish fails closed (broken, "UNKNOWN") and is never a pass.
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync, readdirSync, statSync } from 'fs';
-import { join, basename } from 'path';
+import { join, basename, delimiter } from 'path';
 import { createHash, randomBytes } from 'crypto';
 import { homedir } from "node:os";
 import { jiraGet } from './lib/work-context';
 import { NPM_DEPS, isInstalled } from './lib/optional-dep';
+import { getClaudeDir, getWorkosDir } from './Paths';
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const CONFIG_ROOT = process.env.CLAUDE_CONFIG_DIR || join(HOME, '.claude');
-const WORKOS_DIR = (process.env.WORKOS_DIR || join(CONFIG_ROOT, 'WORKOS'))
-  .replace(/^\$HOME/, HOME).replace(/^~(?=\/)/, HOME);
+// Same resolver as the hooks, so Doctor inspects the tree they write to. The old local rule let
+// WORKOS_DIR (set in every session by the settings template) outrank CLAUDE_CONFIG_DIR, so an
+// isolated install's Doctor looked at ~/.claude/WORKOS while its hooks wrote elsewhere.
+const CONFIG_ROOT = getClaudeDir();
+const WORKOS_DIR = getWorkosDir();
 const STATE_DIR = join(WORKOS_DIR, 'MEMORY', 'STATE');
 const MANIFEST = join(STATE_DIR, 'capabilities.json');
 const SALT_FILE = join(STATE_DIR, '.capabilities-salt');
@@ -75,6 +83,15 @@ interface Manifest {
   integrity?: string;
 }
 
+// A probe may name its own remediation when the cause it found needs a different fix from the
+// CapSpec's static one. Absent: the CapSpec fixCmd applies.
+// ported from upstream Doctor 1.0.10 (public PR #2053, @hjbrandt)
+interface ProbeResult {
+  ok: boolean;
+  detail: string;
+  fixCmd?: string;
+}
+
 interface CapSpec {
   id: string;
   title: string;
@@ -87,8 +104,8 @@ interface CapSpec {
   optional?: boolean;
   // Detail line for the 'off' state (default: 'not configured (optional)').
   offDetail?: () => string;
-  probeOffline: () => Promise<{ ok: boolean; detail: string }>;
-  probeNetwork?: () => Promise<{ ok: boolean; detail: string }>;
+  probeOffline: () => Promise<ProbeResult>;
+  probeNetwork?: () => Promise<ProbeResult>;
   fixCmd: string;
 }
 
@@ -114,8 +131,7 @@ async function run(cmd: string[], timeoutMs = PROBE_TIMEOUT_MS): Promise<{ code:
 }
 
 function which(bin: string): boolean {
-  const paths = (process.env.PATH || '').split(':');
-  return paths.some(p => p && existsSync(join(p, bin)));
+  return whichPath(bin) !== null;
 }
 
 /**
@@ -124,11 +140,49 @@ function which(bin: string): boolean {
  * '/', so the fallback must yield a real path (public PR #1567, @vibecrypto).
  */
 function whichPath(bin: string): string | null {
-  const paths = (process.env.PATH || '').split(':');
+  const paths = (process.env.PATH || '').split(delimiter);
   for (const p of paths) {
     if (p && existsSync(join(p, bin))) return join(p, bin);
   }
   return null;
+}
+
+/**
+ * Probe whether a binary on PATH actually works: runs `bin --version` (or custom
+ * versionArgs) under a 3 s timeout. ok only if it runs and exits 0. Separates a
+ * wedged binary (timeout) from an installed-but-not-runnable one (non-zero exit),
+ * and flags a date-versioned tool that has rotted (yt-dlp against YouTube).
+ * Absence returns at once without spawning.
+ * ported from upstream Doctor 1.0.10 (public issue #2066, @BS-WS04)
+ */
+async function probeLive(opts: {
+  bin: string;
+  versionArgs?: string[];
+  staleAfterDays?: number;
+}): Promise<ProbeResult> {
+  const { bin, versionArgs = ['--version'], staleAfterDays } = opts;
+  if (!which(bin)) return { ok: false, detail: `${bin} not on PATH` };
+
+  const { code, out } = await run([bin, ...versionArgs], 3000);
+  if (code === 124) {
+    return { ok: false, detail: `${bin} on PATH but \`${bin} ${versionArgs.join(' ')}\` timed out — the binary is wedged` };
+  }
+  if (code !== 0) {
+    return { ok: false, detail: `${bin} on PATH but \`${bin} ${versionArgs.join(' ')}\` exited ${code} — installed and not runnable` };
+  }
+
+  const version = (out.split('\n')[0] || '').trim() || 'version unreported';
+  if (staleAfterDays) {
+    const m = version.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+    if (m) {
+      const ageDays = Math.floor((Date.now() - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 86400000);
+      if (ageDays > staleAfterDays) {
+        return { ok: false, detail: `${bin} runs but is ${ageDays} days old (${version}) — date-versioned tools rot against the services they scrape` };
+      }
+      return { ok: true, detail: `${bin} runs (${version}, ${ageDays}d old)` };
+    }
+  }
+  return { ok: true, detail: `${bin} runs (${version})` };
 }
 
 // ── shadow-$HOME trees (public issue #1485, @vanvonlj; class: #1404/#1451) ───
@@ -140,16 +194,95 @@ function whichPath(bin: string): string | null {
 
 const RECLAIM_BACKUP_DIR = join(STATE_DIR, 'reclaimed-shadow-backups');
 
-async function findShadowHomeDirs(): Promise<string[]> {
+// macOS gates these per-app behind a consent prompt, so a diagnostic walking $HOME crossed
+// every one of them. Only meaningful on darwin: on Linux (the WorkOS sandbox) ~/Documents
+// is an ordinary directory and may well hold a project.
+const TCC_PROTECTED = process.platform === 'darwin'
+  ? ['Desktop', 'Documents', 'Downloads', 'Movies', 'Pictures', 'Music']
+  : [];
+
+// Conventional code roots. Shadow trees are born where sessions run, which is
+// inside project directories.
+const CONVENTIONAL_ROOTS = ['Projects', 'LocalProjects', 'code', 'Developer', 'src'];
+
+/**
+ * `~`-rooted paths named by the principal's own project registry (the backticked
+ * path spans in USER/PROJECTS.md). Only real directories under $HOME are searchable.
+ */
+function registryRoots(): string[] {
+  const registry = join(WORKOS_DIR, 'USER', 'PROJECTS.md');
+  if (!existsSync(registry)) return [];
+  let text = '';
+  try { text = readFileSync(registry, 'utf8'); } catch { return []; }
+  const out: string[] = [];
+  for (const m of text.matchAll(/`(~\/[^`]+)`/g)) {
+    const expanded = join(HOME, m[1].slice(2)).replace(/\/+$/, '');
+    if (!expanded.startsWith(HOME + '/')) continue;
+    try { if (statSync(expanded).isDirectory()) out.push(expanded); } catch {}
+  }
+  return out;
+}
+
+/**
+ * The bounded search set: config root + conventional code dirs + registry paths,
+ * minus anything under a TCC-protected folder. Never $HOME as a whole.
+ *
+ * ported from upstream Doctor 1.0.10 (public PR #1884, @abseg), registry source
+ * adapted to WorkOS (USER/PROJECTS.md) and the TCC skip limited to darwin.
+ */
+function shadowSearchRoots(): { roots: string[]; skipped: string[] } {
+  const candidates = [
+    CONFIG_ROOT,
+    ...CONVENTIONAL_ROOTS.map(d => join(HOME, d)),
+    ...registryRoots(),
+  ];
+  const roots: string[] = [];
+  const skipped: string[] = [];
+  for (const c of candidates) {
+    const path = c.replace(/\/+$/, '');
+    const rel = path === HOME ? '' : path.startsWith(HOME + '/') ? path.slice(HOME.length + 1) : path;
+    if (TCC_PROTECTED.includes(rel.split('/')[0])) { if (!skipped.includes(path)) skipped.push(path); continue; }
+    if (!existsSync(path)) continue;
+    // Drop exact duplicates and any root already covered by an ancestor root.
+    if (roots.some(r => path === r || path.startsWith(r + '/'))) continue;
+    // A new root may itself be the ancestor of ones already collected.
+    for (let i = roots.length - 1; i >= 0; i--) if (roots[i].startsWith(path + '/')) roots.splice(i, 1);
+    roots.push(path);
+  }
+  return { roots, skipped };
+}
+
+let reportedSkippedRoots = false;
+
+/** Search result that says whether the scan finished; incomplete is unknown, never "none found". */
+async function searchShadowHomeDirs(): Promise<{ found: string[]; incomplete: string[] }> {
   // `find` for guaranteed availability; prune heavy/irrelevant dirs and our
   // own reclaim backups (which contain moved '$HOME' dirs by construction —
   // without the prune every past reclaim would re-trigger detection forever).
-  const r = await run([
-    'find', HOME, '-maxdepth', '6',
-    '(', '-name', 'node_modules', '-o', '-name', '.git', '-o', '-name', 'Library', '-o', '-path', RECLAIM_BACKUP_DIR, ')', '-prune',
-    '-o', '-type', 'd', '-name', '$HOME', '-print',
-  ], 60_000);
-  return r.out ? r.out.split('\n').filter(Boolean) : [];
+  const { roots, skipped } = shadowSearchRoots();
+  if (skipped.length && !reportedSkippedRoots) {
+    reportedSkippedRoots = true;
+    console.error(
+      `doctor: skipped ${skipped.length} search root(s) under macOS-protected folders (${skipped.join(', ')}) — ` +
+      `scanning them would prompt for privacy access. To check them yourself:\n` +
+      `  find ${skipped.map(s => `"${s}"`).join(' ')} -maxdepth 6 -type d -name '$HOME' -print`,
+    );
+  }
+  const found = new Set<string>();
+  const incomplete: string[] = [];
+  for (const root of roots) {
+    const r = await run([
+      'find', root, '-maxdepth', '6',
+      '(', '-name', 'node_modules', '-o', '-name', '.git', '-o', '-name', 'Library', '-o', '-path', RECLAIM_BACKUP_DIR, ')', '-prune',
+      '-o', '-type', 'd', '-name', '$HOME', '-print',
+    ], 60_000);
+    // Any unsuccessful exit (124 timed out, 127 could not spawn, 1 unreadable
+    // subtree, 2 bad invocation, a signal) means the root was not fully searched,
+    // so it is unknown, never "none found".
+    if (r.code !== 0) incomplete.push(root);
+    for (const line of r.out.split('\n')) if (line) found.add(line);
+  }
+  return { found: [...found], incomplete };
 }
 
 // Disposable state — never worth merging (issue #1485's cache list).
@@ -200,8 +333,11 @@ function mergeJsonl(destPath: string, shadowPath: string): { added: number } {
 }
 
 async function reclaimShadows(): Promise<void> {
-  const shadows = await findShadowHomeDirs();
-  if (!shadows.length) { console.log('no shadow-$HOME trees found — nothing to reclaim.'); return; }
+  const { found: shadows, incomplete } = await searchShadowHomeDirs();
+  if (incomplete.length) {
+    console.log(`warning: the shadow-$HOME search did not finish under ${incomplete.join(', ')} — trees there may exist and are not reclaimed by this run.`);
+  }
+  if (!shadows.length) { console.log(incomplete.length ? 'no shadow-$HOME trees found in the parts that were searched.' : 'no shadow-$HOME trees found — nothing to reclaim.'); return; }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   let mergedLines = 0, copiedFiles = 0, skippedDisposable = 0;
   const { renameSync, cpSync } = await import('fs');
@@ -246,6 +382,10 @@ function chromeBinary(): string | null {
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
     '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser',
+    // Google's .deb/.rpm install the stable channel as google-chrome-stable and keep
+    // the real binary under /opt; a Chrome-only Linux box with no google-chrome alias
+    // got a false "no browser found". (upstream Doctor 1.0.10, public issue #1969, @bytebyrobert)
+    '/usr/bin/google-chrome-stable', '/opt/google/chrome/chrome',
     // Linux Brave (public issue #1496, @waveman2020-sudo): a Brave-only Linux
     // box previously got a false "no browser found".
     '/usr/bin/brave-browser', '/usr/bin/brave-browser-stable',
@@ -253,13 +393,17 @@ function chromeBinary(): string | null {
     // Home Manager place GUI apps under /Applications/Nix Apps/.
     '/Applications/Nix Apps/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Nix Apps/Brave Browser.app/Contents/MacOS/Brave Browser',
+    // macOS Chromium (upstream Doctor 1.0.10, public issue #1970, @bytebyrobert).
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
   ];
   const found = candidates.find(existsSync);
   if (found) return found;
   // PATH fallback (public PR #1567, @vibecrypto): Nix profiles expose the
   // binary only on PATH (e.g. /run/current-system/sw/bin/google-chrome), and
   // it also covers any distro not matched by the hardcoded candidates.
-  for (const bin of ['google-chrome', 'chromium', 'brave', 'brave-browser']) {
+  // google-chrome-stable / chromium-browser are the distro-packaged names
+  // (upstream Doctor 1.0.10, public issue #1969, @bytebyrobert).
+  for (const bin of ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'brave', 'brave-browser']) {
     const p = whichPath(bin);
     if (p) return p;
   }
@@ -302,8 +446,9 @@ const CAPS: CapSpec[] = [
     ttlHours: 24 * 7,
     configured: () => true, // every install must have run substitution
     probeOffline: async () => {
+      const enginePath = join(CONFIG_ROOT, 'skills', 'WorkOS', 'Tools', 'InstallEngine.ts');
       try {
-        const { checkSurvivingPlaceholders } = await import(join(CONFIG_ROOT, 'skills', 'WorkOS', 'Tools', 'InstallEngine.ts'));
+        const { checkSurvivingPlaceholders } = await import(enginePath);
         const roots = [
           join(CONFIG_ROOT, 'hooks'), join(CONFIG_ROOT, 'commands'), join(CONFIG_ROOT, 'agents'),
           join(WORKOS_DIR, 'ALGORITHM'), join(WORKOS_DIR, 'WORKOS_SYSTEM_PROMPT.md'),
@@ -320,7 +465,19 @@ const CAPS: CapSpec[] = [
         const sample = sites.slice(0, 3).map((f) => `${f.placeholder} in ${f.file}`).join('; ');
         return { ok: false, detail: `${total} unrendered identity placeholder(s) across ${sites.length} site(s) — substitution never ran or was mis-rooted. E.g. ${sample}` };
       } catch (e) {
-        return { ok: true, detail: `check unavailable (${String(e).split('\n')[0]}) — InstallEngine not present on this tree` };
+        // A probe that could not run is not a pass. This branch returned ok:true
+        // "check unavailable", so a Doctor probing the wrong tree (a mis-rooted
+        // CLAUDE_CONFIG_DIR) reported the identity surface green without scanning it.
+        // Name the resolved path so a mis-root is diagnosable from the detail alone.
+        // ported from upstream Doctor 1.0.10 (public issue #2026, @ebrett)
+        const why = existsSync(enginePath)
+          ? `InstallEngine present at ${enginePath} but the scan threw: ${String(e).split('\n')[0]}`
+          : `InstallEngine not found at ${enginePath}`;
+        return {
+          ok: false,
+          detail: `UNKNOWN — placeholder scan could not run: ${why}. Doctor is probing config root ${CONFIG_ROOT}; if that is not your install, the root is mis-resolved.`,
+          fixCmd: 'check that CLAUDE_CONFIG_DIR points at the real install root so skills/WorkOS/Tools/InstallEngine.ts is found, then: bun WORKOS/TOOLS/Doctor.ts',
+        };
       }
     },
     fixCmd: 'bun <configRoot>/skills/WorkOS/Tools/Substitute.ts --principal-name <name> --da-name <name> --apply   # Setup.md step 9d',
@@ -332,7 +489,11 @@ const CAPS: CapSpec[] = [
     ttlHours: 24 * 7,
     configured: () => true, // every upgraded install could carry them
     probeOffline: async () => {
-      const shadows = await findShadowHomeDirs();
+      const { found: shadows, incomplete } = await searchShadowHomeDirs();
+      // Fail closed: an unfinished search cannot claim "none on disk".
+      if (incomplete.length) {
+        return { ok: false, detail: `UNKNOWN — shadow-$HOME search incomplete (timed out or could not run) under ${incomplete.join(', ')}${shadows.length ? `; ${shadows.length} found so far` : ''}`, fixCmd: 're-run: bun <configRoot>/WORKOS/TOOLS/Doctor.ts — if it repeats, one of those roots is too large or unreadable; check it by hand: find <root> -maxdepth 6 -type d -name \'$HOME\'' };
+      }
       if (!shadows.length) return { ok: true, detail: 'no shadow-$HOME trees on disk' };
       const files = countShadowMemoryFiles(shadows);
       return {
@@ -399,10 +560,7 @@ const CAPS: CapSpec[] = [
     powers: 'ContextSearch queries, work sweeps, and the model-drift scan',
     ttlHours: 24 * 7,
     configured: () => true, // shipped code shells out to `rg`; absence is broken, not unconfigured
-    probeOffline: async () =>
-      which('rg')
-        ? { ok: true, detail: 'rg on PATH' }
-        : { ok: false, detail: 'rg not on PATH — tools that shell out to it will fail' },
+    probeOffline: async () => probeLive({ bin: 'rg' }),
     fixCmd: 'brew install ripgrep  (Linux: sudo apt-get install ripgrep)',
   },
   {
@@ -415,10 +573,7 @@ const CAPS: CapSpec[] = [
     optional: true,
     configured: () => chromeBinary() !== null || which('magick'),
     offDetail: () => 'not installed (optional without a browser) — Art AddBg is unavailable',
-    probeOffline: async () =>
-      which('magick')
-        ? { ok: true, detail: 'magick on PATH' }
-        : { ok: false, detail: 'magick not on PATH — the blank-frame guard skips and captures go unchecked' },
+    probeOffline: async () => probeLive({ bin: 'magick' }),
     fixCmd: 'brew install imagemagick  (Linux: sudo apt-get install imagemagick)',
   },
   // ── optional npm packages ─────────────────────────────────────────────────
@@ -428,7 +583,7 @@ const CAPS: CapSpec[] = [
   {
     id: 'npm-deps',
     title: 'optional npm packages',
-    powers: 'Prompting templates, Evals writers + scenarios, MemoryGraph, TokenXray, Apify',
+    powers: 'Prompting templates, Assay case drafts, MemoryGraph, TokenXray, Apify',
     ttlHours: 24 * 7,
     optional: true,
     configured: () => NPM_DEPS.some(d => isInstalled(d.pkg, join(CONFIG_ROOT, d.dir))),
@@ -452,10 +607,13 @@ const CAPS: CapSpec[] = [
     ttlHours: 24 * 7,
     optional: true,
     configured: () => !!process.env.GITLAB_HOST || which('glab'),
-    probeOffline: async () =>
-      which('glab')
-        ? { ok: true, detail: `glab on PATH${process.env.GITLAB_HOST ? ', GITLAB_HOST set' : ' (GITLAB_HOST unset — glab uses its own default host)'}` }
-        : { ok: false, detail: 'GITLAB_HOST is set but glab is not on PATH — GitLab context is skipped' },
+    probeOffline: async () => {
+      if (!which('glab')) return { ok: false, detail: 'GITLAB_HOST is set but glab is not on PATH — GitLab context is skipped' };
+      const live = await probeLive({ bin: 'glab' });
+      return live.ok
+        ? { ok: true, detail: `${live.detail}${process.env.GITLAB_HOST ? ', GITLAB_HOST set' : ' (GITLAB_HOST unset — glab uses its own default host)'}` }
+        : live;
+    },
     fixCmd: 'install glab (https://gitlab.com/gitlab-org/cli) and run glab auth login, or unset GITLAB_HOST',
   },
   {
@@ -488,10 +646,8 @@ const CAPS: CapSpec[] = [
     optional: true,
     configured: () => chromeBinary() !== null || which('ffmpeg'),
     offDetail: () => 'not installed (only needed by Interceptor video/zoom tools, which need a browser)',
-    probeOffline: async () =>
-      which('ffmpeg')
-        ? { ok: true, detail: 'ffmpeg on PATH' }
-        : { ok: false, detail: 'ffmpeg not on PATH — Interceptor video/zoom tools will fail at spawn' },
+    // ffmpeg takes a single-dash -version; `ffmpeg --version` is an error.
+    probeOffline: async () => probeLive({ bin: 'ffmpeg', versionArgs: ['-version'] }),
     fixCmd: 'brew install ffmpeg  (Linux: sudo apt-get install ffmpeg)',
   },
   {
@@ -502,10 +658,8 @@ const CAPS: CapSpec[] = [
     optional: true,
     configured: () => which('yt-dlp'),
     offDetail: () => 'not installed (optional) — the Upgrade skill skips YouTube steps',
-    probeOffline: async () =>
-      which('yt-dlp')
-        ? { ok: true, detail: 'yt-dlp on PATH' }
-        : { ok: false, detail: 'yt-dlp not on PATH — YouTube transcript and channel steps are skipped' },
+    // yt-dlp is date-versioned and rots against YouTube (upstream: public issue #2066, @BS-WS04).
+    probeOffline: async () => probeLive({ bin: 'yt-dlp', staleAfterDays: 180 }),
     fixCmd: 'brew install yt-dlp  (Linux: sudo apt-get install yt-dlp)',
   },
   {
@@ -514,13 +668,16 @@ const CAPS: CapSpec[] = [
     powers: "the Fabric skill's pattern library and YouTube transcript fetch",
     ttlHours: 24 * 7,
     optional: true,
-    configured: () => which('fabric'),
+    // Homebrew ships this project as `fabric-ai`; callers exec `fabric`, so fabric-ai alone is
+    // still broken for them. It counts as configured so the mismatch is reported, not hidden
+    // as 'off'. (upstream Doctor 1.0.10, public PR #2153, @NAmorim)
+    configured: () => which('fabric') || which('fabric-ai'),
     offDetail: () => 'fabric CLI not installed (optional) — the Fabric skill runs its bundled patterns natively',
     probeOffline: async () =>
-      which('fabric')
-        ? { ok: true, detail: 'fabric on PATH' }
-        : { ok: false, detail: 'fabric not on PATH — pattern runs fall back to native prompting' },
-    fixCmd: 'see the fabric project for install',
+      !which('fabric') && which('fabric-ai')
+        ? { ok: false, detail: 'fabric-ai on PATH but callers run `fabric` — link it: ln -s "$(command -v fabric-ai)" ~/.local/bin/fabric' }
+        : probeLive({ bin: 'fabric' }),
+    fixCmd: 'install fabric (or fabric-ai) and make it available as `fabric`; the project is optional',
   },
   {
     id: 'jq',
@@ -528,10 +685,7 @@ const CAPS: CapSpec[] = [
     powers: 'hook-side JSON parsing, including the command-compression rewrite',
     ttlHours: 24 * 7,
     configured: () => true,
-    probeOffline: async () =>
-      which('jq')
-        ? { ok: true, detail: 'jq on PATH' }
-        : { ok: false, detail: 'jq not on PATH — shell hooks that parse JSON skip silently' },
+    probeOffline: async () => probeLive({ bin: 'jq' }),
     fixCmd: 'brew install jq  (Linux: sudo apt-get install jq)',
   },
   {
@@ -581,8 +735,12 @@ function expandPath(p: string): string {
 function hookInterpreterProblems(): string[] {
   const settingsPath = join(CONFIG_ROOT, 'settings.json');
   let hooksBlob: any;
-  try { hooksBlob = JSON.parse(readFileSync(settingsPath, 'utf8')).hooks; } catch { return []; }
-  if (!hooksBlob) return [];
+  // Fail closed (upstream Doctor 1.0.10): an unreadable or malformed settings.json, or one with
+  // no hooks block, means NO hook can be proven to resolve. That is a blocking unknown, never
+  // "every hook resolves".
+  try { hooksBlob = JSON.parse(readFileSync(settingsPath, 'utf8')).hooks; }
+  catch (e) { return [`settings.json unreadable or malformed (${(e as Error).message}); hook interpreters unknown`]; }
+  if (!hooksBlob || typeof hooksBlob !== 'object') return ['settings.json has no hooks block; hook interpreters unknown'];
 
   const commands: string[] = [];
   const walk = (node: any): void => {
@@ -594,29 +752,53 @@ function hookInterpreterProblems(): string[] {
   };
   walk(hooksBlob);
 
+  // A hooks block that registers no command proves nothing resolves: the same blocking
+  // unknown as no hooks block at all.
+  if (commands.length === 0) return ['settings.json registers no hook commands; hook interpreters unknown'];
+
   const problems: string[] = [];
   const seen = new Set<string>();
   for (const raw of commands) {
     // First token wins: `bun x.ts` → bun; `/path/x.hook.ts` → the script itself.
-    const first = raw.trim().split(/\s+/)[0]?.replace(/^["']|["']$/g, '') ?? '';
+    const tokens = raw.trim().split(/\s+/);
+    const first = tokens[0]?.replace(/^["']|["']$/g, '') ?? '';
     if (!first || seen.has(first)) continue;
     seen.add(first);
     const resolved = expandPath(first);
-    // An unexpandable $VAR means Doctor's env differs from the hook's — it
-    // cannot judge that path, so it says nothing rather than crying wolf.
-    if (resolved.includes('$')) continue;
+    // An unexpandable $VAR means Doctor's env differs from the hook's, so it cannot judge
+    // that path. That is an unknown, reported as a problem, never silently skipped into a
+    // clean result.
+    if (resolved.includes('$')) { problems.push(`${first}: interpreter path has an unresolved variable; cannot verify it resolves (unknown)`); continue; }
 
     if (!/[/\\]/.test(first)) {
       // Bare interpreter name (bun, node, sh, jq…) — must be on PATH.
       if (!which(first)) problems.push(`${first}: not on PATH`);
       continue;
     }
-    // A path was given. If it's a script run bare, exec() needs mode + shebang.
+    // A PATH-ful first token followed by more tokens is an interpreter invoking a script
+    // (`/usr/bin/python3 x.py`), not a script run bare. Its shebang is irrelevant and
+    // usually absent, so demanding one reported "no #! shebang" against a working hook.
+    // Existence and the exec bit are the only real requirements. (upstream: public issue #1856)
+    if (tokens.length > 1) {
+      const name = basename(resolved);
+      if (!existsSync(resolved)) { problems.push(`${name}: file not found`); continue; }
+      let mode = 0;
+      try { mode = statSync(resolved).mode; } catch {}
+      if (!(mode & 0o111)) problems.push(`${name}: not executable (chmod +x)`);
+      continue;
+    }
+    // A bare script path. exec() needs mode + shebang.
     if (!existsSync(resolved)) { problems.push(`${basename(resolved)}: file not found`); continue; }
     let mode = 0;
     try { mode = statSync(resolved).mode; } catch {}
     const name = basename(resolved);
     if (!(mode & 0o111)) { problems.push(`${name}: not executable (chmod +x)`); continue; }
+    // A native executable (ELF, Mach-O) needs no shebang; exec() runs it directly.
+    // (upstream: public PR #2119, @Rubix-BNL)
+    let magic = Buffer.alloc(0);
+    try { magic = readFileSync(resolved).subarray(0, 4); } catch {}
+    if (isNativeBinary(magic)) continue;
+
     let head = '';
     try { head = readFileSync(resolved, 'utf8').slice(0, 200).split('\n')[0]; } catch {}
     if (!head.startsWith('#!')) { problems.push(`${name}: no #! shebang`); continue; }
@@ -631,6 +813,19 @@ function hookInterpreterProblems(): string[] {
     }
   }
   return problems;
+}
+
+/**
+ * True when the first four bytes are an ELF, Mach-O (32/64, either byte order) or
+ * fat/universal header. Native binaries need no shebang.
+ */
+function isNativeBinary(magic: Buffer): boolean {
+  if (magic.length < 4) return false;
+  const be = magic.readUInt32BE(0);
+  return be === 0x7f454c46 || // ELF
+    be === 0xfeedface || be === 0xfeedfacf || // Mach-O 32/64-bit BE
+    be === 0xcefaedfe || be === 0xcffaedfe || // Mach-O 32/64-bit LE
+    be === 0xcafebabe || be === 0xbebafeca;   // Fat/universal BE/LE
 }
 
 // ── manifest io ──────────────────────────────────────────────────────────────
@@ -702,10 +897,22 @@ async function probeAll(network: boolean): Promise<Manifest> {
       res = await cap.probeNetwork();
       probeClass = 'network';
     }
+    // Downgrade-only guard: an offline pass cannot clear a network failure that is still
+    // fresh. An offline failure still lands immediately.
+    // ported from upstream Doctor 1.0.10 (public issue #2135, @hjbrandt)
+    if (
+      probeClass === 'offline' && res.ok &&
+      prev?.state === 'broken' && prev.probeClass === 'network' && !isStale(prev)
+    ) {
+      m.capabilities[cap.id] = { ...prev, detail: `${prev.detail} [network verdict kept]` };
+      continue;
+    }
     m.capabilities[cap.id] = {
       state: res.ok ? 'live' : 'broken',
       checkedAt: new Date().toISOString(), ttlHours: cap.ttlHours,
-      detail: res.detail, fixCmd: res.ok ? null : cap.fixCmd, probeClass,
+      // A probe that diagnosed a specific cause names its own fix; the CapSpec's static
+      // one is the fallback. ported from upstream (public PR #2053, @hjbrandt)
+      detail: res.detail, fixCmd: res.ok ? null : (res.fixCmd ?? cap.fixCmd), probeClass,
     };
   }
   saveManifest(m);
@@ -738,8 +945,11 @@ function renderTable(m: Manifest): string {
 function statuslineGlyph(): string {
   if (!existsSync(MANIFEST)) return '';
   let m: Manifest;
-  try { m = JSON.parse(readFileSync(MANIFEST, 'utf8')); } catch { return ''; }
-  if (m.integrity && m.integrity !== computeIntegrity(m)) return '⚠ doctor: manifest tampered';
+  try { m = JSON.parse(readFileSync(MANIFEST, 'utf8')); } catch { return '⚠ doctor: manifest unreadable'; }
+  // Fail closed: a manifest with no integrity field, or the wrong shape, is treated as
+  // tampered. Deleting the field must not skip the check.
+  if (!m || typeof m !== 'object' || !m.capabilities || typeof m.capabilities !== 'object') return '⚠ doctor: manifest tampered';
+  if (typeof m.integrity !== 'string' || !m.integrity || m.integrity !== computeIntegrity(m)) return '⚠ doctor: manifest tampered';
   const broken = Object.entries(m.capabilities)
     .filter(([, r]) => r.state === 'broken').map(([id]) => id);
   const fresh = broken.filter(id => !(m.ackedBroken || []).includes(id));
@@ -754,8 +964,13 @@ function statuslineGlyph(): string {
 function reconcileHooks(): { unwired: string[]; missing: string[]; note: string } {
   const hooksDir = join(CONFIG_ROOT, 'hooks');
   const settingsPath = join(CONFIG_ROOT, 'settings.json');
+  // A retired hook an update kept (the developer edited it) is no longer registered on
+  // purpose, so it is not "unwired". An entry with `events` retires one registration of a
+  // hook that still ships, so that hook is still checked.
+  let retired: string[] = [];
+  try { retired = (JSON.parse(readFileSync(join(hooksDir, 'retired.json'), 'utf8')).retired ?? []).filter((r: { events?: string[] }) => !r.events).map((r: { file: string }) => r.file); } catch {}
   const declared = existsSync(hooksDir)
-    ? readdirSync(hooksDir).filter(f => f.endsWith('.hook.ts') || f.endsWith('.hook.sh'))
+    ? readdirSync(hooksDir).filter(f => (f.endsWith('.hook.ts') || f.endsWith('.hook.sh')) && !retired.includes(f))
     : [];
   let registeredBlob = '';
   try {
@@ -827,9 +1042,12 @@ if (flag('--reclaim')) {
 }
 
 if (flag('--verify')) {
-  if (!existsSync(MANIFEST)) { console.log('no manifest yet — run Doctor first'); process.exit(0); }
-  const m: Manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
-  const ok = !!m.integrity && m.integrity === computeIntegrity(m);
+  // No manifest, or one that cannot be read or parsed, cannot be verified: a failure, never a pass.
+  if (!existsSync(MANIFEST)) { console.log('INTEGRITY UNKNOWN — no manifest to verify; run Doctor first'); process.exit(2); }
+  let m: Manifest;
+  try { m = JSON.parse(readFileSync(MANIFEST, 'utf8')); }
+  catch (e) { console.log(`INTEGRITY UNKNOWN — manifest unreadable or malformed (${(e as Error).message}). Re-run Doctor to regenerate.`); process.exit(2); }
+  const ok = !!m && typeof m === 'object' && !!m.integrity && m.integrity === computeIntegrity(m);
   console.log(ok ? 'integrity OK' : 'INTEGRITY FAILURE — manifest was edited outside Doctor. Re-run Doctor to regenerate.');
   process.exit(ok ? 0 : 2);
 }

@@ -43,7 +43,7 @@ WorkOS is the AI harness that moves your work from its current state to its idea
 
 **Canonical thesis:** `WORKOS/DOCUMENTATION/WorkOs/WorkOsThesis.md` — read this first when any framing question comes up. This architecture doc describes *how* the OS is built; the thesis doc describes *what* the OS is for.
 
-**Version:** WorkOS 1.0.0 | Algorithm v8.20.2 | Cortex (Memory) v8.3.0
+**Version:** WorkOS 2.0.0 | Algorithm v8.45.0 | Cortex (Memory) v8.4.0
 
 ---
 
@@ -175,7 +175,7 @@ System data and user data live in two physically separate trees, joined at runti
 2. Paths computed from `WorkosConfig.paths.userDir + relative` — never from literal `WORKOS/USER/` strings in system code
 3. At-startup `@`-imports declared at the top of `~/.claude/CLAUDE.md` (CC does NOT follow transitive `@`-imports)
 
-**Enforcement:** `hooks/SystemFileGuard.hook.ts` (PreToolUse) blocks writes to SYSTEM files when content matches deny-list patterns. Fail-safe-open on hook errors. There is no public release path in this fork, so there are no release-time gates; nothing leaves the machine except via employer-approved remotes.
+**Enforcement:** no PreToolUse hook blocks writes to SYSTEM files any more — `SystemFileGuard` was retired in 2.0.0 (it failed open without a `DENY_LIST.txt`, which WorkOS does not ship; see `hooks/retired.json`). There is no public release path in this fork, so there are no release-time gates; nothing leaves the machine except via employer-approved remotes.
 
 Configuration files (`settings.json`, `CLAUDE.md`, `WORKOS_SYSTEM_PROMPT.md`) are directly edited; `settings.json` is split into `settings.system.json` (public) + `settings.user.json` (USER) merged at SessionStart by `WORKOS/TOOLS/MergeSettings.ts`. Identity values live in `settings.json` under `daidentity` and `principal` keys; private skills read credentials via `WorkosConfig.ts` from `WORKOS/USER/CONFIG/WORKOS_CONFIG.toml`. Full contract: `WORKOS/DOCUMENTATION/SystemUserBoundary.md`.
 
@@ -275,7 +275,7 @@ Each skill lives in `~/.claude/skills/<Skillname>/` with a mandatory `SKILL.md` 
 
 **Event-driven automation infrastructure across the session lifecycle.**
 
-Hooks are executable scripts (TypeScript) that run automatically in response to Claude Code events: SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, SessionEnd, PreCompact, PostCompact, PermissionRequest, and more. Most hooks run asynchronously and fail gracefully. Security is one consolidated hook: `Safety.hook.ts` dispatches by `hook_event_name` — PermissionRequest path auto-approves safe shapes via the shape classifier in `lib/safety-classifier.ts` (DANGEROUS_PATTERNS / CREDENTIAL_PATHS / INJECTION_SHAPES / READ_ONLY_COMMAND_PATTERNS / SEARCH_TOOLS / DEV_BINARIES / TRUSTED_PREFIXES + a shell-aware single-quote pre-pass that distinguishes data from execution); PostToolUse path on WebFetch/WebSearch annotates external content with the "treat as data" header plus an `[INJECTION SHAPE DETECTED: ...]` marker when the shared INJECTION_SHAPES catalog matches. All hooks emit structured events to `events.jsonl` for observability. Includes RTK (Rust Token Killer) integration via ContextReduction hook -- transparently rewrites Bash commands through `rtk` for 60-90% token savings on dev operations.
+Hooks are executable scripts (TypeScript) that run automatically in response to Claude Code events: SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, SessionEnd, PreCompact, PostCompact, PermissionRequest, and more. Most hooks run asynchronously and fail gracefully. Security is one consolidated hook: `Safety.hook.ts` dispatches by `hook_event_name` — PermissionRequest path auto-approves safe shapes via the shape classifier in `lib/safety-classifier.ts` (DANGEROUS_PATTERNS / CREDENTIAL_PATHS / INJECTION_SHAPES / READ_ONLY_COMMAND_PATTERNS / SEARCH_TOOLS / DEV_BINARIES / TRUSTED_PREFIXES + a shell-aware single-quote pre-pass that distinguishes data from execution); PostToolUse path on WebFetch/WebSearch annotates external content with the "treat as data" header plus an `[INJECTION SHAPE DETECTED: ...]` marker when the shared INJECTION_SHAPES catalog matches. All hooks emit structured events to `events.jsonl` for observability. On PreToolUse, Bash is guarded by `DestructiveGuard` (destructive and credential-exfil shapes, blocked in every permission mode including bypassPermissions) and `PublicPushGate`, each registered on its own and fail-open on bad input or internal error; there is no PreToolUse guard for Write/Edit/MultiEdit and no command rewrite. Hooks retired in 2.0.0 are listed in `hooks/retired.json`.
 
 - **Status:** Active (WorkOS 5.0.0)
 - **Location:** `~/.claude/hooks/`
@@ -559,7 +559,7 @@ The running log of the load-bearing choices that shape WorkOS — what we decide
 ### AD-5: In-session loop detection via stock hooks, not harness mods
 
 - **Decided:** 2026-06-14
-- **Decision:** Detect tool-call loops (exact-repeat, A-B oscillation, same-tool hammering) with a `*`-matcher PostToolUse hook (`hooks/LoopDetector.hook.ts`) that injects one labeled, one-shot circuit-breaker via `hookSpecificOutput.additionalContext`. State lives in a small per-session JSON file.
+- **Decision:** Detect tool-call loops (exact-repeat, A-B oscillation, same-tool hammering) with a `*`-matcher PostToolUse hook (`hooks/LoopDetector.hook.ts`; as of WorkOS 2.0.0 it runs on PostToolUse through `PostToolObserver` rather than as its own registration, and stays registered on PostToolUseFailure) that injects one labeled, one-shot circuit-breaker via `hookSpecificOutput.additionalContext`. State lives in a small per-session JSON file.
 - **Why:** Addresses the #1 complaint cluster (Tool/System Failures) and the self-talk loop. Achieved entirely on the stock Claude Code hook surface — the context-injection capability already exists (proven by `Safety.hook.ts`), so no harness modification is needed. WorkOS deliberately builds on top of the stock harness, never forks it.
 - **Replaced:** No in-session loop intervention (failures were only logged post-hoc to observability).
 - **Source:** manual (backfill 2026-06-14)

@@ -29,13 +29,14 @@
  *                                               # or never run — /ic calls this
  */
 
+import { getClaudeDir } from "./Paths";
 import { spawn } from "child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { DISPATCH_EXECUTES_FABLE } from "./models";
 
-const CLAUDE_DIR = join(homedir(), ".claude");
+const CLAUDE_DIR = getClaudeDir();
 const STATE_FILE = join(CLAUDE_DIR, "WORKOS", "MEMORY", "STATE", "carrier-probe.json");
 const OBS_FILE = join(CLAUDE_DIR, "WORKOS", "MEMORY", "OBSERVABILITY", "model-verification.jsonl");
 const MAX_AGE_DAYS = 30;

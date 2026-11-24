@@ -29,6 +29,7 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *   related <slug>   Show a node's direct connections (compat with KnowledgeGraph)
  */
 
+import { getWorkosDir } from "./Paths";
 import type GraphType from "graphology";
 import * as fs from "fs";
 import * as path from "path";
@@ -50,7 +51,7 @@ for (const k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
 
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const WORKOS_DIR = process.env.WORKOS_DIR || path.join(HOME, ".claude", "WORKOS");
+const WORKOS_DIR = getWorkosDir();
 const MEMORY = path.join(WORKOS_DIR, "MEMORY");
 const KNOWLEDGE_DIR = path.join(MEMORY, "KNOWLEDGE");
 const WORK_DIR = path.join(MEMORY, "WORK");

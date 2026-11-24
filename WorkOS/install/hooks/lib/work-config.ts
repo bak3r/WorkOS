@@ -35,12 +35,13 @@ for (const __k of ["WORKOS_DIR", "WORKOS_CONFIG_DIR", "PROJECTS_DIR"]) {
  *
  * Zero deps, zero throws — config breakage degrades to defaults with a reason.
  */
+import { getWorkosDir } from "./paths";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "node:os";
 
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-const workosDir = (): string => process.env.WORKOS_DIR || join(HOME, ".claude", "WORKOS");
+const workosDir = (): string => getWorkosDir();
 export const workConfigPath = (): string => join(workosDir(), "USER", "WORK", "config.yaml");
 
 const DEFAULT_STATUSES = ["in-progress", "blocked", "in-review", "ready", "queued"];

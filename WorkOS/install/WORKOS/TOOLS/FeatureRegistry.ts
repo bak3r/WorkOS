@@ -18,9 +18,9 @@
  *   next <project>              Show next priority feature
  */
 
+import { workosPath } from './Paths';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { homedir } from "node:os";
 
 interface TestStep {
   step: string;
@@ -56,7 +56,7 @@ interface FeatureRegistry {
   };
 }
 
-const REGISTRY_DIR = join(homedir(), '.claude', 'WORKOS', 'MEMORY', 'STATE', 'progress');
+const REGISTRY_DIR = workosPath('MEMORY', 'STATE', 'progress');
 
 function getRegistryPath(project: string): string {
   // Prevent path traversal: project is joined into a filename, so restrict it

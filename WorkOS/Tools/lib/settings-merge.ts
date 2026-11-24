@@ -103,3 +103,26 @@ export function securityKeysIn(template: Obj): string[] {
   if (isObj(template.permissions) && "defaultMode" in template.permissions) out.push("permissions.defaultMode");
   return out;
 }
+
+/**
+ * Remove permission rules a newer release no longer ships (install/settings.retired.json).
+ * Only exact string matches are removed, from allow / deny / ask as listed; everything else
+ * is kept. The caller shows `removed` in its dry run before applying. Pure: `merged` is a copy.
+ */
+export function retirePermissions(current: Obj, retired: Partial<Record<"allow" | "deny" | "ask", string[]>>): { merged: Obj; removed: { allow: string[]; deny: string[]; ask: string[] } } {
+  const merged = clone(current);
+  const removed = { allow: [] as string[], deny: [] as string[], ask: [] as string[] };
+  const perms = merged.permissions;
+  if (!isObj(perms)) return { merged, removed };
+  for (const kind of ["allow", "deny", "ask"] as const) {
+    const list = perms[kind];
+    const drop = new Set(retired[kind] ?? []);
+    if (!Array.isArray(list) || drop.size === 0) continue;
+    perms[kind] = list.filter((r) => {
+      const hit = typeof r === "string" && drop.has(r);
+      if (hit) removed[kind].push(r as string);
+      return !hit;
+    });
+  }
+  return { merged, removed };
+}

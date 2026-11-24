@@ -13,15 +13,15 @@
  *   bun GenerateKnowledgeSchemaDoc.ts --stdout   # print, don't write
  */
 
+import { workosPath } from "./Paths";
 import { writeFileSync } from "node:fs";
-import { resolve as pathResolve } from "node:path";
 import { homedir } from "node:os";
 import {
   ENVELOPE, CANONICAL_TYPES, TYPE_TO_DIR, PER_TYPE_REQUIRED,
   RELATION_VOCAB, SOURCE_KINDS, STATUS_VALUES, SCHEMA_VERSION,
 } from "./KnowledgeSchema";
 
-const OUT = pathResolve(process.env.CLAUDE_CONFIG_DIR || pathResolve(homedir(), ".claude"), "WORKOS/MEMORY/KNOWLEDGE/_schema.md");
+const OUT = workosPath("MEMORY", "KNOWLEDGE", "_schema.md");
 
 /** Absolute path of the generated doc — importers compare against it. */
 export const SCHEMA_DOC_PATH = OUT;

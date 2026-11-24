@@ -19,7 +19,7 @@ status: redirect
 - **Ideate mode doctrine:** [`modes/ideate.md`](archive/modes/ideate.md) — 9 phases, parameters, presets, Meta-Learner, effort tier mapping
 - **Mode taxonomy:** [`modes/README.md`](archive/modes/README.md)
 - **Parameter schema:** [`archive/parameter-schema.md`](archive/parameter-schema.md)
-- **Ideate skill (router):** `~/.claude/skills/Ideate/SKILL.md`
+- **Ideate skill:** retired in WorkOS 2.0.0; its work is HillClimb's Ideate intent (`skills/HillClimb/Intents/Ideate.md`)
 
 ## Backwards-compat note
 

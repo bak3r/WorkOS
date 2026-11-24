@@ -17,12 +17,12 @@
  *
  * @version 1.0.2
  */
+import { getClaudeDir } from "./lib/paths";
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 
-const CLAUDE_DIR = join(homedir(), ".claude");
+const CLAUDE_DIR = getClaudeDir();
 const VERSION_FILE = join(CLAUDE_DIR, "WORKOS", "VERSION");
 const STATE_FILE = join(CLAUDE_DIR, "WORKOS", "MEMORY", "STATE", "version-drift-nag.json");
 

@@ -26,7 +26,7 @@ bun ~/.claude/WORKOS/TOOLS/Services.ts doc                 # regenerate the tabl
 
 `Services.ts` is a single registry (`SERVICES`) of human-meaningful metadata — title, purpose, category, opt-in, install command — merged at runtime with the **actual units on disk** (`~/.config/systemd/user/com.workos.*.{service,timer,path}`). Cadence and run-state are read live from the unit files and `systemctl --user list-units`, so `status` reports reality, never a stale hand-maintained guess. Adding a service = one row in `SERVICES` pointing at its existing `Install*.ts`; the tool orchestrates, it does not re-implement each installer.
 
-Two jobs that used to be scheduled elsewhere — the nightly memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`) and `ProposalGC.ts --auto` — are not services: the `MaintenanceJobs` SessionStart hook runs them when they are due, so they need no scheduler.
+Four jobs that used to be scheduled elsewhere or not at all — the nightly memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`), `ProposalGC.ts --auto`, and the observability-log prune (upstream's nightly `observability-prune` workflow; here it archives whole stale logs in `MEMORY/OBSERVABILITY`, see `Hooks/HookSystem.md`), plus the weekly memory-ledger compaction (`CortexLedger.ts maintain`) — are not services: the `MaintenanceJobs` SessionStart hook runs them when they are due, so they need no scheduler.
 
 ## Categories
 

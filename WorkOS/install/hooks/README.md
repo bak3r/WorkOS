@@ -4,7 +4,7 @@
 
 This document is the authoritative reference for WorkOS's hook system. When modifying any hook, update both the hook's inline documentation AND this README.
 
-*Last updated: 2026-10-21 — WorkOS fork: registry regenerated against `hooks/hooks.json` (53 hook files on disk: 52 `.hook.ts` + `ContextReduction.hook.sh`; 40 distinct hook files registered, 13 dispatched-only). Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
+*Last updated: 2026-10-28 — WorkOS 2.0.0: registry regenerated against `hooks/hooks.json` (47 hook files on disk, all `.hook.ts`; 38 distinct hook files registered, 9 dispatched-only). `PreToolGuard` and the guards that depended on it were retired — see [Retired Hooks](#retired-hooks). Earlier: 2026-10-21 WorkOS fork registry regeneration. Pulse (HTTP hook routes, VoiceServer), voice/TTS and push notifications were removed in WorkOS. Earlier: 2026-07-29 ports of public PRs #1595 / #1591, credit @anikinsasha.*
 
 ---
 
@@ -50,7 +50,7 @@ Hooks are TypeScript scripts that execute at specific lifecycle events in Claude
 │  SessionStart ──┬──► HookHealer (exec-bit self-heal)                │
 │                 ├──► KittyEnvPersist (terminal env + tab reset)     │
 │                 ├──► LoadContext (dynamic context injection)        │
-│                 ├──► FreshnessCache (statusline jq cache)           │
+│                 ├──► FreshnessCache (freshness summary cache)           │
 │                 ├──► MaintenanceJobs (throttled background jobs)    │
 │                 └──► SettingsBackport + MergeSettings (config merge) │
 │                                                                     │
@@ -64,23 +64,20 @@ Hooks are TypeScript scripts that execute at specific lifecycle events in Claude
 │                     ├──► TimeContext (live wall-clock line)         │
 │                     └──► ModelRungGuard (below-pin rung report)     │
 │                                                                     │
-│  PreToolUse ──┬──► ContextReduction (Bash → rtk rewrite)            │
+│  PreToolUse ──┬──► DestructiveGuard (Bash → destructive blocker)    │
+│               ├──► PublicPushGate (Bash → public-push blocker)      │
 │               ├──► AgentInvocation (Agent → subagent_start)         │
-│               ├──► TabState (AskUserQuestion → teal tab)            │
-│               └──► PreToolGuard (Bash/Write/Edit/MultiEdit blockers)│
+│               └──► TabState (AskUserQuestion → teal tab)            │
 │                                                                     │
 │  PostToolUse ──┬──► AgentInvocation (Agent → subagent_stop)         │
 │                ├──► Safety (WebFetch/WebSearch/mcp__.*/ToolSearch)  │
 │                ├──► TabState (AskUserQuestion → reset tab)          │
-│                ├──► ISAStaleWriteGuard (Read/Write/Edit/MultiEdit)  │
 │                ├──► ISASync (Write/Edit/MultiEdit → work.json)      │
 │                ├──► CheckpointPerISC (Write/Edit/MultiEdit commit)  │
-│                ├──► ConfigEvalFire (Write/Edit/MultiEdit → evals)   │
 │                ├──► AtlasEventCapture (Bash/Write/Edit/MultiEdit)   │
 │                ├──► KnowledgeWriteGuard (Write/Edit/MultiEdit)      │
 │                ├──► ComplexityRatchet (Write/Edit/MultiEdit advise) │
-│                ├──► PostToolObserver (catch-all sync dispatcher)    │
-│                ├──► LoopDetector (catch-all loop/oscillation watch) │
+│                ├──► PostToolObserver (catch-all; runs LoopDetector) │
 │                └──► EventLogger (catch-all observability)           │
 │                                                                     │
 │  PostToolUseFailure ──┬──► EventLogger (error logging)              │
@@ -90,7 +87,6 @@ Hooks are TypeScript scripts that execute at specific lifecycle events in Claude
 │  Stop ──┬──► LastResponseCache (cache for SatisfactionCapture)      │
 │         ├──► TabState           (Kitty tab reset)                   │
 │         ├──► ISARenderOnStop    (re-render edited ISAs)             │
-│         ├──► SpendAuditor       (outcome-side spend verification)   │
 │         ├──► StopGates          (Format/Verification/ISA gates)     │
 │         ├──► MemoryReviewFire   (memory-review cadence)             │
 │         └──► MemoryHealthGate   (autonomic memory health check)     │
@@ -109,7 +105,7 @@ Hooks are TypeScript scripts that execute at specific lifecycle events in Claude
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-<!-- regenerated from hooks/hooks.json 2026-10-21 -->
+<!-- regenerated from hooks/hooks.json 2026-10-28 -->
 
 ---
 
@@ -119,7 +115,7 @@ Hooks are TypeScript scripts that execute at specific lifecycle events in Claude
 |-------|---------------|-------------------|
 | `SessionStart` | Session begins | Exec-bit self-heal, context loading, terminal env, freshness cache, throttled memory maintenance, settings merge |
 | `UserPromptSubmit` | User sends a message | Tab title, session naming, satisfaction capture, reminder routing, version + doctrine drift teeth, memory injection, event nudges, wall clock, model-rung check |
-| `PreToolUse` | Before a tool executes | Command rewrite, subagent logging, blocking guards, UI state |
+| `PreToolUse` | Before a tool executes | Blocking guards on Bash, subagent logging, UI state |
 | `PostToolUse` | After a tool executes | ISA sync, checkpoint commit, Atlas capture, observability, external content tagging, loop detection |
 | `PostToolUseFailure` | Tool execution fails | Error tracking, failure-state nudges, repeat-failure detection |
 | `Stop` | Claude responds | Tab updates, ISA render, spend audit, output gates, memory cadence |
@@ -158,7 +154,7 @@ interface StopPayload extends BasePayload {
 
 ## Hook Registry
 
-> **Census (2026-10-21).** 53 hook files exist on disk (52 `.hook.ts` + `ContextReduction.hook.sh`); **40 distinct hook files are registered in `hooks/hooks.json`** (39 `.hook.ts` + `ContextReduction.hook.sh`), across 72 hook commands (69 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 13 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
+> **Census (2026-10-28).** 47 hook files exist on disk (all `.hook.ts`, no `.sh`); **38 distinct hook files are registered in `hooks/hooks.json`**, across 64 hook commands (61 bare hook scripts, `HookHealer` with a `bun` prefix, and 2 `WORKOS/TOOLS/` commands). There are no HTTP hooks in WorkOS. The other 9 `.hook.ts` files are NOT dead — each is imported as a `run()`/`check()` module by a consolidating dispatcher and remains runnable standalone via its own shim. See [Dispatched-Only Modules](#dispatched-only-modules) below. This registry is generated against `hooks/hooks.json` (merged into `settings.json`); when the two disagree, `settings.json` wins.
 >
 > WorkOS registers hooks **bare** — the path alone, no `bun` prefix — relying on the `#!/usr/bin/env bun` shebang plus the executable bit. `HookHealer` is the one deliberate exception (it carries an explicit `bun` prefix so it can still repair a cleared exec bit on everything else).
 
@@ -169,8 +165,8 @@ interface StopPayload extends BasePayload {
 | `HookHealer.hook.ts` | Restore the `+x` bit on registered hook scripts the Write tool created as 0644 | No | `settings.json` (timeout 10; the one `bun`-prefixed registration) |
 | `KittyEnvPersist.hook.ts` | Persist Kitty env vars + tab reset | No | None |
 | `LoadContext.hook.ts` | Inject dynamic context (identity, work, projects) | Yes (stdout) | `settings.json`, `MEMORY/` |
-| (inline) `WORKOS/TOOLS/FreshnessCache.ts` | Statusline freshness cache (`--quiet`) | No | None (timeout 5, async) |
-| `MaintenanceJobs.hook.ts` | Throttled background jobs (no cron/daemon/systemd), each on its own interval and stamp: memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 20 h), `ProposalGC.ts --auto` (20 h), `WorkSweep.ts` (1 h), `CommitmentSweep.ts` (20 h). When any job is due and no worker holds the lock, spawns itself detached with `--run` to execute the due jobs. Never blocks session start; skips subagents; exits 0 on every path | No | `WORKOS/TOOLS/SessionHarvester.ts`, `LearningPatternSynthesis.ts`, `ProposalGC.ts`, `WorkSweep.ts`, `CommitmentSweep.ts`; writes `MEMORY/STATE/maintenance-jobs.{json,lock}`, `MEMORY/OBSERVABILITY/maintenance-jobs.log` (timeout 5) |
+| (inline) `WORKOS/TOOLS/FreshnessCache.ts` | Freshness summary cache (`--quiet`) | No | None (timeout 5, async) |
+| `MaintenanceJobs.hook.ts` | Throttled background jobs (no cron/daemon/systemd), each on its own interval and stamp: memory consolidation (`SessionHarvester.ts --recent 20 && LearningPatternSynthesis.ts --week`, 20 h), `ProposalGC.ts --auto` (20 h), `WorkSweep.ts` (1 h), `CommitmentSweep.ts` (20 h), observability prune (20 h, in-process: archives `MEMORY/OBSERVABILITY` logs with no write in 30 days to `ARCHIVE/*.gz`, never deletes, never rewrites a live file), ledger compaction (`CortexLedger.ts maintain`, 168 h), statusline refresh (`STATUSLINE/Refresh.ts`, 1 h). When any job is due and no worker holds the lock, spawns itself detached with `--run` to execute the due jobs. Never blocks session start; skips subagents; exits 0 on every path | No | `WORKOS/TOOLS/SessionHarvester.ts`, `LearningPatternSynthesis.ts`, `ProposalGC.ts`, `WorkSweep.ts`, `CommitmentSweep.ts`, `CortexLedger.ts`, `STATUSLINE/Refresh.ts`; writes `MEMORY/STATE/maintenance-jobs.{json,lock}`, `MEMORY/OBSERVABILITY/maintenance-jobs.log` (timeout 5) |
 | (inline) `SettingsBackport.ts` + `MergeSettings.ts` | Merge `settings.system.json` + `USER/CONFIG/settings.user.json` → `settings.json` | No | System/user settings split (timeout 15, async) |
 
 ### UserPromptSubmit Hooks (in fire order)
@@ -191,10 +187,10 @@ interface StopPayload extends BasePayload {
 
 | Hook | Matcher | Purpose | Blocking | Dependencies |
 |------|---------|---------|----------|--------------|
-| `ContextReduction.hook.sh` | `Bash` | rtk rewrite of STATUS-path commands — scope is **git + gh only** (plus an interceptor-screenshot output redirect) as of the 2026-07-13 shrink; the old test/build/lint/container families were cut as dead weight for this stack. `rtk` is an OPTIONAL dependency — absent from PATH, the hook is an inert passthrough (never errors). READ-path commands (rg/grep, cat/head, ls/tree/find, diff, curl/wget, psql/aws) are NEVER rewritten: rtk's parse-fail falls back to a different binary (rg→BSD grep) and silently corrupts results the model reasons over. Invariant in hook header; incident 2026-06-10. Regression gate: `cd hooks && bun test ContextReduction.test.ts` (40 probes). **Stays a separate Bash hook** because it REWRITES the command (`updatedInput`) rather than blocking or allowing. | Yes (updatedInput) | `rtk` binary (optional), `jq` |
+| `DestructiveGuard.hook.ts` | `Bash` | Hard-blocks destructive and credential-exfil command shapes in every permission mode, including bypassPermissions (recursive deletes of `/`, system dirs, the home dir or the config root; download-piped-to-shell; raw device writes; reverse shells; privileged `docker run`; force-push or hard reset on main/master/prod; private-key and cloud-credential reads; `.env` or credential files sent over the network). Registered on its own; fail-OPEN on bad input or internal error. Regression gate: `cd hooks && bun test DestructiveGuard.test.ts` | Yes (decision) | `lib/safety-classifier.ts` |
+| `PublicPushGate.hook.ts` | `Bash` | Blocks a Bash-driven push to a PUBLIC GitHub repo, or making a repo public, until the repo's HEAD tree and reachable history pass a deny-scan. Registered on its own, after `DestructiveGuard`; fail-OPEN on bad input or internal error | Yes (decision) | `WORKOS/USER/SECURITY/PublicScrubPatterns.txt`, `MEMORY/STATE/public-push-gate.json` |
 | `AgentInvocation.hook.ts` | `Agent` | Log subagent_start with real subagent_type; log the resolved model for every dispatch | No | `MEMORY/OBSERVABILITY/` |
 | `TabState.hook.ts` | `AskUserQuestion` | Set teal tab for questions | No | Kitty terminal |
-| `PreToolGuard.hook.ts` | `Bash\|Write\|Edit\|MultiEdit` | The ONE PreToolUse blocking-guard dispatcher — reads stdin once, then runs `DestructiveGuard`, `SystemFileGuard`, `BashSystemWriteGuard`, `ISAStaleWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, and `PublicPushGate`, each in its own try/catch so one guard throwing can never suppress the others (Write/Edit/MultiEdit: `SystemFileGuard` then the whole-file-Write stale-ISA check; Bash: `DestructiveGuard` first (destructive and credential-exfil shapes, hard-blocked in every permission mode including bypassPermissions), then `BashSystemWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, `PublicPushGate`) | Yes (decision) | `lib/system-file-guard-core.ts`, `lib/egress-class-core.ts`, `lib/containment-zones.ts` |
 
 ### PostToolUse Hooks
 
@@ -203,15 +199,12 @@ interface StopPayload extends BasePayload {
 | `AgentInvocation.hook.ts` | `Agent` | Log subagent_stop with duration | No | `MEMORY/OBSERVABILITY/` |
 | `Safety.hook.ts` | `WebFetch`, `WebSearch`, `mcp__.*`, `ToolSearch` | Tag external content with "treat as data" warning + injection-shape marker. The MCP matcher is every MCP tool — it was widened from the old mail/drive/calendar subset. Same file as the PermissionRequest hook below; dispatches by event. | No | `lib/safety-classifier.ts` (timeout 5) |
 | `TabState.hook.ts` | `AskUserQuestion` | Reset tab state after question answered | No | Kitty terminal |
-| `ISAStaleWriteGuard.hook.ts` | `Read`, `Write`, `Edit`, `MultiEdit` | Stop a whole-file Write from silently discarding ISA changes the writing session never saw | No | ISA read-state ledger |
 | `ISASync.hook.ts` | `Write`, `Edit`, `MultiEdit` | Sync ISA frontmatter (incl. `phase:`/`progress:`) → `work.json` + KV push | No | `MEMORY/WORK/`, `work.json` |
 | `CheckpointPerISC.hook.ts` | `Write`, `Edit`, `MultiEdit` | Auto-commit per-ISC durability checkpoint — stages only paths dirty at-or-after the ISA's `started`, never the whole tree | No | `~/.claude/checkpoint-repos.txt` (timeout 30) |
-| `ConfigEvalFire.hook.ts` | `Write`, `Edit`, `MultiEdit` | Fire behavioural evals when CLAUDE.md / OPERATIONAL_RULES / a hook changes. Never blocks the edit. | No | Evals harness |
 | `AtlasEventCapture.hook.ts` | `Write`, `Edit`, `MultiEdit`, `Bash` | Mutation hints for the Atlas asset graph (deploys, DNS changes, tracked-asset edits) | No | Atlas store (timeout 5) |
 | `KnowledgeWriteGuard.hook.ts` | `Write`, `Edit`, `MultiEdit` | Advisory schema feedback the moment a `MEMORY/KNOWLEDGE/<Type>/<slug>.md` note is written — names violations and the sanctioned writer while the author is still in the loop. Never blocks. Ported from public PR #1687, credit @elhoim | No | `MemorySystem` note schema (timeout 5) |
 | `ComplexityRatchet.hook.ts` | `Write`, `Edit`, `MultiEdit` | Advisory complexity-drift meter — measures the complexity a session ADDS and reports it via `additionalContext`. Advise-only in v1; fail-open is absolute | No | `MEMORY/STATE/` |
-| `PostToolObserver.hook.ts` | (catch-all) | The ONE sync catch-all — dispatches `LoopDetector`, `AlgorithmNudge`, and `SystemChangeSurface`, joined into one `hookSpecificOutput`. Must stay on the empty matcher so it fires on every tool call. | No | `lib/system-surfaces.ts` (timeout 5) |
-| `LoopDetector.hook.ts` | (catch-all) | Exact-repeat / oscillation / hammering detection. Graduated to a direct registration — no longer dispatcher-only. | No | `MEMORY/STATE/` (timeout 5) |
+| `PostToolObserver.hook.ts` | (catch-all) | The ONE sync catch-all — dispatches `LoopDetector`, `AlgorithmNudge`, and `SystemChangeSurface`, joined into one `hookSpecificOutput`. Must stay on the empty matcher so it fires on every tool call. `LoopDetector` runs here on PostToolUse and is no longer registered on this event on its own. | No | `lib/system-surfaces.ts` |
 | `EventLogger.hook.ts` | (catch-all) | Unified observability event logger — ground-truth audit log of every tool call | No | `MEMORY/OBSERVABILITY/tool-activity.jsonl` (timeout 5) |
 
 ### PermissionRequest Hooks
@@ -226,7 +219,7 @@ interface StopPayload extends BasePayload {
 |------|---------|----------|--------------|
 | `EventLogger.hook.ts` | Log tool failures for debugging observability | No | `MEMORY/OBSERVABILITY/` |
 | `AlgorithmNudge.hook.ts` | Failure-state nudge on the failing tool call | No | Prebuilt nudge index (timeout 5) |
-| `LoopDetector.hook.ts` | Repeat-failure / hammering detection | No | `MEMORY/STATE/` (timeout 5) |
+| `LoopDetector.hook.ts` | Repeat-failure / hammering detection. Its standalone entry ignores PostToolUse events, so a pre-1.1.0 install that still carries the old PostToolUse registration does not double-count against `PostToolObserver` | No | `MEMORY/STATE/` (timeout 5) |
 
 ### Stop Hooks (in fire order — matters for the LastResponseCache → SatisfactionCapture bridge)
 
@@ -235,9 +228,9 @@ interface StopPayload extends BasePayload {
 | `LastResponseCache.hook.ts` | Cache last response for the SatisfactionCapture bridge | No | None |
 | `TabState.hook.ts` | Reset Kitty tab title/color after response | No | Kitty terminal |
 | `ISARenderOnStop.hook.ts` | Re-render ISAs edited during the turn, from the per-session state file `ISASync` writes | No | `MEMORY/WORK/`, ISA renderer |
-| `SpendAuditor.hook.ts` | Outcome-side spend verification — did a HEAVY ask get matching effort | No | `MEMORY/OBSERVABILITY/` |
 | `StopGates.hook.ts` | The ONE Stop-event gate hook — dispatches `FormatGate`, `VerificationGate`, `ISACloseGate`, `ISAFoldGate`, `ISAGate` in that order; first block wins | Yes (decision) | `lib/hook-io.ts` |
 | `MemoryReviewFire.hook.ts` | Owns the whole memory-review cadence | No | `USER/CONFIG/memory-review.json`, `MEMORY/` |
+| `MemoryIndexRefresh.hook.ts` | Rebuild the persisted BM25 memory index when it is stale (own Stop block, async, timeout 60) | No | `WORKOS/TOOLS/MemoryRetriever.ts` |
 | `MemoryHealthGate.hook.ts` | Autonomic-memory health check; never fails the Stop chain | No | `MEMORY/OBSERVABILITY/memory-health.jsonl` (timeout 15) |
 
 ### StopFailure Hooks
@@ -270,37 +263,34 @@ Outputs: `subagent-events.jsonl` (start + stop events), correlated by `session_i
 |------|---------|----------|--------------|
 | `WorkCompletionLearning.hook.ts` | Extract learnings from work | No | Inference API, `MEMORY/LEARNING/` |
 | `SessionCleanup.hook.ts` | Mark work complete + clear state | No | `MEMORY/WORK/`, `MEMORY/STATE/work.json` |
-| `UpdateCounts.hook.ts` | Refresh the Anthropic OAuth usage cache (`MEMORY/STATE/usage-cache.json`) so the statusline has fresh data next session | No | `handlers/UpdateCounts.ts`, Anthropic API |
+| `UpdateCounts.hook.ts` | Refresh the Anthropic OAuth usage cache (`MEMORY/STATE/usage-cache.json`) for `CostTracker.ts`; the statusline no longer reads it (Bedrock has no plan meter) | No | `handlers/UpdateCounts.ts`, Anthropic API |
 | `MemoryHealthGate.hook.ts` | End-of-session autonomic-memory health check | No | `MEMORY/OBSERVABILITY/memory-health.jsonl` |
 | `DocIntegrity.hook.ts` | Cross-ref + semantic drift checks + arch summary regen | No | Inference API, `handlers/` |
 | `IntegrityCheck.hook.ts` | System file change detection → spawn IntegrityMaintenance | No | `MEMORY/STATE/integrity-state.json`, `handlers/` |
 
 ### Dispatched-Only Modules
 
-These 13 `.hook.ts` files are on disk but carry no direct `settings.json` registration. Each exports a `run()`/`check()` module its dispatcher imports, and each keeps a standalone shim so it can still be run by hand for debugging.
+These 8 `.hook.ts` files are on disk but carry no direct `settings.json` registration. Each exports a `run()`/`check()` module its dispatcher imports, and each keeps a standalone shim so it can still be run by hand for debugging.
 
 | Module | Dispatcher | Event |
 |--------|-----------|-------|
-| `DestructiveGuard.hook.ts` | `PreToolGuard.hook.ts` | PreToolUse |
-| `SystemFileGuard.hook.ts` | `PreToolGuard.hook.ts` | PreToolUse |
-| `BashSystemWriteGuard.hook.ts` | `PreToolGuard.hook.ts` | PreToolUse |
-| `CommunicationSkillGuard.hook.ts` | `PreToolGuard.hook.ts` | PreToolUse |
-| `EgressClassGuard.hook.ts` | `PreToolGuard.hook.ts` | PreToolUse |
-| `PublicPushGate.hook.ts` | `PreToolGuard.hook.ts` | PreToolUse |
 | `FormatGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `VerificationGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `ISACloseGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `ISAFoldGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `ISAGate.hook.ts` | `StopGates.hook.ts` | Stop |
+| `IsaCodeSyncGate.hook.ts` | `StopGates.hook.ts` | Stop |
 | `LoadMemory.hook.ts` | `MemoryTurnStart.hook.ts` | UserPromptSubmit |
 | `MemoryDeltaSurface.hook.ts` | `MemoryTurnStart.hook.ts` | UserPromptSubmit |
 | `SystemChangeSurface.hook.ts` | `PostToolObserver.hook.ts` | PostToolUse |
 
-`ISAStaleWriteGuard.hook.ts` is also dispatched by `PreToolGuard.hook.ts` (PreToolUse, Write-only) but is additionally registered directly on PostToolUse, so it is listed in the PostToolUse table, not here. `LoopDetector` was formerly on this list; it graduated to a direct `PostToolUse` + `PostToolUseFailure` registration and is now a first-class registered hook.
+The former PreToolUse dispatcher (`PreToolGuard`) and the guards it ran are retired as of WorkOS 2.0.0; `DestructiveGuard` and `PublicPushGate` are now registered directly (see the PreToolUse table), not dispatched. See `hooks/retired.json` for the retired hooks and the reason for each. `LoopDetector` is a registered hook (`PostToolUseFailure`, and `PostToolUse` via `PostToolObserver`), not a dispatched-only module.
 
 ### Retired Hooks
 
 Removed from disk in the 2026-05-06 security simplification and the 2026-07-10/2026-07-11 consolidation passes (per-row dates below where they differ). They appear in older docs and in the public repo's cut; none of them exist now.
+
+**Retired in 2.0.0:** `PreToolGuard`, `SystemFileGuard`, `BashSystemWriteGuard`, `ISAStaleWriteGuard`, `CommunicationSkillGuard`, `EgressClassGuard`, `ContextReduction.hook.sh`, `ConfigEvalFire` and `SpendAuditor`. The files are deleted from the payload; `hooks/retired.json` lists each with its reason. `InstallHooks` (`retireHooks` in `skills/WorkOS/Tools/InstallEngine.ts`) removes their `settings.json` registrations on update. An update (`skills/WorkOS/Tools/OverlaySystem.ts`) moves an untouched retired hook file to the backup and keeps an edited one; `Doctor --reconcile` ignores what is left.
 
 | Retired hook | Where its behaviour went |
 |--------------|--------------------------|
@@ -346,7 +336,6 @@ Stop:
   LastResponseCache  →  writes MEMORY/STATE/last-response.txt
   TabState           →  Kitty tab → completion state
   ISARenderOnStop    →  re-render ISAs edited this turn
-  SpendAuditor       →  outcome-side spend verification
   StopGates          →  Format / Verification / ISA gates
   MemoryReviewFire   →  memory-review cadence
   MemoryHealthGate   →  memory health check
@@ -485,7 +474,8 @@ Hooks are configured in `settings.json` under the `hooks` key:
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "$HOME/.claude/hooks/ContextReduction.hook.sh" }
+          { "type": "command", "command": "$HOME/.claude/hooks/DestructiveGuard.hook.ts" },
+          { "type": "command", "command": "$HOME/.claude/hooks/PublicPushGate.hook.ts" }
         ]
       }
     ],
