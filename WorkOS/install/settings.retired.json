@@ -9,6 +9,13 @@
       { "rule": "Bash(scp:*)", "since": "2.0.0", "reason": "Copies files to or from any host with no prompt. Upstream LifeOS dropped it too." },
       { "rule": "Bash(rsync:*)", "since": "2.0.0", "reason": "Copies or deletes files locally or remotely with no prompt. Upstream LifeOS dropped it too." },
       { "rule": "Bash(git push:*)", "since": "2.0.0", "reason": "Publishes commits with no prompt; a push is outward-facing. Upstream LifeOS dropped it too." }
+    ],
+    "deny": [
+      { "rule": "Edit(/System/**)", "since": "2.0.0", "reason": "One leading slash is relative to the settings folder, so this guarded <config root>/System, not /System. Replaced by Edit(//System/**). Upstream LifeOS #2746 / #2941." },
+      { "rule": "Edit(/bin/**)", "since": "2.0.0", "reason": "One leading slash is relative to the settings folder, so this guarded <config root>/bin, not /bin. Replaced by Edit(//bin/**). Upstream LifeOS #2746 / #2941." },
+      { "rule": "Edit(/etc/**)", "since": "2.0.0", "reason": "One leading slash is relative to the settings folder, so this guarded <config root>/etc, not /etc. Replaced by Edit(//etc/**). Upstream LifeOS #2746 / #2941." },
+      { "rule": "Edit(/sbin/**)", "since": "2.0.0", "reason": "One leading slash is relative to the settings folder, so this guarded <config root>/sbin, not /sbin. Replaced by Edit(//sbin/**). Upstream LifeOS #2746 / #2941." },
+      { "rule": "Edit(/usr/**)", "since": "2.0.0", "reason": "One leading slash is relative to the settings folder, so this guarded <config root>/usr, not /usr. Replaced by Edit(//usr/**). Upstream LifeOS #2746 / #2941." }
     ]
   }
 }

@@ -52,7 +52,9 @@ WorkOS configuration follows the **system/user separation** contract (`WORKOS/DO
 
 1. **SessionStart** — `MergeSettings.ts` reads `settings.system.json` + `WORKOS/USER/CONFIG/settings.user.json`, deep-merges (USER wins on conflict), writes `settings.json`. This file is what Claude Code reads for hooks, permissions, env, identity.
 
-   **Merge semantics for arrays (public issue #1575, @dactylmedia):** a plain array in the user overlay REPLACES the system array wholesale — it does not extend it. Additive intent requires the annotation form: `{"__merge": "append", "values": [...]}`. A user hand-porting deny rules or hooks with a plain array clobbers the system's list; a user expecting append gets replace. The annotation is consumed at merge time and never appears in the output.
+   **Merge semantics for arrays (public issue #1575, @dactylmedia):** a plain array in the user overlay REPLACES the system array wholesale — it does not extend it. Additive intent requires the annotation form: `{"__merge": "append", "values": [...]}`. A user hand-porting deny rules or hooks with a plain array clobbers the system's list; a user expecting append gets replace. The annotation is consumed at merge time and never appears in the output, including inside a key only the overlay defines (such as `hooks`). `hooks` itself is installer-owned: an overlay `hooks` key is merged on top of the hooks already in `settings.json`, and a merge that would drop a registered hook is refused.
+
+   **Absolute paths in permission rules take two slashes.** `Edit(//etc/**)` is `/etc`. A single leading slash, `Edit(/etc/**)`, is relative to the folder holding the settings file, so in user settings it guards `<config root>/etc`. WorkOS 2.0.0 ships the `//` form and retires the single-slash rules 1.0.x shipped.
 
    **Overlay location is load-bearing:** the user overlay is read ONLY from `WORKOS/USER/CONFIG/settings.user.json`. A `settings.user.json` placed at the config root is never read — MergeSettings warns loudly when it sees one there.
 
